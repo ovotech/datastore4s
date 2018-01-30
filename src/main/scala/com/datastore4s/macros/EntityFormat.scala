@@ -52,7 +52,7 @@ object ToEntity {
         } else {
           (
             q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(${kind.decodedName.toString}))
-               implicitly[com.datastore4s.core.AsKey[${keyType.typeSymbol}]].toKey(value.${m.asTerm.name}, keyFactory)""", m) // TODO implicit newkeyFactory: KeyFactorySupplier (type of () => KeyBuilder) instead of datastore:Datastore
+               implicitly[com.datastore4s.core.ToKey[${keyType.typeSymbol}]].toKey(value.${m.asTerm.name}, keyFactory)""", m) // TODO implicit newkeyFactory: KeyFactorySupplier (type of () => KeyBuilder) instead of datastore:Datastore
         }
       case more => context.abort(context.enclosingPosition, s"Entity case class must be annotated with @EntityKey precisely once, but annotations were: $more")
     }
@@ -60,7 +60,7 @@ object ToEntity {
     // TODO this relies on entity mutation. Is this avoidable? If not is it acceptable??
     // TODO is there some way to store the format as val ${fieldName}Format = implicitly[FieldFormat[A]]
     // TODO can we remove the empty q"" in fold left?
-    val builderExpression = entityType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.filter(_ != keyMember).foldLeft(q"": context.universe.Tree) {
+    val builderExpression = entityType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.foldLeft(q"": context.universe.Tree) {
       case (expression, field) =>
         val fieldName = field.asTerm.name
         q"""$expression
@@ -101,46 +101,21 @@ object FromEntity {
     val entityType = weakTypeTag[EntityType].tpe
     require(entityType.typeSymbol.asClass.isCaseClass, s"Entity classes must be a case class but $entityType is not")
 
-    val keyType = weakTypeTag[KeyType].tpe
-
-    val keyFields: List[context.universe.Symbol] = entityType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.flatMap { m =>
-      val keyAnnotations = m.annotations.collect {
-        case annotation if annotation.tree.tpe <:< context.weakTypeOf[EntityKey] => m
-      }
-      if (keyAnnotations.size > 1) {
-        context.abort(context.enclosingPosition, s"The key field must only be annotated with @EntityKey precisely once, but annotations were: $keyAnnotations")
-      }
-      keyAnnotations
-    }
-
-    val key: (context.universe.Tree, context.universe.Symbol) = keyFields match {
-      case Nil => context.abort(context.enclosingPosition, s"There must be a field annotated with @SimpleKey or @ComplexKey precisely once")
-      case m :: Nil =>
-        if (!(m.typeSignature =:= keyType)) {
-          context.abort(context.enclosingPosition, s"Annotated Key field ${m.name.toString} was of the wrong type. Expected $keyType but was ${m.typeSignature}")
-        } else {
-          (q"""implicitly[com.datastore4s.core.AsKey[${keyType.typeSymbol}]].fromKey(key)""", m)
-        }
-      case other => throw new RuntimeException(s"Not yet implemented the case where the key field are: ${other}")
-    }
-
     // TODO can we store the implicit format?
-    val constructionExpressions = entityType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.filter(_ != key._2).map { field =>
+    val constructionExpressions = entityType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.map { field =>
       (q"implicitly[com.datastore4s.core.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${field.asTerm.name.toString})", field)
     }
 
-    val all = key +: constructionExpressions
-
-    val args = all.map {
+    val args = constructionExpressions.map {
       case (expression, field) => AssignOrNamedArg(Ident(field.name), expression)
     }
 
     val companion = entityType.typeSymbol.companion
+    val keyType = weakTypeTag[KeyType].tpe
 
     val expression =
       q"""new com.datastore4s.macros.FromEntity[$entityType, $keyType] {
             override def fromEntity(entity: com.google.cloud.datastore.Entity): scala.util.Try[$entityType] = Try {
-              val key = entity.getKey()
               $companion.apply(..$args)
             }
           }
@@ -154,6 +129,8 @@ object FromEntity {
 
 //trait EntityFormat[EntityType, KeyType] {
 //  type KeyFactorySupplier = () => KeyFactory
+//  val kind: String
+//
 //  def toEntity(record: EntityType)(implicit keyFactorySupplier: () => KeyFactory): Entity
 //
 //  def fromEntity(entity: Entity): Try[EntityType]

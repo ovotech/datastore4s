@@ -13,7 +13,8 @@ trait EntitySupport {
   implicit val lToEntity = ToEntity[LongKeyObject, Long]
   implicit val lFromEntity = FromEntity[LongKeyObject, Long]
 
-  implicit val idAsKey = IdAsKey
+  implicit val idAsKey = IdToKey
+  implicit val idFieldFormat = IdFieldFormat
   implicit val cToEntity = ToEntity[ComplexKeyObject, Id]
   implicit val cFromEntity = FromEntity[ComplexKeyObject, Id]
 }
@@ -79,15 +80,18 @@ case class StringKeyObject(@EntityKey someKey: String, someProperty: String)
 @Kind("long-type")
 case class LongKeyObject(@EntityKey someKey: Long)
 
-@Kind("complex-type")
+@Kind("complex-type") // TODO move annotations to functions?
 case class ComplexKeyObject(@EntityKey id: Id)
 
 case class Id(id: String, parent: String)
 
-object IdAsKey extends AsKey[Id] {
+object IdToKey extends ToKey[Id] {
   private val ancestorKind = "test-ancestor"
-
   override def toKey(value: Id, keyFactory: KeyFactory) = keyFactory.addStringAncestor(value.parent, ancestorKind).buildWithName(value.id)
+}
 
-  override def fromKey(key: Key) = Id(key.getName, Ancestors.mandatoryStringAncestorFrom(ancestorKind, key))
+object IdFieldFormat extends FieldFormat[Id] {
+  override def addField(value: Id, fieldName: String, entityBuilder: Entity.Builder) = entityBuilder.set(s"$fieldName.id", value.id).set(s"$fieldName.parent", value.parent)
+
+  override def fromField(entity: Entity, fieldName: String) = Id(entity.getString(s"$fieldName.id"), entity.getString(s"$fieldName.parent"))
 }
