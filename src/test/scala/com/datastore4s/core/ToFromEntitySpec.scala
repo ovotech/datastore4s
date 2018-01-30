@@ -1,7 +1,7 @@
 package com.datastore4s.core
 
 import com.datastore4s.macros._
-import com.google.cloud.datastore.{DatastoreOptions, Entity, Key, KeyFactory}
+import com.google.cloud.datastore.{DatastoreOptions, Entity}
 import org.scalatest.{FeatureSpec, Matchers}
 
 import scala.util.{Success, Try}
@@ -65,28 +65,35 @@ class ToFromEntitySpec extends FeatureSpec with Matchers with EntitySupport {
     }
   }
 
-  private def toEntity[EntityType, KeyType](value: EntityType)(implicit toEntity: ToEntity[EntityType, KeyType]): Entity = {
+  private def toEntity[EntityType <: DatastoreEntity[KeyType], KeyType](value: EntityType)(implicit toEntity: ToEntity[EntityType, KeyType]): Entity = {
     toEntity.toEntity(value)
   }
 
-  private def fromEntity[EntityType, KeyType](entity: Entity)(implicit fromEntity: FromEntity[EntityType, KeyType]): Try[EntityType] = {
+  private def fromEntity[EntityType <: DatastoreEntity[KeyType], KeyType](entity: Entity)(implicit fromEntity: FromEntity[EntityType, KeyType]): Try[EntityType] = {
     fromEntity.fromEntity(entity)
   }
 }
 
 @Kind("string-type")
-case class StringKeyObject(@EntityKey someKey: String, someProperty: String)
+case class StringKeyObject(someKey: String, someProperty: String) extends DatastoreEntity[String] {
+  override def key = someKey
+}
 
 @Kind("long-type")
-case class LongKeyObject(@EntityKey someKey: Long)
+case class LongKeyObject(someKey: Long) extends DatastoreEntity[Long] {
+  override def key = someKey
+}
 
-@Kind("complex-type") // TODO move annotations to functions?
-case class ComplexKeyObject(@EntityKey id: Id)
+@Kind("complex-type")
+case class ComplexKeyObject(id: Id) extends DatastoreEntity[Id] {
+  override def key = id
+}
 
 case class Id(id: String, parent: String)
 
 object IdToKey extends ToKey[Id] {
   private val ancestorKind = "test-ancestor"
+
   override def toKey(value: Id, keyFactory: KeyFactory) = keyFactory.addStringAncestor(value.parent, ancestorKind).buildWithName(value.id)
 }
 
