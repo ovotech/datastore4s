@@ -7,7 +7,9 @@ import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 import scala.util.Try
 
-final case class EntityKind(kind:String) extends Annotation
+final case class EntityKind(kind: String) extends Annotation
+
+case class Kind(kind: String)
 
 trait DatastoreEntity[KeyType] {
   def key: KeyType
@@ -41,7 +43,7 @@ object ToEntity {
     val keyType = weakTypeTag[KeyType].tpe
 
     val keyExpression =
-            q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(${kind.decodedName.toString}))
+      q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(${kind.decodedName.toString}))
                implicitly[com.datastore4s.core.ToKey[${keyType.typeSymbol}]].toKey(value.key, keyFactory)"""
 
     // TODO this relies on entity mutation. Is this avoidable? If not is it acceptable??
@@ -115,7 +117,7 @@ object FromEntity {
 }
 
 //trait EntityFormat[EntityType, KeyType] {
-//  val kind: String
+//  val kind: Kind
 //
 //  def toEntity(record: EntityType)(implicit keyFactorySupplier: () => KeyFactory): Entity
 //

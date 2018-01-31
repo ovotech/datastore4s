@@ -3,7 +3,6 @@ package com.datastore4s.core
 import com.google.cloud.datastore.{Key, PathElement}
 
 trait ToKey[A] {
-
   def toKey(value: A, keyFactory: KeyFactory): Key
 }
 
@@ -22,9 +21,9 @@ object ToKey {
 
 trait KeyFactory { // TODO keyfactory tests.
 
-  def addStringAncestor(value: String, kind: String): KeyFactory
+  def addStringAncestor(value: String, kind: Kind): KeyFactory
 
-  def addLongAncestor(value: Long, kind: String): KeyFactory
+  def addLongAncestor(value: Long, kind: Kind): KeyFactory
 
   def buildWithName(name: String): Key
 
@@ -37,11 +36,11 @@ class KeyFactoryFacade(val factory: com.google.cloud.datastore.KeyFactory) exten
 
   override def buildWithId(id: Long) = factory.newKey(id)
 
-  def addStringAncestor(value: String, kind: String) = {
-    new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind, value)))
+  def addStringAncestor(value: String, kind: Kind) = {
+    new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.kind, value)))
   }
 
-  def addLongAncestor(value: Long, kind: String) = {
-    new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind, value)))
+  def addLongAncestor(value: Long, kind: Kind) = {
+    new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.kind, value)))
   }
 }
