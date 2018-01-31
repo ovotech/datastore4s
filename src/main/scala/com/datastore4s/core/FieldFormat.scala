@@ -1,5 +1,7 @@
 package com.datastore4s.core
 
+import java.time.Instant
+
 import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Blob, Entity, LatLng}
 
@@ -59,6 +61,12 @@ object FieldFormat {
     override def addField(value: LatLng, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, value)
 
     override def fromField(entity: Entity, fieldName: String): LatLng = entity.getLatLng(fieldName)
+  }
+
+  implicit object InstantEpochMilliFormat extends FieldFormat[Instant] {
+    override def addField(value: Instant, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, value.toEpochMilli)
+
+    override def fromField(entity: Entity, fieldName: String): Instant = Instant.ofEpochMilli(entity.getLong(fieldName))
   }
 
 }

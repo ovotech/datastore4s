@@ -1,5 +1,7 @@
 package com.datastore4s.core
 
+import java.time.Instant
+
 import com.google.cloud.datastore.{Entity, Key, LatLng}
 import org.scalacheck.Gen
 import org.scalatest.{FlatSpec, Matchers}
@@ -93,6 +95,17 @@ class FieldFormatSpec extends FlatSpec with FieldFormatTestCases {
     val latLang = LatLng.of(12, 109.2)
     testEntity(LatLngFieldFormat)(latLang) { entity =>
       entity.getLatLng(fieldName) shouldBe latLang
+    }
+  }
+
+  "The EpochMilli format" should "take any Instant and store it as a field" in {
+    forallTestRoundTrip(InstantEpochMilliFormat)(Gen.choose(Long.MinValue, Long.MaxValue).map(Instant.ofEpochMilli(_)))
+  }
+
+  it should "store the value as a blob field" in {
+    val millis = 1236785472L
+    testEntity(InstantEpochMilliFormat)(Instant.ofEpochMilli(millis)) { entity =>
+      entity.getLong(fieldName) shouldBe millis
     }
   }
 
