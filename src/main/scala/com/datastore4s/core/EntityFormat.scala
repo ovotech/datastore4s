@@ -1,19 +1,20 @@
-package com.datastore4s.macros
+package com.datastore4s.core
 
-import com.datastore4s.core.{EntityKey, Kind}
-import com.google.cloud.datastore.{Entity, KeyFactory}
+import com.google.cloud.datastore.Entity
 
-import scala.util.Try
+import scala.annotation.Annotation
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
+import scala.util.Try
 
+final case class EntityKind(kind:String) extends Annotation
 
 trait DatastoreEntity[KeyType] {
   def key: KeyType
 }
 
 trait ToEntity[EntityType <: DatastoreEntity[KeyType], KeyType] {
-  def toEntity(record: EntityType)(implicit keyFactorySupplier: () => KeyFactory): Entity
+  def toEntity(record: EntityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): Entity
 }
 
 object ToEntity {
@@ -27,9 +28,9 @@ object ToEntity {
     require(entityType.typeSymbol.asClass.isCaseClass, s"Entity classes must be a case class but $entityType is not")
 
     val kind = entityType.typeSymbol.annotations.collect {
-      case annotation if annotation.tree.tpe <:< context.weakTypeOf[Kind] =>
+      case annotation if annotation.tree.tpe <:< context.weakTypeOf[EntityKind] =>
         annotation.tree.children.tail match {
-          case Literal(Constant(kind: String)) :: Nil => Kind(kind)
+          case Literal(Constant(kind: String)) :: Nil => EntityKind(kind)
         }
     } match {
       case Nil => context.abort(context.enclosingPosition, "Entity case class must be annotated with @Kind")
@@ -56,10 +57,10 @@ object ToEntity {
 
     // TODO why does builder expression open a new scope??
     val expression =
-      q"""new com.datastore4s.macros.ToEntity[$entityType, $keyType] {
+      q"""new com.datastore4s.core.ToEntity[$entityType, $keyType] {
             override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): com.google.cloud.datastore.Entity = {
               val key = $keyExpression
-              val builder = Entity.newBuilder(key)
+              val builder = com.google.cloud.datastore.Entity.newBuilder(key)
               $builderExpression
               builder.build()
             }
@@ -100,8 +101,8 @@ object FromEntity {
     val keyType = weakTypeTag[KeyType].tpe
 
     val expression =
-      q"""new com.datastore4s.macros.FromEntity[$entityType, $keyType] {
-            override def fromEntity(entity: com.google.cloud.datastore.Entity): scala.util.Try[$entityType] = Try {
+      q"""new com.datastore4s.core.FromEntity[$entityType, $keyType] {
+            override def fromEntity(entity: com.google.cloud.datastore.Entity): scala.util.Try[$entityType] = scala.util.Try {
               $companion.apply(..$args)
             }
           }
@@ -114,7 +115,6 @@ object FromEntity {
 }
 
 //trait EntityFormat[EntityType, KeyType] {
-//  type KeyFactorySupplier = () => KeyFactory
 //  val kind: String
 //
 //  def toEntity(record: EntityType)(implicit keyFactorySupplier: () => KeyFactory): Entity

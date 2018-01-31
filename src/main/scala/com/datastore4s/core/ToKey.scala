@@ -1,6 +1,6 @@
 package com.datastore4s.core
 
-import com.google.cloud.datastore.{Entity, Key, PathElement}
+import com.google.cloud.datastore.{Key, PathElement}
 
 trait ToKey[A] {
 

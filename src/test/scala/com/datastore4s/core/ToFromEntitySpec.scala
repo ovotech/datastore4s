@@ -74,17 +74,17 @@ class ToFromEntitySpec extends FeatureSpec with Matchers with EntitySupport {
   }
 }
 
-@Kind("string-type")
+@EntityKind("string-type")
 case class StringKeyObject(someKey: String, someProperty: String) extends DatastoreEntity[String] {
   override def key = someKey
 }
 
-@Kind("long-type")
+@EntityKind("long-type")
 case class LongKeyObject(someKey: Long) extends DatastoreEntity[Long] {
   override def key = someKey
 }
 
-@Kind("complex-type")
+@EntityKind("complex-type")
 case class ComplexKeyObject(id: Id) extends DatastoreEntity[Id] {
   override def key = id
 }
