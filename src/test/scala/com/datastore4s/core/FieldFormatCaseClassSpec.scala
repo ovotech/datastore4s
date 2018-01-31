@@ -29,11 +29,10 @@ class FieldFormatCaseClassSpec extends FlatSpec with Matchers with GeneratorDriv
 
   "The apply method of Field Format" should "create a field format that nests the fields of case classes" in {
     implicit val format = FieldFormat[SomeNestedType]
-    val toEntity = ToEntity[EntityWithNestedType, String]
-    val fromEntity = FromEntity[EntityWithNestedType, String]
+    val entityFormat = EntityFormat[EntityWithNestedType, String]
 
     forAll(entityGen) { entity =>
-      val roundTripped = fromEntity.fromEntity(toEntity.toEntity(entity))
+      val roundTripped = entityFormat.fromEntity(entityFormat.toEntity(entity))
       roundTripped shouldBe Success(entity)
     }
   }

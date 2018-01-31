@@ -15,15 +15,18 @@ trait DatastoreEntity[KeyType] {
   def key: KeyType
 }
 
-trait ToEntity[EntityType <: DatastoreEntity[KeyType], KeyType] {
+trait EntityFormat[EntityType, KeyType] {
+  val kind: Kind
+
   def toEntity(record: EntityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): Entity
+
+  def fromEntity(entity: Entity): Try[EntityType]
 }
 
-object ToEntity {
+object EntityFormat {
+  def apply[EntityType <: DatastoreEntity[KeyType], KeyType](): EntityFormat[EntityType, KeyType] = macro applyImpl[EntityType, KeyType]
 
-  def apply[EntityType <: DatastoreEntity[KeyType], KeyType](): ToEntity[EntityType, KeyType] = macro applyImpl[EntityType, KeyType]
-
-  def applyImpl[EntityType <: DatastoreEntity[KeyType] : context.WeakTypeTag, KeyType: context.WeakTypeTag](context: Context)(): context.Expr[ToEntity[EntityType, KeyType]] = {
+  def applyImpl[EntityType <: DatastoreEntity[KeyType] : context.WeakTypeTag, KeyType: context.WeakTypeTag](context: Context)(): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
 
     val entityType = weakTypeTag[EntityType].tpe
@@ -43,7 +46,7 @@ object ToEntity {
     val keyType = weakTypeTag[KeyType].tpe
 
     val keyExpression =
-      q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(${kind.toString}))
+      q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(kind.kind))
                implicitly[com.datastore4s.core.ToKey[${keyType.typeSymbol}]].toKey(value.key, keyFactory)"""
 
     // TODO this relies on entity mutation. Is this avoidable? If not is it acceptable??
@@ -58,37 +61,14 @@ object ToEntity {
     }
 
     // TODO why does builder expression open a new scope??
-    val expression =
-      q"""new com.datastore4s.core.ToEntity[$entityType, $keyType] {
-            override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): com.google.cloud.datastore.Entity = {
-              val key = $keyExpression
-              val builder = com.google.cloud.datastore.Entity.newBuilder(key)
-              $builderExpression
-              builder.build()
-            }
+    val toExpression =
+      q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): com.google.cloud.datastore.Entity = {
+            val key = $keyExpression
+            val builder = com.google.cloud.datastore.Entity.newBuilder(key)
+            $builderExpression
+            builder.build()
           }
         """
-
-    println(expression)
-
-    context.Expr[ToEntity[EntityType, KeyType]](
-      expression
-    )
-  }
-}
-
-trait FromEntity[EntityType <: DatastoreEntity[KeyType], KeyType] {
-  def fromEntity(entity: Entity): Try[EntityType]
-}
-
-object FromEntity {
-  def apply[EntityType <: DatastoreEntity[KeyType], KeyType](): FromEntity[EntityType, KeyType] = macro applyImpl[EntityType, KeyType]
-
-  def applyImpl[EntityType <: DatastoreEntity[KeyType] : context.WeakTypeTag, KeyType: context.WeakTypeTag](context: Context)(): context.Expr[FromEntity[EntityType, KeyType]] = {
-    import context.universe._
-
-    val entityType = weakTypeTag[EntityType].tpe
-    require(entityType.typeSymbol.asClass.isCaseClass, s"Entity classes must be a case class but $entityType is not")
 
     // TODO can we store the implicit format?
     val constructionExpressions = entityType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.map { field =>
@@ -100,26 +80,26 @@ object FromEntity {
     }
 
     val companion = entityType.typeSymbol.companion
-    val keyType = weakTypeTag[KeyType].tpe
+
+    val fromExpression =
+      q"""override def fromEntity(entity: com.google.cloud.datastore.Entity): scala.util.Try[$entityType] = scala.util.Try {
+            $companion.apply(..$args)
+          }
+        """
 
     val expression =
-      q"""new com.datastore4s.core.FromEntity[$entityType, $keyType] {
-            override def fromEntity(entity: com.google.cloud.datastore.Entity): scala.util.Try[$entityType] = scala.util.Try {
-              $companion.apply(..$args)
-            }
+      q"""new com.datastore4s.core.EntityFormat[$entityType, $keyType] {
+
+            val kind = Kind(${kind.toString})
+
+            $toExpression
+
+            $fromExpression
           }
         """
     println(expression)
-    context.Expr[FromEntity[EntityType, KeyType]](
+    context.Expr[EntityFormat[EntityType, KeyType]](
       expression
     )
   }
 }
-
-//trait EntityFormat[EntityType, KeyType] {
-//  val kind: Kind
-//
-//  def toEntity(record: EntityType)(implicit keyFactorySupplier: () => KeyFactory): Entity
-//
-//  def fromEntity(entity: Entity): Try[EntityType]
-//}

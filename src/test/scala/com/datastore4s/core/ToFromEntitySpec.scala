@@ -1,22 +1,18 @@
 package com.datastore4s.core
 
-import com.datastore4s.macros._
 import com.google.cloud.datastore.{DatastoreOptions, Entity}
 import org.scalatest.{FeatureSpec, Matchers}
 
 import scala.util.{Success, Try}
 
 trait EntitySupport {
-  implicit val sToEntity = ToEntity[StringKeyObject, String]
-  implicit val sFromEntity = FromEntity[StringKeyObject, String]
+  implicit val stringEntityFormat = EntityFormat[StringKeyObject, String]
 
-  implicit val lToEntity = ToEntity[LongKeyObject, Long]
-  implicit val lFromEntity = FromEntity[LongKeyObject, Long]
+  implicit val longEntityFormat = EntityFormat[LongKeyObject, Long]
 
   implicit val idAsKey = IdToKey
   implicit val idFieldFormat = IdFieldFormat
-  implicit val cToEntity = ToEntity[ComplexKeyObject, Id]
-  implicit val cFromEntity = FromEntity[ComplexKeyObject, Id]
+  implicit val complexEntityFormat = EntityFormat[ComplexKeyObject, Id]
 }
 
 class ToFromEntitySpec extends FeatureSpec with Matchers with EntitySupport {
@@ -65,12 +61,12 @@ class ToFromEntitySpec extends FeatureSpec with Matchers with EntitySupport {
     }
   }
 
-  private def toEntity[EntityType <: DatastoreEntity[KeyType], KeyType](value: EntityType)(implicit toEntity: ToEntity[EntityType, KeyType]): Entity = {
-    toEntity.toEntity(value)
+  private def toEntity[EntityType <: DatastoreEntity[KeyType], KeyType](value: EntityType)(implicit format: EntityFormat[EntityType, KeyType]): Entity = {
+    format.toEntity(value)
   }
 
-  private def fromEntity[EntityType <: DatastoreEntity[KeyType], KeyType](entity: Entity)(implicit fromEntity: FromEntity[EntityType, KeyType]): Try[EntityType] = {
-    fromEntity.fromEntity(entity)
+  private def fromEntity[EntityType <: DatastoreEntity[KeyType], KeyType](entity: Entity)(implicit format: EntityFormat[EntityType, KeyType]): Try[EntityType] = {
+    format.fromEntity(entity)
   }
 }
 

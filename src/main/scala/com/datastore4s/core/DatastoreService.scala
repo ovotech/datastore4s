@@ -9,9 +9,9 @@ object DatastoreService {
   def createDatastore(dataStoreConfiguration: DataStoreConfiguration): Datastore =
     DatastoreOptions.newBuilder().setProjectId(dataStoreConfiguration.projectId).setNamespace(dataStoreConfiguration.namespace).build().getService
 
-  def put[E <: DatastoreEntity[_]](entity: E)(implicit datastore: Datastore, toEntity: ToEntity[E, _]) = {
+  def put[E <: DatastoreEntity[_]](entity: E)(implicit datastore: Datastore, format: EntityFormat[E, _]) = {
     implicit val kfs = () => datastore.newKeyFactory()
-    println(s"Would have put: ${toEntity.toEntity(entity)}")
+    println(s"Would have put: ${format.toEntity(entity)}")
   }
 
 }
