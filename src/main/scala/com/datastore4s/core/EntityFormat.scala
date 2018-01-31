@@ -35,15 +35,15 @@ object ToEntity {
           case Literal(Constant(kind: String)) :: Nil => EntityKind(kind)
         }
     } match {
-      case Nil => context.abort(context.enclosingPosition, "Entity case class must be annotated with @Kind")
-      case ann :: Nil => TermName(ann.kind)
-      case more => context.abort(context.enclosingPosition, s"Entity case class must be annotated with @Kind precisely once, but annotations were: $more")
+      case Nil => entityType.typeSymbol.name
+      case ann :: Nil => TermName(ann.kind).decodedName
+      case more => context.abort(context.enclosingPosition, s"Entity case class must be annotated with @EntityKind at most once, but annotations were: $more")
     }
 
     val keyType = weakTypeTag[KeyType].tpe
 
     val keyExpression =
-      q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(${kind.decodedName.toString}))
+      q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(${kind.toString}))
                implicitly[com.datastore4s.core.ToKey[${keyType.typeSymbol}]].toKey(value.key, keyFactory)"""
 
     // TODO this relies on entity mutation. Is this avoidable? If not is it acceptable??

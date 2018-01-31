@@ -51,7 +51,7 @@ class ToFromEntitySpec extends FeatureSpec with Matchers with EntitySupport {
     scenario("A case class that uses a non string or numeric key") {
       val record = ComplexKeyObject(Id("key", "parent"))
       val entity: Entity = toEntity[ComplexKeyObject, Id](record)
-      entity.getKey.getKind shouldBe "complex-type"
+      entity.getKey.getKind shouldBe "ComplexKeyObject"
       val key = entity.getKey()
       key.getName shouldBe "key"
 
@@ -84,7 +84,6 @@ case class LongKeyObject(someKey: Long) extends DatastoreEntity[Long] {
   override def key = someKey
 }
 
-@EntityKind("complex-type")
 case class ComplexKeyObject(id: Id) extends DatastoreEntity[Id] {
   override def key = id
 }
