@@ -28,7 +28,7 @@ class FieldFormatCaseClassSpec extends FlatSpec with Matchers with GeneratorDriv
   } yield EntityWithNestedType(id, SomeNestedType(string, long, int, bool, time))
 
   "The apply method of Field Format" should "create a field format that nests the fields of case classes" in {
-    implicit val format = FieldFormat[SomeNestedType]
+    implicit val format = NestedFieldFormat[SomeNestedType]
     val entityFormat = EntityFormat[EntityWithNestedType, String]
 
     forAll(entityGen) { entity =>

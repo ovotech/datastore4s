@@ -11,7 +11,7 @@ trait EntitySupport {
   implicit val longEntityFormat = EntityFormat[LongKeyObject, Long]
 
   implicit val idAsKey = IdToKey
-  implicit val idFieldFormat = IdFieldFormat
+  implicit val idFieldFormat = NestedFieldFormat[Id]
   implicit val complexEntityFormat = EntityFormat[ComplexKeyObject, Id]
 }
 
@@ -89,11 +89,5 @@ case class Id(id: String, parent: String)
 object IdToKey extends ToKey[Id] {
   private val ancestorKind = Kind("test-ancestor")
 
-  override def toKey(value: Id, keyFactory: KeyFactory) = keyFactory.addStringAncestor(value.parent, ancestorKind).buildWithName(value.id)
-}
-
-object IdFieldFormat extends FieldFormat[Id] {
-  override def addField(value: Id, fieldName: String, entityBuilder: Entity.Builder) = entityBuilder.set(s"$fieldName.id", value.id).set(s"$fieldName.parent", value.parent)
-
-  override def fromField(entity: Entity, fieldName: String) = Id(entity.getString(s"$fieldName.id"), entity.getString(s"$fieldName.parent"))
+  override def toKey(value: Id, keyFactory: KeyFactory) = keyFactory.addAncestor(StringAncestor(ancestorKind, value.parent)).buildWithName(value.id)
 }

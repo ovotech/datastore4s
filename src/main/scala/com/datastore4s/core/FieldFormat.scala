@@ -71,6 +71,10 @@ object FieldFormat {
     override def fromField(entity: Entity, fieldName: String): Instant = Instant.ofEpochMilli(entity.getLong(fieldName))
   }
 
+}
+
+object NestedFieldFormat {
+
   import scala.language.experimental.macros
 
   def apply[A](): FieldFormat[A] = macro applyImpl[A]
@@ -123,4 +127,5 @@ object FieldFormat {
       expression
     )
   }
+
 }

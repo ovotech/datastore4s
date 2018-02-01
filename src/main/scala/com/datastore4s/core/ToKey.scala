@@ -19,11 +19,11 @@ object ToKey {
 }
 
 
-trait KeyFactory { // TODO keyfactory tests.
+trait KeyFactory {
 
-  def addStringAncestor(value: String, kind: Kind): KeyFactory
+  def addAncestor(ancestor: Ancestor): KeyFactory
 
-  def addLongAncestor(value: Long, kind: Kind): KeyFactory
+  def addAncestor[A](value: A)(implicit toAncestor: ToAncestor[A]): KeyFactory
 
   def buildWithName(name: String): Key
 
@@ -36,11 +36,18 @@ class KeyFactoryFacade(val factory: com.google.cloud.datastore.KeyFactory) exten
 
   override def buildWithId(id: Long) = factory.newKey(id)
 
-  def addStringAncestor(value: String, kind: Kind) = {
-    new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.kind, value)))
+  override def addAncestor(ancestor: Ancestor) = ancestor match {
+    case StringAncestor(kind, name) => new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.kind, name)))
+    case LongAncestor(kind, id) => new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.kind, id)))
   }
 
-  def addLongAncestor(value: Long, kind: Kind) = {
-    new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.kind, value)))
-  }
+  override def addAncestor[A](value: A)(implicit toAncestor: ToAncestor[A]) = addAncestor(toAncestor(value))
 }
+
+sealed trait Ancestor
+
+case class StringAncestor(kind: Kind, name: String) extends Ancestor
+
+case class LongAncestor(kind: Kind, id: Long) extends Ancestor
+
+trait ToAncestor[A] extends (A => Ancestor)
