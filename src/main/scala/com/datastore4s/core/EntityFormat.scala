@@ -9,7 +9,7 @@ import scala.util.Try
 
 final case class EntityKind(kind: String) extends Annotation
 
-case class Kind(kind: String)
+case class Kind(name: String)
 
 trait DatastoreEntity[KeyType] {
   def key: KeyType
