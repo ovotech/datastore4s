@@ -24,17 +24,17 @@ object DatastoreService {
     Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*)).map(format.fromEntity)
   }
 
-  def put[E <: DatastoreEntity[_]](entity: E)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory, format: EntityFormat[E, _], datastore: Datastore): Persisted[E] = {
-    Persisted(entity, datastore.put(format.toEntity(entity)))
+  def put[E <: DatastoreEntity[K], K](entityObject: E)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory, format: EntityFormat[E, K], datastore: Datastore): Persisted[E] = {
+    Persisted(entityObject, datastore.put(format.toEntity(entityObject)))
   }
 
-  def list[E <: DatastoreEntity[_]](implicit format: EntityFormat[E, _], datastore: Datastore): Query[E] = {
+  def list[E <: DatastoreEntity[K], K](implicit format: EntityFormat[E, K], datastore: Datastore): Query[E] = {
     val kind = format.kind.name
     val queryBuilder = com.google.cloud.datastore.Query.newEntityQueryBuilder().setKind(kind)
-    DatastoreQuery(queryBuilder)
+    DatastoreQuery[E, K](queryBuilder)
   }
 
-  def project[E <: DatastoreEntity[_]](firstField: String, remainingFields: String*)(implicit format: EntityFormat[E, _], datastore: Datastore): Project = {
+  def project[E <: DatastoreEntity[K], K](firstField: String, remainingFields: String*)(implicit format: EntityFormat[E, K], datastore: Datastore): Project = {
     val kind = format.kind.name
     val queryBuilder = com.google.cloud.datastore.Query.newProjectionEntityQueryBuilder().setKind(kind).setProjection(firstField, remainingFields: _*)
     Project(queryBuilder)

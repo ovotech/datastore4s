@@ -1,6 +1,6 @@
 package com.datastore4s.core
 
-import com.google.cloud.datastore.{BaseEntity, Datastore, Entity}
+import com.google.cloud.datastore.{BaseEntity, Entity}
 
 import scala.util.Try
 
@@ -18,18 +18,18 @@ trait DefaultDatastoreSupport {
       override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): A = constructor(existingFormat.fromField(entity, fieldName))
     }
   }
-
   def toStringAncestor[A](kind: Kind)(f: A => String): ToAncestor[A] = a => StringAncestor(kind, f(a))
 
   def toLongAncestor[A](kind: Kind)(f: A => Long): ToAncestor[A] = a => LongAncestor(kind, f(a))
 
-  def put[E <: DatastoreEntity[_]](entity: E)(implicit format: EntityFormat[E, _]): Persisted[E] = DatastoreService.put(entity)
+  // TODO is it possible to remove the 'K'
+  def put[E <: DatastoreEntity[K], K](entity: E)(implicit format: EntityFormat[E, K]): Persisted[E] = DatastoreService.put[E, K](entity)
 
-  def list[E <: DatastoreEntity[_]]()(implicit format: EntityFormat[E, _]): Query[E] = DatastoreService.list
+  def list[E <: DatastoreEntity[K], K]()(implicit format: EntityFormat[E, K]): Query[E] = DatastoreService.list
 
   def findOne[E <: DatastoreEntity[K], K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): Option[Try[E]] = DatastoreService.findOne(key)
 
-  def project[E <: DatastoreEntity[_]](firstField: String, remainingFields: String*)(implicit format: EntityFormat[E, _]): Project =
+  def project[E <: DatastoreEntity[K], K](firstField: String, remainingFields: String*)(implicit format: EntityFormat[E, K]): Project =
     DatastoreService.project(firstField, remainingFields: _*)
 
 }

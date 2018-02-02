@@ -33,7 +33,7 @@ object FromProjection {
 
     val expression =
       q"""new com.datastore4s.core.FromProjection[$projectionType] {
-            override def fromEntity(entity: com.google.cloud.datastore.ProjectionEntity): scala.util.Try[$projectionType] = scala.util.Try {
+            override def fromProjection(entity: com.google.cloud.datastore.ProjectionEntity): scala.util.Try[$projectionType] = scala.util.Try {
               $companion.apply(..$args)
             }
           }
