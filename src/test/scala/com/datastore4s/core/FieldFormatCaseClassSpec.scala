@@ -2,6 +2,7 @@ package com.datastore4s.core
 
 import java.time.Instant
 
+import com.datastore4s.core.utils.TestDatastore
 import com.google.cloud.datastore.DatastoreOptions
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
@@ -11,10 +12,7 @@ import scala.util.Success
 
 class FieldFormatCaseClassSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
-  val datastore = DatastoreOptions.newBuilder()
-    .setProjectId("test-project")
-    .setNamespace("test-namespace")
-    .build().getService
+  val datastore = TestDatastore()
 
   implicit val keyFactorySupplier = () => datastore.newKeyFactory()
 
@@ -33,7 +31,7 @@ class FieldFormatCaseClassSpec extends FlatSpec with Matchers with GeneratorDriv
 
     forAll(entityGen) { entity =>
       val roundTripped = entityFormat.fromEntity(entityFormat.toEntity(entity))
-      roundTripped shouldBe Success(entity)
+      roundTripped shouldBe entity
     }
   }
 

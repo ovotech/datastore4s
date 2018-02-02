@@ -4,10 +4,9 @@ import com.google.cloud.datastore.ProjectionEntity
 
 import scala.reflect.macros.blackbox.Context
 import scala.language.experimental.macros
-import scala.util.Try
 
 trait FromProjection[A] { // TODO is there a way to get around this existing?
-  def fromProjection(entity: ProjectionEntity): Try[A]
+  def fromProjection(entity: ProjectionEntity): A
 }
 
 object FromProjection {
@@ -33,7 +32,7 @@ object FromProjection {
 
     val expression =
       q"""new com.datastore4s.core.FromProjection[$projectionType] {
-            override def fromProjection(entity: com.google.cloud.datastore.ProjectionEntity): scala.util.Try[$projectionType] = scala.util.Try {
+            override def fromProjection(entity: com.google.cloud.datastore.ProjectionEntity): $projectionType = {
               $companion.apply(..$args)
             }
           }

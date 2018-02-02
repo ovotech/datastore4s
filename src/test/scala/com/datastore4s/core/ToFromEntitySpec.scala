@@ -32,7 +32,7 @@ class ToFromEntitySpec extends FeatureSpec with Matchers with EntitySupport {
       entity.getKey().getId shouldBe 20
 
       val roundTripped = fromEntity[LongKeyObject, Long](entity)
-      roundTripped shouldBe Success(record)
+      roundTripped shouldBe record
     }
     scenario("A case class with a string key and string property") {
       val record = StringKeyObject("key", "propertyValue")
@@ -42,7 +42,7 @@ class ToFromEntitySpec extends FeatureSpec with Matchers with EntitySupport {
       entity.getString("someProperty") shouldBe "propertyValue"
 
       val roundTripped = fromEntity[StringKeyObject, String](entity)
-      roundTripped shouldBe Success(record)
+      roundTripped shouldBe record
     }
     scenario("A case class that uses a non string or numeric key") {
       val record = ComplexKeyObject(Id("key", "parent"))
@@ -56,7 +56,7 @@ class ToFromEntitySpec extends FeatureSpec with Matchers with EntitySupport {
       ancestor.getName shouldBe "parent" // TODO proper handling of ancestors
 
       val roundTripped = fromEntity[ComplexKeyObject, Id](entity)
-      roundTripped shouldBe Success(record)
+      roundTripped shouldBe record
 
     }
   }
@@ -65,7 +65,7 @@ class ToFromEntitySpec extends FeatureSpec with Matchers with EntitySupport {
     format.toEntity(value)
   }
 
-  private def fromEntity[EntityType <: DatastoreEntity[KeyType], KeyType](entity: Entity)(implicit format: EntityFormat[EntityType, KeyType]): Try[EntityType] = {
+  private def fromEntity[EntityType <: DatastoreEntity[KeyType], KeyType](entity: Entity)(implicit format: EntityFormat[EntityType, KeyType]): EntityType = {
     format.fromEntity(entity)
   }
 }

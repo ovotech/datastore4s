@@ -4,7 +4,6 @@ import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.google.cloud.datastore._
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 trait Query[E] {
 
@@ -16,7 +15,7 @@ trait Query[E] {
 
   def withPropertyEq(propertyName: String, value: String): Query[E] // TODO extend this somehow. Perhaps with a DSL? Annoying overloading is a problem
 
-  def toSeq(): Seq[Try[E]]
+  def toSeq(): Seq[E]
 
 }
 

@@ -5,7 +5,6 @@ import com.google.cloud.datastore.Entity
 import scala.annotation.Annotation
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
-import scala.util.Try
 
 final case class EntityKind(kind: String) extends Annotation
 
@@ -20,7 +19,7 @@ trait EntityFormat[EntityType, KeyType] {
 
   def toEntity(record: EntityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): Entity
 
-  def fromEntity(entity: Entity): Try[EntityType]
+  def fromEntity(entity: Entity): EntityType
 }
 
 object EntityFormat {
@@ -82,7 +81,7 @@ object EntityFormat {
     val companion = entityType.typeSymbol.companion
 
     val fromExpression =
-      q"""override def fromEntity(entity: com.google.cloud.datastore.Entity): scala.util.Try[$entityType] = scala.util.Try {
+      q"""override def fromEntity(entity: com.google.cloud.datastore.Entity): $entityType = {
             $companion.apply(..$args)
           }
         """
