@@ -6,7 +6,7 @@ import scala.util.Try
 
 trait DefaultDatastoreSupport {
 
-  val dataStoreConfiguration: DataStoreConfiguration
+  def dataStoreConfiguration: DataStoreConfiguration
 
   private implicit lazy val service = DatastoreService.createDatastore(dataStoreConfiguration)
   implicit val keyFactorySupplier = () => service.newKeyFactory()
