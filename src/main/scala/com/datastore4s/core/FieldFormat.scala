@@ -78,6 +78,15 @@ object FieldFormat {
     override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): BigDecimal = BigDecimal(entity.getString(fieldName))
   }
 
+  implicit def optionFormat[A](implicit format:FieldFormat[A]): FieldFormat[Option[A]] = new  FieldFormat[Option[A]] {
+    override def addField(value: Option[A], fieldName: String, entityBuilder: Entity.Builder) = value match {
+      case Some(a) => format.addField(a, fieldName, entityBuilder)
+      case None => entityBuilder.setNull(fieldName)
+    }
+
+    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String) = Option(format.fromField(entity, fieldName))
+  }
+
 }
 
 object NestedFieldFormat {

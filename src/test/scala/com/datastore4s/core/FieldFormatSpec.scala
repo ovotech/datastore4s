@@ -120,6 +120,22 @@ class FieldFormatSpec extends FlatSpec with FieldFormatTestCases {
     }
   }
 
+  "The Option implicit def format" should "take any value for which there is a a format and store that field or null" in {
+    val optionalStringFormat = implicitly[FieldFormat[Option[String]]]
+    val generator = for {
+      s <- Gen.alphaNumStr
+      opt <- Gen.oneOf(Option(s), None)
+    } yield opt
+    forallTestRoundTrip(optionalStringFormat)(generator)
+
+    testEntity(optionalStringFormat)(Option("hello")) { entity =>
+      entity.getString(fieldName) shouldBe "hello"
+    }
+    testEntity(optionalStringFormat)(None) { entity =>
+      entity.getString(fieldName) shouldBe null
+    }
+  }
+
 }
 
 trait FieldFormatTestCases extends GeneratorDrivenPropertyChecks with Matchers {
