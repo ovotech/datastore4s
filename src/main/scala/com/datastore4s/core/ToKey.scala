@@ -1,6 +1,6 @@
 package com.datastore4s.core
 
-import com.google.cloud.datastore.{Key, PathElement}
+import com.google.cloud.datastore.{Datastore, Key, PathElement}
 
 trait ToKey[A] {
   def toKey(value: A, keyFactory: KeyFactory): Key
@@ -40,6 +40,10 @@ class KeyFactoryFacade(val factory: com.google.cloud.datastore.KeyFactory) exten
     case StringAncestor(kind, name) => new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.name, name)))
     case LongAncestor(kind, id) => new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.name, id)))
   }
+}
+
+object KeyFactoryFacade {
+  def apply(datastore: Datastore, kind: Kind): KeyFactoryFacade = new KeyFactoryFacade(datastore.newKeyFactory().setKind(kind.name))
 }
 
 sealed trait Ancestor

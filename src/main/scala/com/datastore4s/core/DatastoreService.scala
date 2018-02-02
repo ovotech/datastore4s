@@ -19,7 +19,7 @@ object DatastoreService {
   }
 
   def findOne[E <: DatastoreEntity[K], K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): Option[Try[E]] = {
-    val keyFactory = new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name))
+    val keyFactory = KeyFactoryFacade(datastore, format.kind)
     val entityKey = toKey.toKey(key, keyFactory)
     Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*)).map(format.fromEntity)
   }
