@@ -23,13 +23,13 @@ trait DefaultDatastoreSupport {
   def toLongAncestor[A](kind: Kind)(f: A => Long): ToAncestor[A] = a => LongAncestor(kind, f(a))
 
   // TODO is it possible to remove the 'K'
-  def put[E <: DatastoreEntity[K], K](entity: E)(implicit format: EntityFormat[E, K]): Persisted[E] = DatastoreService.put[E, K](entity)
+  def put[E <: DatastoreEntity[_]](entity: E)(implicit format: EntityFormat[E, _]): Persisted[E] = DatastoreService.put(entity)
 
-  def list[E <: DatastoreEntity[K], K]()(implicit format: EntityFormat[E, K]): Query[E] = DatastoreService.list
+  def list[E <: DatastoreEntity[_]]()(implicit format: EntityFormat[E, _]): Query[E] = DatastoreService.list
 
   def findOne[E <: DatastoreEntity[K], K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): Option[Try[E]] = DatastoreService.findOne(key)
 
-  def project[E <: DatastoreEntity[K], K](firstField: String, remainingFields: String*)(implicit format: EntityFormat[E, K]): Project =
+  def project[E <: DatastoreEntity[_]](firstField: String, remainingFields: String*)(implicit format: EntityFormat[E, _]): Project =
     DatastoreService.project(firstField, remainingFields: _*)
 
 }

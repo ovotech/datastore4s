@@ -28,16 +28,16 @@ object Query {
 
 }
 
-case class DatastoreQuery[E <: DatastoreEntity[K], K](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[Entity])(implicit format: EntityFormat[E, K], datastore: Datastore) extends Query[E] {
+case class DatastoreQuery[E <: DatastoreEntity[_]](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[Entity])(implicit format: EntityFormat[E, _], datastore: Datastore) extends Query[E] {
 
   override def withAncestor(ancestor: Ancestor) = {
     val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())
-    DatastoreQuery[E, K](queryBuilder.setFilter(PropertyFilter.hasAncestor(key)))
+    DatastoreQuery(queryBuilder.setFilter(PropertyFilter.hasAncestor(key)))
   }
 
-  override def withPropertyEq(propertyName: String, value: Int) = DatastoreQuery[E, K](queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
+  override def withPropertyEq(propertyName: String, value: Int) = DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
 
-  override def withPropertyEq(propertyName: String, value: String) = DatastoreQuery[E, K](queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
+  override def withPropertyEq(propertyName: String, value: String) = DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
 
   override def toSeq() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toSeq.map(format.fromEntity)
 }
