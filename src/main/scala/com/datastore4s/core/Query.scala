@@ -14,6 +14,8 @@ trait Query[E] {
 
   def withPropertyEq(propertyName: String, value: Int): Query[E] // TODO extend this somehow. Perhaps with a DSL?
 
+  def withPropertyEq(propertyName: String, value: String): Query[E] // TODO extend this somehow. Perhaps with a DSL? Annoying overloading is a problem
+
   def toSeq(): Seq[Try[E]]
 
 }
@@ -35,6 +37,8 @@ case class DatastoreQuery[E <: DatastoreEntity[_]](queryBuilder: com.google.clou
 
   override def withPropertyEq(propertyName: String, value: Int) = DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
 
+  override def withPropertyEq(propertyName: String, value: String) = DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
+
   override def toSeq() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toSeq.map(format.fromEntity)
 }
 
@@ -49,6 +53,8 @@ case class ProjectionQuery[A](queryBuilder: com.google.cloud.datastore.Structure
   }
 
   override def withPropertyEq(propertyName: String, value: Int) = ProjectionQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
+
+  override def withPropertyEq(propertyName: String, value: String) = ProjectionQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
 
   override def toSeq() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toSeq.map(fromEntityProjection.fromProjection)
 }
