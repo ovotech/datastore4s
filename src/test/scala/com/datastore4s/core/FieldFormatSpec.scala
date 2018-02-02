@@ -109,6 +109,17 @@ class FieldFormatSpec extends FlatSpec with FieldFormatTestCases {
     }
   }
 
+  "The BigDecimalString format" should "take any BigDecimal and store it as a field" in {
+    forallTestRoundTrip(BigDecimalStringFormat)(Gen.choose(Double.MinValue, Double.MaxValue).map(BigDecimal(_)))
+  }
+
+  it should "store the value as a blob field" in {
+    val amount = 601623.873
+    testEntity(BigDecimalStringFormat)(BigDecimal(amount)) { entity =>
+      entity.getString(fieldName) shouldBe "601623.873"
+    }
+  }
+
 }
 
 trait FieldFormatTestCases extends GeneratorDrivenPropertyChecks with Matchers {

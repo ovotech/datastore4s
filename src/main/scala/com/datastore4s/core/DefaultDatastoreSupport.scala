@@ -1,6 +1,8 @@
 package com.datastore4s.core
 
-import com.google.cloud.datastore.Entity
+import com.google.cloud.datastore.{BaseEntity, Datastore, Entity}
+
+import scala.util.Try
 
 trait DefaultDatastoreSupport {
 
@@ -13,7 +15,7 @@ trait DefaultDatastoreSupport {
     new FieldFormat[A] {
       override def addField(value: A, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = existingFormat.addField(extractor(value), fieldName, entityBuilder)
 
-      override def fromField(entity: Entity, fieldName: String): A = constructor(existingFormat.fromField(entity, fieldName))
+      override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): A = constructor(existingFormat.fromField(entity, fieldName))
     }
   }
 
@@ -24,5 +26,10 @@ trait DefaultDatastoreSupport {
   def put[E <: DatastoreEntity[_]](entity: E)(implicit format: EntityFormat[E, _]): Persisted[E] = DatastoreService.put(entity)
 
   def list[E <: DatastoreEntity[_]]()(implicit format: EntityFormat[E, _]): Query[E] = DatastoreService.list
+
+  def findOne[E <: DatastoreEntity[K], K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): Option[Try[E]] = DatastoreService.findOne(key)
+
+  def project[E <: DatastoreEntity[_]](firstField: String, remainingFields: String*)(implicit format: EntityFormat[E, _]): Project =
+    DatastoreService.project(firstField, remainingFields: _*)
 
 }

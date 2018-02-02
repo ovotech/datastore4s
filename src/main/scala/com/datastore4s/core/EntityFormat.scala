@@ -46,7 +46,7 @@ object EntityFormat {
     val keyType = weakTypeTag[KeyType].tpe
 
     val keyExpression =
-      q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(kind.kind))
+      q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(kind.name))
                implicitly[com.datastore4s.core.ToKey[${keyType.typeSymbol}]].toKey(value.key, keyFactory)"""
 
     // TODO this relies on entity mutation. Is this avoidable? If not is it acceptable??

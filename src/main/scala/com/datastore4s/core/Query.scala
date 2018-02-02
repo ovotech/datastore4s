@@ -1,11 +1,12 @@
 package com.datastore4s.core
 
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
-import com.google.cloud.datastore.{Datastore, Entity, PathElement, ReadOption}
+import com.google.cloud.datastore._
 
+import scala.collection.JavaConverters._
 import scala.util.Try
 
-trait Query[E <: DatastoreEntity[_]] {
+trait Query[E] {
 
   def withAncestor(ancestor: Ancestor): Query[E]
 
@@ -17,16 +18,18 @@ trait Query[E <: DatastoreEntity[_]] {
 
 }
 
+object Query {
+  def ancestorToKey(ancestor: Ancestor, keyFactory: com.google.cloud.datastore.KeyFactory): Key = ancestor match {
+    case StringAncestor(kind, name) => keyFactory.setKind(kind.name).newKey(name)
+    case LongAncestor(kind, id) => keyFactory.setKind(kind.name).newKey(id)
+  }
+
+}
+
 case class DatastoreQuery[E <: DatastoreEntity[_]](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[Entity])(implicit format: EntityFormat[E, _], datastore: Datastore) extends Query[E] {
 
-  import scala.collection.JavaConverters._
-
   override def withAncestor(ancestor: Ancestor) = {
-    val kf = datastore.newKeyFactory()
-    val key = ancestor match {
-      case StringAncestor(kind, name) => kf.setKind(kind.name).newKey(name)
-      case LongAncestor(kind, id) => kf.setKind(kind.name).newKey(id)
-    }
+    val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())
     DatastoreQuery(queryBuilder.setFilter(PropertyFilter.hasAncestor(key)))
   }
 
@@ -34,3 +37,20 @@ case class DatastoreQuery[E <: DatastoreEntity[_]](queryBuilder: com.google.clou
 
   override def toSeq() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toSeq.map(format.fromEntity)
 }
+
+case class Project(queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[ProjectionEntity])(implicit datastore: Datastore) {
+  def into[A]()(implicit fromEntityProjection: FromProjection[A]) = ProjectionQuery(queryBuilder)
+}
+
+case class ProjectionQuery[A](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[ProjectionEntity])(implicit fromEntityProjection: FromProjection[A], datastore: Datastore) extends Query[A] {
+  override def withAncestor(ancestor: Ancestor) = {
+    val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())
+    ProjectionQuery(queryBuilder.setFilter(PropertyFilter.hasAncestor(key)))
+  }
+
+  override def withPropertyEq(propertyName: String, value: Int) = ProjectionQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
+
+  override def toSeq() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toSeq.map(fromEntityProjection.fromProjection)
+}
+
+
