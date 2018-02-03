@@ -1,9 +1,9 @@
 package com.datastore4s.core
 
-import com.google.cloud.datastore.{DatastoreOptions, Entity}
+import com.datastore4s.core.utils.TestDatastore
+import com.google.cloud.datastore.Entity
 import org.scalatest.{FeatureSpec, Matchers}
 
-import scala.util.{Success, Try}
 
 trait EntitySupport {
   implicit val stringEntityFormat = EntityFormat[StringKeyObject, String]
@@ -17,10 +17,7 @@ trait EntitySupport {
 
 class ToFromEntitySpec extends FeatureSpec with Matchers with EntitySupport {
 
-  val datastore = DatastoreOptions.newBuilder()
-    .setProjectId("test-project")
-    .setNamespace("test-namespace")
-    .build().getService
+  val datastore = TestDatastore()
 
   implicit val keyFactorySupplier = () => datastore.newKeyFactory()
 

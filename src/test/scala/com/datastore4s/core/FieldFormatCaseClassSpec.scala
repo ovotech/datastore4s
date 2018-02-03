@@ -3,12 +3,9 @@ package com.datastore4s.core
 import java.time.Instant
 
 import com.datastore4s.core.utils.TestDatastore
-import com.google.cloud.datastore.DatastoreOptions
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
-
-import scala.util.Success
 
 class FieldFormatCaseClassSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
