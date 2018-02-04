@@ -11,3 +11,7 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.4" % Test,
   "org.scalacheck" %% "scalacheck" % "1.13.4" % Test
 )
+
+configs(IntegrationTest)
+Defaults.itSettings
+testFrameworks in IntegrationTest := Seq(TestFrameworks.ScalaTest)
