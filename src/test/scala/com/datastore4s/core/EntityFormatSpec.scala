@@ -4,18 +4,7 @@ import com.datastore4s.core.utils.TestDatastore
 import com.google.cloud.datastore.Entity
 import org.scalatest.{FeatureSpec, Matchers}
 
-
-trait EntitySupport {
-  implicit val stringEntityFormat = EntityFormat[StringKeyObject, String]
-
-  implicit val longEntityFormat = EntityFormat[LongKeyObject, Long]
-
-  implicit val idAsKey = IdToKey
-  implicit val idFieldFormat = NestedFieldFormat[Id]
-  implicit val complexEntityFormat = EntityFormat[ComplexKeyObject, Id]
-}
-
-class EntityFormatSpec extends FeatureSpec with Matchers with EntitySupport {
+class EntityFormatSpec extends FeatureSpec with Matchers {
 
   val datastore = TestDatastore()
 
@@ -37,28 +26,37 @@ class EntityFormatSpec extends FeatureSpec with Matchers with EntitySupport {
     scenario("Attempt to make an EntityFormat when an implicit field format is not available") {
       "EntityFormat[MissingFieldFormatEntity, String]" shouldNot compile
     }
+    scenario("Attempt to make an EntityFormat when an implicit ToKey is not available") {
+      "EntityFormat[MissingKeyFormatEntity, String]" shouldNot compile
+    }
     scenario("A simple case class with only a long key") {
+      val longEntityFormat = EntityFormat[LongKeyObject, Long]
       val record = LongKeyObject(20)
-      val entity = toEntity[LongKeyObject, Long](record)
+      val entity = longEntityFormat.toEntity(record)
       entity.getKey.getKind shouldBe "long-type"
       entity.getKey().getId shouldBe 20
 
-      val roundTripped = fromEntity[LongKeyObject, Long](entity)
+      val roundTripped = longEntityFormat.fromEntity(entity)
       roundTripped shouldBe record
     }
     scenario("A case class with a string key and string property") {
+      val stringEntityFormat = EntityFormat[StringKeyObject, String]
       val record = StringKeyObject("key", "propertyValue")
-      val entity: Entity = toEntity[StringKeyObject, String](record)
+      val entity: Entity = stringEntityFormat.toEntity(record)
       entity.getKey.getKind shouldBe "string-type"
       entity.getKey().getName shouldBe "key"
       entity.getString("someProperty") shouldBe "propertyValue"
 
-      val roundTripped = fromEntity[StringKeyObject, String](entity)
+      val roundTripped = stringEntityFormat.fromEntity(entity)
       roundTripped shouldBe record
     }
     scenario("A case class that uses a non string or numeric key") {
+      implicit val idAsKey = IdToKey
+      implicit val idFieldFormat = NestedFieldFormat[Id]
+      val complexEntityFormat = EntityFormat[ComplexKeyObject, Id]
+
       val record = ComplexKeyObject(Id("key", "parent"))
-      val entity: Entity = toEntity[ComplexKeyObject, Id](record)
+      val entity: Entity = complexEntityFormat.toEntity(record)
       entity.getKey.getKind shouldBe "ComplexKeyObject"
       val key = entity.getKey()
       key.getName shouldBe "key"
@@ -67,50 +65,45 @@ class EntityFormatSpec extends FeatureSpec with Matchers with EntitySupport {
       val ancestor = key.getAncestors.get(0)
       ancestor.getName shouldBe "parent" // TODO proper handling of ancestors
 
-      val roundTripped = fromEntity[ComplexKeyObject, Id](entity)
+      val roundTripped = complexEntityFormat.fromEntity(entity)
       roundTripped shouldBe record
     }
   }
 
-  private def toEntity[EntityType <: DatastoreEntity[KeyType], KeyType](value: EntityType)(implicit format: EntityFormat[EntityType, KeyType]): Entity = {
-    format.toEntity(value)
+  @EntityKind("string-type")
+  case class StringKeyObject(someKey: String, someProperty: String) extends DatastoreEntity[String] {
+    override def key = someKey
   }
 
-  private def fromEntity[EntityType <: DatastoreEntity[KeyType], KeyType](entity: Entity)(implicit format: EntityFormat[EntityType, KeyType]): EntityType = {
-    format.fromEntity(entity)
+  @EntityKind("long-type")
+  case class LongKeyObject(someKey: Long) extends DatastoreEntity[Long] {
+    override def key = someKey
   }
+
+  case class ComplexKeyObject(id: Id) extends DatastoreEntity[Id] {
+    override def key = id
+  }
+
+  case class Id(id: String, parent: String)
+
+  object IdToKey extends ToKey[Id] {
+    private val ancestorKind = Kind("test-ancestor")
+
+    override def toKey(value: Id, keyFactory: KeyFactory) = keyFactory.addAncestor(StringAncestor(ancestorKind, value.parent)).buildWithName(value.id)
+  }
+
+  class NonCaseClass(val key: String) extends DatastoreEntity[String]
+
+  @EntityKind("test-kind")
+  @EntityKind("another-test-kind")
+  case class DuplicatedAnnotationClass(val key: String) extends DatastoreEntity[String]
+
+  case class MissingFieldFormatEntity(field: MissingFieldFormatType) extends DatastoreEntity[String] {
+    def key = "hello"
+  }
+
+  case class MissingFieldFormatType()
+
+  case class MissingKeyFormatEntity(key: MissingFieldFormatType) extends DatastoreEntity[MissingFieldFormatType]
+
 }
-
-@EntityKind("string-type")
-case class StringKeyObject(someKey: String, someProperty: String) extends DatastoreEntity[String] {
-  override def key = someKey
-}
-
-@EntityKind("long-type")
-case class LongKeyObject(someKey: Long) extends DatastoreEntity[Long] {
-  override def key = someKey
-}
-
-case class ComplexKeyObject(id: Id) extends DatastoreEntity[Id] {
-  override def key = id
-}
-
-case class Id(id: String, parent: String)
-
-object IdToKey extends ToKey[Id] {
-  private val ancestorKind = Kind("test-ancestor")
-
-  override def toKey(value: Id, keyFactory: KeyFactory) = keyFactory.addAncestor(StringAncestor(ancestorKind, value.parent)).buildWithName(value.id)
-}
-
-class NonCaseClass(val key: String) extends DatastoreEntity[String]
-
-@EntityKind("test-kind")
-@EntityKind("another-test-kind")
-case class DuplicatedAnnotationClass(val key: String) extends DatastoreEntity[String]
-
-case class MissingFieldFormatEntity(field: MissingFieldFormatType) extends DatastoreEntity[String] {
-  def key = "hello"
-}
-
-case class MissingFieldFormatType()

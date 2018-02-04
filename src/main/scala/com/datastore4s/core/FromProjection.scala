@@ -5,7 +5,9 @@ import com.google.cloud.datastore.ProjectionEntity
 import scala.reflect.macros.blackbox.Context
 import scala.language.experimental.macros
 
-trait FromProjection[A] { // TODO is there a way to get around this existing?
+trait FromProjection[A] {
+  // TODO is there a way to get around this existing? It seems unecessary to have this just for the sake of having Projections?
+  // Perhaps split out FromEntity[A] { def fromEntity[E <: BaseEntity[_}](entity:E) } and EntityFormat[E, K] extends FromEntity[E] Then have this be from entity and EntityFormat.apply references this?
   def fromProjection(entity: ProjectionEntity): A
 }
 

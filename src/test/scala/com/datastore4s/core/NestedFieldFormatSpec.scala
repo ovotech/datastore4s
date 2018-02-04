@@ -47,7 +47,7 @@ class NestedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenP
 
   case class SomeNestedType(stringField: String,
                             someLongField: Long,
-                            someIntField: Long,
+                            someIntField: Int,
                             someBooleanField: Boolean,
                             someTimeField: Instant)
 
