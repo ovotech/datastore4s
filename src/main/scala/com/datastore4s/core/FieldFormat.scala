@@ -8,6 +8,7 @@ import com.google.cloud.datastore.{BaseEntity, Blob, Entity, LatLng}
 import scala.reflect.macros.blackbox.Context
 
 trait FieldFormat[A] {
+  // TODO should there be some form of asValue(a:A):Value[_]  for queries? How would this affect the nestedfield format?
 
   def addField(value: A, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder
 

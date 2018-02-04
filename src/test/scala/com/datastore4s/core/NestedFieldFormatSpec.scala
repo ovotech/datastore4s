@@ -7,7 +7,7 @@ import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
 
-class FieldFormatCaseClassSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+class NestedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
   val datastore = TestDatastore()
 
@@ -32,6 +32,14 @@ class FieldFormatCaseClassSpec extends FlatSpec with Matchers with GeneratorDriv
     }
   }
 
+  it should "Not compile when passed a non case class" in {
+    "NestedFieldFormat[NonCaseClass]" shouldNot compile
+  }
+
+  it should "Not compile when passed a case class that has a field for which no FieldFormat is implicitly available" in {
+    "NestedFieldFormat[MissingFieldFormatContainer]" shouldNot compile
+  }
+
   @EntityKind("nested-test-kind")
   case class EntityWithNestedType(id: String, nestedType: SomeNestedType) extends DatastoreEntity[String] {
     def key = id
@@ -43,4 +51,9 @@ class FieldFormatCaseClassSpec extends FlatSpec with Matchers with GeneratorDriv
                             someBooleanField: Boolean,
                             someTimeField: Instant)
 
+  class NonCaseClass(val value:String)
+
+  case class MissingFieldFormatContainer(field: MissingFieldFormatType)
+
+  case class MissingFieldFormatType()
 }
