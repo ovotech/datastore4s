@@ -19,7 +19,7 @@ object FromProjection {
     import context.universe._
 
     val projectionType = weakTypeTag[A].tpe
-    require(projectionType.typeSymbol.asClass.isCaseClass, s"Projection classes must be a case class but $projectionType is not")
+    if(!projectionType.typeSymbol.asClass.isCaseClass){ context.abort(context.enclosingPosition, s"Projection classes must be a case class but $projectionType is not")}
 
     // TODO can we store the implicit format?
     val constructionExpressions = projectionType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.map { field =>
@@ -39,7 +39,7 @@ object FromProjection {
             }
           }
         """
-    println(expression)
+    context.info(context.enclosingPosition, expression.toString, false)
     context.Expr[FromProjection[A]](
       expression
     )

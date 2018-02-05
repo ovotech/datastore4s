@@ -22,17 +22,18 @@ object EntityFormat {
     import context.universe._
 
     val entityType = weakTypeTag[EntityType].tpe
-    require(entityType.typeSymbol.asClass.isCaseClass, s"Entity classes must be a case class but $entityType is not")
+    if(!entityType.typeSymbol.asClass.isCaseClass){ context.abort(context.enclosingPosition, s"Entity classes must be a case class but $entityType is not") }
 
     val keyType = weakTypeTag[KeyType].tpe
 
-    val keyExpression =
+    val keyExpression = // TODO figure
       q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(kind.name))
                implicitly[com.datastore4s.core.ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
 
     // TODO this relies on entity mutation. Is this avoidable? If not is it acceptable??
     // TODO is there some way to store the format as val ${fieldName}Format = implicitly[FieldFormat[A]]
     // TODO can we remove the empty q"" in fold left?
+    // TODO when wrapped in a monad for failures maybe replace with a for comprehension? Does it even matter? Does the generated code need to be nice to read? I would say so but not sure.
     val builderExpression = entityType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.foldLeft(q"": context.universe.Tree) {
       case (expression, field) =>
         val fieldName = field.asTerm.name
@@ -78,7 +79,7 @@ object EntityFormat {
             $fromExpression
           }
         """
-    println(expression)
+    context.info(context.enclosingPosition, expression.toString, false)
     context.Expr[EntityFormat[EntityType, KeyType]](
       expression
     )

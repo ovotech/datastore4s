@@ -108,7 +108,7 @@ object NestedFieldFormat {
     import context.universe._
 
     val fieldType = weakTypeTag[A].tpe
-    require(fieldType.typeSymbol.asClass.isCaseClass, s"Entity classes must be a case class but $fieldType is not")
+    if(!fieldType.typeSymbol.asClass.isCaseClass){ context.abort(context.enclosingPosition, s"NestedFieldFormat classes must be a case class but $fieldType is not") }
 
     // TODO this relies on entity mutation. Is this avoidable? If not is it acceptable??
     // TODO is there some way to store the format as val ${fieldName}Format = implicitly[FieldFormat[A]]
@@ -146,7 +146,7 @@ object NestedFieldFormat {
             }
           }
         """
-    println(expression)
+    context.info(context.enclosingPosition, expression.toString, false)
 
     context.Expr[FieldFormat[A]](
       expression
