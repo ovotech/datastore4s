@@ -48,8 +48,8 @@ class KeyFactoryFacadeSpec extends FlatSpec with GeneratorDrivenPropertyChecks w
     }
   }
 
-  it should "be able to add arbitraty ancestors given an implicit ToAncestor[A]" in {
-    case class SimpleWrapper(kind:String, name: String)
+  it should "be able to add arbitrary ancestors given an implicit ToAncestor[A]" in {
+    case class SimpleWrapper(kind: String, name: String)
     implicit object SimpleToAncestor extends ToAncestor[SimpleWrapper] {
       override def toAncestor(value: SimpleWrapper) = StringAncestor(Kind(value.kind), value.name)
     }
@@ -62,6 +62,24 @@ class KeyFactoryFacadeSpec extends FlatSpec with GeneratorDrivenPropertyChecks w
       val ancestor = key.getAncestors.get(0)
       ancestor.getKind shouldBe kind
       ancestor.getName shouldBe name
+    }
+  }
+
+  "The toLongAncestor function" should "be able to create a ToAncestor for any A given a function A => Long" in {
+    val kindName = "bigDecimalKind"
+    val toAncestor = ToAncestor.toLongAncestor[BigDecimal](kindName)(_.longValue())
+    forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { long =>
+      val ancestor = toAncestor.toAncestor(BigDecimal(long))
+      ancestor shouldBe LongAncestor(Kind(kindName), long)
+    }
+  }
+
+  "The toStringAncestor function" should "be able to create a ToAncestor for any A given a function A => String" in {
+    val kindName = "stringPairKind"
+    val toAncestor = ToAncestor.toStringAncestor[(String, String)](kindName)(pair => pair._1 + pair._2)
+    forAll(Gen.alphaNumStr, Gen.alphaNumStr) { (string1, string2) =>
+      val ancestor = toAncestor.toAncestor(string1, string2)
+      ancestor shouldBe StringAncestor(Kind(kindName), string1 + string2)
     }
   }
 

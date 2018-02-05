@@ -16,6 +16,7 @@ object DatastoreService {
       .getService
   }
 
+  // TODO Unit and Integration tests for below functions
   def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): Option[E] = {
     val keyFactory = KeyFactoryFacade(datastore, format.kind)
     val entityKey = toKey.toKey(key, keyFactory)

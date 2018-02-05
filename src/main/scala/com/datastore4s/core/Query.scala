@@ -6,6 +6,7 @@ import com.google.cloud.datastore._
 import scala.collection.JavaConverters._
 
 trait Query[E] {
+  // TODO replace raw query with some form of Monad representation of an action to be executed.
 
   def withAncestor(ancestor: Ancestor): Query[E]
 

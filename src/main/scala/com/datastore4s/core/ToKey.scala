@@ -57,3 +57,9 @@ trait ToAncestor[A] {
   def toAncestor(value: A): Ancestor
 }
 
+object ToAncestor {
+  def toStringAncestor[A](kind: String)(f: A => String): ToAncestor[A] = a => StringAncestor(Kind(kind), f(a))
+
+  def toLongAncestor[A](kind: String)(f: A => Long): ToAncestor[A] = a => LongAncestor(Kind(kind), f(a))
+}
+
