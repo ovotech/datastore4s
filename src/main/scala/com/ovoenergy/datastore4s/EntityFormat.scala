@@ -7,12 +7,11 @@ import scala.reflect.macros.blackbox.Context
 
 case class Kind(name: String)
 
-trait EntityFormat[EntityType, KeyType] {
+trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
   val kind: Kind
 
   def toEntity(record: EntityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): Entity
 
-  def fromEntity(entity: Entity): EntityType
 }
 
 object EntityFormat {
@@ -26,7 +25,7 @@ object EntityFormat {
 
     val keyType = weakTypeTag[KeyType].tpe
 
-    val keyExpression = // TODO figure
+    val keyExpression = // TODO figure out what is going on with the scala Long implicitness?? NoSuchMethod??? Have to use java.lang.Long temporarily.
       q"""val keyFactory = new com.ovoenergy.datastore4s.KeyFactoryFacade(keyFactorySupplier().setKind(kind.name))
                implicitly[com.ovoenergy.datastore4s.ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
 
@@ -52,31 +51,18 @@ object EntityFormat {
           }
         """
 
-    // TODO can we store the implicit format?
-    val constructionExpressions = entityType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.map { field =>
-      (q"implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${field.asTerm.name.toString})", field)
-    }
-
-    val args = constructionExpressions.map {
-      case (expression, field) => AssignOrNamedArg(Ident(field.name), expression)
-    }
-
-    val companion = entityType.typeSymbol.companion
-
-    val fromExpression =
-      q"""override def fromEntity(entity: com.google.cloud.datastore.Entity): $entityType = {
-            $companion.apply(..$args)
-          }
-        """
-
     val expression =
       q"""new com.ovoenergy.datastore4s.EntityFormat[$entityType, $keyType] {
 
             val kind = Kind($kind)
 
-            $toExpression
+            private val fromEntity = ${FromEntity.applyImpl[EntityType](context)}
 
-            $fromExpression
+            override def fromEntity[E <:  com.google.cloud.datastore.BaseEntity[_]](entity: E): $entityType = {
+              fromEntity.fromEntity(entity)
+            }
+
+            $toExpression
           }
         """
     context.info(context.enclosingPosition, expression.toString, false)
@@ -90,6 +76,7 @@ trait FromEntity[A] {
   def fromEntity[E <: BaseEntity[_]](entity: E): A
 }
 
+// TODO Should We write separate tests for FromEntity? Rather than relying implicitly to EntityFormatTests
 object FromEntity {
 
   def apply[A](): FromEntity[A] = macro applyImpl[A]

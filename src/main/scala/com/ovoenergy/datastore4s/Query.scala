@@ -43,10 +43,10 @@ case class DatastoreQuery[E](queryBuilder: com.google.cloud.datastore.Structured
 }
 
 case class Project(queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[ProjectionEntity])(implicit datastore: Datastore) {
-  def into[A]()(implicit fromEntityProjection: FromProjection[A]) = ProjectionQuery(queryBuilder)
+  def into[A]()(implicit fromEntity: FromEntity[A]) = ProjectionQuery(queryBuilder)
 }
 
-case class ProjectionQuery[A](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[ProjectionEntity])(implicit fromEntityProjection: FromProjection[A], datastore: Datastore) extends Query[A] {
+case class ProjectionQuery[A](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[ProjectionEntity])(implicit fromEntity: FromEntity[A], datastore: Datastore) extends Query[A] {
   override def withAncestor(ancestor: Ancestor) = {
     val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())
     ProjectionQuery(queryBuilder.setFilter(PropertyFilter.hasAncestor(key)))
@@ -56,7 +56,7 @@ case class ProjectionQuery[A](queryBuilder: com.google.cloud.datastore.Structure
 
   override def withPropertyEq(propertyName: String, value: String) = ProjectionQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
 
-  override def toSeq() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toSeq.map(fromEntityProjection.fromProjection)
+  override def toSeq() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toSeq.map(fromEntity.fromEntity)
 }
 
 
