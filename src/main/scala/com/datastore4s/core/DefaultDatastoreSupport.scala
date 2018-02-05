@@ -1,7 +1,5 @@
 package com.datastore4s.core
 
-import com.google.cloud.datastore.{BaseEntity, Entity}
-
 trait DefaultDatastoreSupport {
 
   def dataStoreConfiguration: DataStoreConfiguration
@@ -9,15 +7,13 @@ trait DefaultDatastoreSupport {
   private implicit lazy val service = DatastoreService.createDatastore(dataStoreConfiguration)
   implicit val keyFactorySupplier = () => service.newKeyFactory()
 
-  def fieldFormatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: FieldFormat[B]): FieldFormat[A] = {
-    new FieldFormat[A] {
-      override def addField(value: A, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = existingFormat.addField(extractor(value), fieldName, entityBuilder)
+  def fieldFormatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: FieldFormat[B]): FieldFormat[A] =
+    FieldFormat.fieldFormatFromFunctions(constructor)(extractor)
 
-      override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): A = constructor(existingFormat.fromField(entity, fieldName))
-    }
-  }
+  // TODO move following function out to an object
   def toStringAncestor[A](kind: Kind)(f: A => String): ToAncestor[A] = a => StringAncestor(kind, f(a))
 
+  // TODO move following function out to an object
   def toLongAncestor[A](kind: Kind)(f: A => Long): ToAncestor[A] = a => LongAncestor(kind, f(a))
 
   def put[E](entity: E)(implicit format: EntityFormat[E, _]): Persisted[E] = DatastoreService.put(entity)

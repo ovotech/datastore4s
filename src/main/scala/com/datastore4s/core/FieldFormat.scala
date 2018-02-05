@@ -88,6 +88,14 @@ object FieldFormat {
     override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String) = Option(format.fromField(entity, fieldName))
   }
 
+  def fieldFormatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: FieldFormat[B]): FieldFormat[A] = {
+    new FieldFormat[A] {
+      override def addField(value: A, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = existingFormat.addField(extractor(value), fieldName, entityBuilder)
+
+      override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): A = constructor(existingFormat.fromField(entity, fieldName))
+    }
+  }
+
 }
 
 object NestedFieldFormat {

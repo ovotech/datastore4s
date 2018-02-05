@@ -136,6 +136,16 @@ class FieldFormatSpec extends FlatSpec with FieldFormatTestCases {
     }
   }
 
+  "Field format generated from functions" should "wrap an existing format in constructor and extractor functions" in {
+    case class SimpleWrapper(innerValue: String)
+    val format = FieldFormat.fieldFormatFromFunctions(SimpleWrapper.apply)(_.innerValue)
+    forallTestRoundTrip(format)(Gen.alphaNumStr.map(SimpleWrapper(_)))
+
+    testEntity(format)(SimpleWrapper("hello")) { entity =>
+      entity.getString(fieldName) shouldBe "hello"
+    }
+  }
+
 }
 
 trait FieldFormatTestCases extends GeneratorDrivenPropertyChecks with Matchers {
