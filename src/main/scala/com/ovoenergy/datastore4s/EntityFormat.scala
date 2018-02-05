@@ -1,6 +1,6 @@
-package com.datastore4s.core
+package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.Entity
+import com.google.cloud.datastore.{BaseEntity, Entity}
 
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
@@ -27,8 +27,8 @@ object EntityFormat {
     val keyType = weakTypeTag[KeyType].tpe
 
     val keyExpression = // TODO figure
-      q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(kind.name))
-               implicitly[com.datastore4s.core.ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
+      q"""val keyFactory = new com.ovoenergy.datastore4s.KeyFactoryFacade(keyFactorySupplier().setKind(kind.name))
+               implicitly[com.ovoenergy.datastore4s.ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
 
     // TODO this relies on entity mutation. Is this avoidable? If not is it acceptable??
     // TODO is there some way to store the format as val ${fieldName}Format = implicitly[FieldFormat[A]]
@@ -38,7 +38,7 @@ object EntityFormat {
       case (expression, field) =>
         val fieldName = field.asTerm.name
         q"""$expression
-            implicitly[com.datastore4s.core.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, ${fieldName.toString}, builder)
+            implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, ${fieldName.toString}, builder)
           """
     }
 
@@ -54,7 +54,7 @@ object EntityFormat {
 
     // TODO can we store the implicit format?
     val constructionExpressions = entityType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.map { field =>
-      (q"implicitly[com.datastore4s.core.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${field.asTerm.name.toString})", field)
+      (q"implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${field.asTerm.name.toString})", field)
     }
 
     val args = constructionExpressions.map {
@@ -70,7 +70,7 @@ object EntityFormat {
         """
 
     val expression =
-      q"""new com.datastore4s.core.EntityFormat[$entityType, $keyType] {
+      q"""new com.ovoenergy.datastore4s.EntityFormat[$entityType, $keyType] {
 
             val kind = Kind($kind)
 
@@ -84,4 +84,45 @@ object EntityFormat {
       expression
     )
   }
+}
+
+trait FromEntity[A] {
+  def fromEntity[E <: BaseEntity[_]](entity: E): A
+}
+
+object FromEntity {
+
+  def apply[A](): FromEntity[A] = macro applyImpl[A]
+
+  def applyImpl[A: context.WeakTypeTag](context: Context)(): context.Expr[FromEntity[A]] = {
+    import context.universe._
+
+    val entityType = weakTypeTag[A].tpe
+    // TODO create abstraction helper to save on repeated macro code.
+    if(!entityType.typeSymbol.asClass.isCaseClass){ context.abort(context.enclosingPosition, s"FromEntity classes must be a case class but $entityType is not")}
+
+    // TODO can we store the implicit formats?
+    val constructionExpressions = entityType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.map { field =>
+      (q"implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${field.asTerm.name.toString})", field)
+    }
+
+    val args = constructionExpressions.map {
+      case (expression, field) => AssignOrNamedArg(Ident(field.name), expression)
+    }
+
+    val companion = entityType.typeSymbol.companion
+
+    val expression =
+      q"""new com.ovoenergy.datastore4s.FromEntity[$entityType] {
+            override def fromEntity[E <:  com.google.cloud.datastore.BaseEntity[_]](entity: E): $entityType = {
+              $companion.apply(..$args)
+            }
+          }
+        """
+    context.info(context.enclosingPosition, expression.toString, false)
+    context.Expr[FromEntity[A]](
+      expression
+    )
+  }
+
 }

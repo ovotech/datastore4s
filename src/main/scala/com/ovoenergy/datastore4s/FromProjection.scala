@@ -1,4 +1,4 @@
-package com.datastore4s.core
+package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.ProjectionEntity
 
@@ -23,7 +23,7 @@ object FromProjection {
 
     // TODO can we store the implicit format?
     val constructionExpressions = projectionType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.map { field =>
-      (q"implicitly[com.datastore4s.core.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${field.asTerm.name.toString})", field)
+      (q"implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${field.asTerm.name.toString})", field)
     }
 
     val args = constructionExpressions.map {
@@ -33,7 +33,7 @@ object FromProjection {
     val companion = projectionType.typeSymbol.companion
 
     val expression =
-      q"""new com.datastore4s.core.FromProjection[$projectionType] {
+      q"""new com.ovoenergy.datastore4s.FromProjection[$projectionType] {
             override def fromProjection(entity: com.google.cloud.datastore.ProjectionEntity): $projectionType = {
               $companion.apply(..$args)
             }

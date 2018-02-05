@@ -1,6 +1,5 @@
 package com.ovoenergy.datastore4s
 
-import com.datastore4s.core.DatastoreService
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}

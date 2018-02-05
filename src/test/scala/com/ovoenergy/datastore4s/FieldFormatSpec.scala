@@ -2,12 +2,11 @@ package com.ovoenergy.datastore4s
 
 import java.time.Instant
 
-import com.datastore4s.core.FieldFormat
 import com.google.cloud.datastore.{Entity, Key, LatLng}
 import org.scalacheck.Gen
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
-import com.datastore4s.core.FieldFormat._
+import com.ovoenergy.datastore4s.FieldFormat._
 import com.google.cloud.Timestamp
 
 class FieldFormatSpec extends FlatSpec with FieldFormatTestCases {

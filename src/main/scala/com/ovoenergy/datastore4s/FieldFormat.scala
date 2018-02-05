@@ -1,4 +1,4 @@
-package com.datastore4s.core
+package com.ovoenergy.datastore4s
 
 import java.time.Instant
 
@@ -118,13 +118,13 @@ object NestedFieldFormat {
       case (expression, field) =>
         val fieldName = field.asTerm.name
         q"""$expression
-            implicitly[com.datastore4s.core.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, fieldName + "." + ${fieldName.toString}, builder)
+            implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, fieldName + "." + ${fieldName.toString}, builder)
           """
     }
 
     // TODO create helper to abstract the common reflection code involved in all of these macros
     val constructionExpressions = fieldType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.map { field =>
-      (q"""implicitly[com.datastore4s.core.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${field.asTerm.name.toString})""", field)
+      (q"""implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${field.asTerm.name.toString})""", field)
     }
 
     val args = constructionExpressions.map {
@@ -134,7 +134,7 @@ object NestedFieldFormat {
     val companion = fieldType.typeSymbol.companion
 
     val expression =
-      q"""new com.datastore4s.core.FieldFormat[$fieldType] {
+      q"""new com.ovoenergy.datastore4s.FieldFormat[$fieldType] {
             override def addField(value: $fieldType, fieldName: String, entityBuilder: com.google.cloud.datastore.Entity.Builder): com.google.cloud.datastore.Entity.Builder = {
               val builder = entityBuilder
               $builderExpression

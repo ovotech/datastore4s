@@ -1,4 +1,4 @@
-package com.datastore4s.core
+package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.{Datastore, DatastoreOptions, Entity, ReadOption}
 
