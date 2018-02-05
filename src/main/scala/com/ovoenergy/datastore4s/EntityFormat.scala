@@ -7,6 +7,7 @@ import scala.reflect.macros.blackbox.Context
 
 case class Kind(name: String)
 
+// TODO should ToEntity also be split out?? Does that make sense?
 trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
   val kind: Kind
 

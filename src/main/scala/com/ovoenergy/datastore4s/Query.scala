@@ -14,7 +14,7 @@ trait Query[E] {
 
   def withPropertyEq(propertyName: String, value: Int): Query[E] // TODO extend this somehow. Perhaps with a DSL?
 
-  def withPropertyEq(propertyName: String, value: String): Query[E] // TODO extend this somehow. Perhaps with a DSL? Annoying overloading is a problem
+  def withPropertyEq(propertyName: String, value: String): Query[E] // TODO extend this somehow. Perhaps with a DSL? Annoying overloading is a problem. Implicit use of DatastoreValue?
 
   def toSeq(): Seq[E]
 
@@ -27,8 +27,7 @@ object Query {
   }
 }
 
-// TODO see if the datastore query and projection query can be combined when FromEntity is split out so that the Entity class that extends BaseEntity does not matter.
-case class DatastoreQuery[E](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[Entity])(implicit format: EntityFormat[E, _], datastore: Datastore) extends Query[E] {
+case class DatastoreQuery[E](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[_ <:BaseEntity[_]])(implicit fromEntity: FromEntity[E], datastore: Datastore) extends Query[E] {
 
   override def withAncestor(ancestor: Ancestor) = {
     val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())
@@ -39,24 +38,10 @@ case class DatastoreQuery[E](queryBuilder: com.google.cloud.datastore.Structured
 
   override def withPropertyEq(propertyName: String, value: String) = DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
 
-  override def toSeq() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toSeq.map(format.fromEntity)
-}
-
-case class Project(queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[ProjectionEntity])(implicit datastore: Datastore) {
-  def into[A]()(implicit fromEntity: FromEntity[A]) = ProjectionQuery(queryBuilder)
-}
-
-case class ProjectionQuery[A](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[ProjectionEntity])(implicit fromEntity: FromEntity[A], datastore: Datastore) extends Query[A] {
-  override def withAncestor(ancestor: Ancestor) = {
-    val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())
-    ProjectionQuery(queryBuilder.setFilter(PropertyFilter.hasAncestor(key)))
-  }
-
-  override def withPropertyEq(propertyName: String, value: Int) = ProjectionQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
-
-  override def withPropertyEq(propertyName: String, value: String) = ProjectionQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
-
   override def toSeq() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toSeq.map(fromEntity.fromEntity)
 }
 
-
+case class Project(queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[ProjectionEntity])(implicit datastore: Datastore) {
+  def into[A]()(implicit fromEntity: FromEntity[A]) = DatastoreQuery[A](queryBuilder)
+}
+// unnecessary
