@@ -27,7 +27,7 @@ object Query {
 }
 
 // TODO see if the datastore query and projection query can be combined when FromEntity is split out so that the Entity class that extends BaseEntity does not matter.
-case class DatastoreQuery[E <: DatastoreEntity[_]](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[Entity])(implicit format: EntityFormat[E, _], datastore: Datastore) extends Query[E] {
+case class DatastoreQuery[E](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[Entity])(implicit format: EntityFormat[E, _], datastore: Datastore) extends Query[E] {
 
   override def withAncestor(ancestor: Ancestor) = {
     val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())

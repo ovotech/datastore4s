@@ -19,7 +19,7 @@ class FromProjectionSpec extends FeatureSpec with Matchers with GeneratorDrivenP
     }
   }
 
-  class NonCaseClass(val key: String) extends DatastoreEntity[String]
+  class NonCaseClass(val key: String)
 
   case class MissingFieldFormatType()
 

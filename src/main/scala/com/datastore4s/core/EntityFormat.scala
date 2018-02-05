@@ -2,17 +2,10 @@ package com.datastore4s.core
 
 import com.google.cloud.datastore.Entity
 
-import scala.annotation.Annotation
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
-final case class EntityKind(kind: String) extends Annotation
-
 case class Kind(name: String)
-
-trait DatastoreEntity[KeyType] {
-  def key: KeyType
-}
 
 trait EntityFormat[EntityType, KeyType] {
   val kind: Kind
@@ -23,30 +16,19 @@ trait EntityFormat[EntityType, KeyType] {
 }
 
 object EntityFormat {
-  def apply[EntityType <: DatastoreEntity[KeyType], KeyType](): EntityFormat[EntityType, KeyType] = macro applyImpl[EntityType, KeyType]
+  def apply[EntityType, KeyType](kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] = macro applyImpl[EntityType, KeyType]
 
-  def applyImpl[EntityType <: DatastoreEntity[KeyType] : context.WeakTypeTag, KeyType: context.WeakTypeTag](context: Context)(): context.Expr[EntityFormat[EntityType, KeyType]] = {
+  def applyImpl[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: Context)(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
 
     val entityType = weakTypeTag[EntityType].tpe
     require(entityType.typeSymbol.asClass.isCaseClass, s"Entity classes must be a case class but $entityType is not")
 
-    val kind = entityType.typeSymbol.annotations.collect {
-      case annotation if annotation.tree.tpe <:< context.weakTypeOf[EntityKind] =>
-        annotation.tree.children.tail match {
-          case Literal(Constant(kind: String)) :: Nil => EntityKind(kind)
-        }
-    } match {
-      case Nil => entityType.typeSymbol.name
-      case ann :: Nil => TermName(ann.kind).decodedName
-      case more => context.abort(context.enclosingPosition, s"Entity case class must be annotated with @EntityKind at most once, but annotations were: $more")
-    }
-
     val keyType = weakTypeTag[KeyType].tpe
 
     val keyExpression =
       q"""val keyFactory = new com.datastore4s.core.KeyFactoryFacade(keyFactorySupplier().setKind(kind.name))
-               implicitly[com.datastore4s.core.ToKey[${keyType.typeSymbol}]].toKey(value.key, keyFactory)"""
+               implicitly[com.datastore4s.core.ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
 
     // TODO this relies on entity mutation. Is this avoidable? If not is it acceptable??
     // TODO is there some way to store the format as val ${fieldName}Format = implicitly[FieldFormat[A]]
@@ -89,7 +71,7 @@ object EntityFormat {
     val expression =
       q"""new com.datastore4s.core.EntityFormat[$entityType, $keyType] {
 
-            val kind = Kind(${kind.toString})
+            val kind = Kind($kind)
 
             $toExpression
 

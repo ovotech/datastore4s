@@ -2,8 +2,6 @@ package com.datastore4s.core
 
 import com.google.cloud.datastore.{BaseEntity, Entity}
 
-import scala.util.Try
-
 trait DefaultDatastoreSupport {
 
   def dataStoreConfiguration: DataStoreConfiguration
@@ -22,13 +20,13 @@ trait DefaultDatastoreSupport {
 
   def toLongAncestor[A](kind: Kind)(f: A => Long): ToAncestor[A] = a => LongAncestor(kind, f(a))
 
-  def put[E <: DatastoreEntity[_]](entity: E)(implicit format: EntityFormat[E, _]): Persisted[E] = DatastoreService.put(entity)
+  def put[E](entity: E)(implicit format: EntityFormat[E, _]): Persisted[E] = DatastoreService.put(entity)
 
-  def list[E <: DatastoreEntity[_]]()(implicit format: EntityFormat[E, _]): Query[E] = DatastoreService.list
+  def list[E]()(implicit format: EntityFormat[E, _]): Query[E] = DatastoreService.list
 
-  def findOne[E <: DatastoreEntity[K], K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): Option[E] = DatastoreService.findOne(key)
+  def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): Option[E] = DatastoreService.findOne(key)
 
-  def project[E <: DatastoreEntity[_]](firstField: String, remainingFields: String*)(implicit format: EntityFormat[E, _]): Project =
+  def project[E](firstField: String, remainingFields: String*)(implicit format: EntityFormat[E, _]): Project =
     DatastoreService.project(firstField, remainingFields: _*)
 
 }

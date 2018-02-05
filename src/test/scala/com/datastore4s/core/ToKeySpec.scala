@@ -1,11 +1,11 @@
 package com.datastore4s.core
 
-import com.google.cloud.datastore.{DatastoreOptions, Key}
+import com.datastore4s.core.ToKey._
+import com.datastore4s.core.utils.{TestDatastore, TestKeyFactory}
+import com.google.cloud.datastore.Key
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
-import com.datastore4s.core.ToKey._
-import com.datastore4s.core.utils.{TestDatastore, TestKeyFactory}
 
 class ToKeySpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matchers {
 
@@ -17,7 +17,7 @@ class ToKeySpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matcher
 
   "The Long AsKey" should "take any long and create a key using the key id" in {
     forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { value =>
-      createKey(LongToKey, value).getId shouldBe value
+      createKey(LongToKey, Long.box(value)).getId shouldBe value
     }
   }
 

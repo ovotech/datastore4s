@@ -24,7 +24,7 @@ class NestedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenP
 
   "The apply method of Field Format" should "create a field format that nests the fields of case classes" in {
     implicit val format = NestedFieldFormat[SomeNestedType]
-    val entityFormat = EntityFormat[EntityWithNestedType, String]
+    val entityFormat = EntityFormat[EntityWithNestedType, String]("nested-test-kind")(_.id)
 
     forAll(entityGen) { entity =>
       val roundTripped = entityFormat.fromEntity(entityFormat.toEntity(entity))
@@ -40,10 +40,7 @@ class NestedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenP
     "NestedFieldFormat[MissingFieldFormatContainer]" shouldNot compile
   }
 
-  @EntityKind("nested-test-kind")
-  case class EntityWithNestedType(id: String, nestedType: SomeNestedType) extends DatastoreEntity[String] {
-    def key = id
-  }
+  case class EntityWithNestedType(id: String, nestedType: SomeNestedType)
 
   case class SomeNestedType(stringField: String,
                             someLongField: Long,
