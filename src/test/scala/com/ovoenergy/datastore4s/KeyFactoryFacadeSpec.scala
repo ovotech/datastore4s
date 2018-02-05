@@ -1,6 +1,8 @@
-package com.datastore4s.core
+package com.ovoenergy.datastore4s
 
+import com.datastore4s.core.ToAncestor
 import com.datastore4s.core.utils.TestDatastore
+import com.ovoenergy.datastore4s.utils.TestDatastore
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}

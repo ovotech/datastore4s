@@ -1,5 +1,5 @@
 name := "datastore4s"
-organization := "org.datastore4s"
+organization := "com.ovoenergy"
 
 version := "0.1"
 

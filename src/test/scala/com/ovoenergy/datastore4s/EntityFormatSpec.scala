@@ -1,7 +1,9 @@
-package com.datastore4s.core
+package com.ovoenergy.datastore4s
 
+import com.datastore4s.core.{KeyFactory, ToKey}
 import com.datastore4s.core.utils.TestDatastore
 import com.google.cloud.datastore.Entity
+import com.ovoenergy.datastore4s.utils.TestDatastore
 import org.scalatest.{FeatureSpec, Matchers}
 
 class EntityFormatSpec extends FeatureSpec with Matchers {

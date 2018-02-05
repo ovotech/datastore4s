@@ -1,7 +1,8 @@
-package com.datastore4s.core
+package com.ovoenergy.datastore4s
 
 import java.time.Instant
 
+import com.datastore4s.core.FieldFormat
 import com.google.cloud.datastore.{Entity, Key, LatLng}
 import org.scalacheck.Gen
 import org.scalatest.{FlatSpec, Matchers}

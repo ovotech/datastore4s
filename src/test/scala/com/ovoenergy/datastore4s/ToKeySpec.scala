@@ -1,8 +1,10 @@
-package com.datastore4s.core
+package com.ovoenergy.datastore4s
 
+import com.datastore4s.core.ToKey
 import com.datastore4s.core.ToKey._
 import com.datastore4s.core.utils.{TestDatastore, TestKeyFactory}
 import com.google.cloud.datastore.Key
+import com.ovoenergy.datastore4s.utils.{TestDatastore, TestKeyFactory}
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
