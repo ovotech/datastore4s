@@ -16,7 +16,7 @@ trait Query[E] {
 
   def withPropertyEq(propertyName: String, value: String): Query[E] // TODO extend this somehow. Perhaps with a DSL? Annoying overloading is a problem. Implicit use of DatastoreValue?
 
-  def toSeq(): Seq[E]
+  def stream(): Stream[E]
 
 }
 
@@ -27,7 +27,7 @@ object Query {
   }
 }
 
-case class DatastoreQuery[E](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[_ <:BaseEntity[_]])(implicit fromEntity: FromEntity[E], datastore: Datastore) extends Query[E] {
+case class DatastoreQuery[E](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[_ <: BaseEntity[_]])(implicit fromEntity: FromEntity[E], datastore: Datastore) extends Query[E] {
 
   override def withAncestor(ancestor: Ancestor) = {
     val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())
@@ -38,10 +38,9 @@ case class DatastoreQuery[E](queryBuilder: com.google.cloud.datastore.Structured
 
   override def withPropertyEq(propertyName: String, value: String) = DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
 
-  override def toSeq() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toSeq.map(fromEntity.fromEntity)
+  override def stream() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toStream.map(fromEntity.fromEntity)
 }
 
 case class Project(queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[ProjectionEntity])(implicit datastore: Datastore) {
   def into[A]()(implicit fromEntity: FromEntity[A]) = DatastoreQuery[A](queryBuilder)
 }
-// unnecessary
