@@ -23,7 +23,8 @@ object DatastoreService {
     Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*)).map(format.fromEntity)
   }
 
-  def put[E](entityObject: E)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory, format: EntityFormat[E, _], datastore: Datastore): Persisted[E] = {
+  def put[E](entityObject: E)(implicit format: EntityFormat[E, _], datastore: Datastore): Persisted[E] = {
+    implicit val keyFactorySupplier = datastore.newKeyFactory()
     Persisted(entityObject, datastore.put(format.toEntity(entityObject)))
   }
 

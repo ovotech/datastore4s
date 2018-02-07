@@ -96,6 +96,8 @@ object FieldFormat {
     }
   }
 
+  // TODO format from EntityFormats
+
 }
 
 object NestedFieldFormat {
