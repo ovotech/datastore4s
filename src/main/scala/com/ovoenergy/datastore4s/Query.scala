@@ -27,7 +27,7 @@ object Query {
   }
 }
 
-case class DatastoreQuery[E](queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[_ <: BaseEntity[_]])(implicit fromEntity: FromEntity[E], datastore: Datastore) extends Query[E] {
+case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEntity[_]])(implicit fromEntity: FromEntity[E], datastore: Datastore) extends Query[E] {
 
   override def withAncestor(ancestor: Ancestor) = {
     val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())
@@ -41,6 +41,35 @@ case class DatastoreQuery[E](queryBuilder: com.google.cloud.datastore.Structured
   override def stream() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toStream.map(fromEntity.fromEntity)
 }
 
-case class Project(queryBuilder: com.google.cloud.datastore.StructuredQuery.Builder[ProjectionEntity])(implicit datastore: Datastore) {
-  def into[A]()(implicit fromEntity: FromEntity[A]) = DatastoreQuery[A](queryBuilder)
+case class Project[E]()(implicit datastore: Datastore, format: EntityFormat[E, _]) {
+  def into[A]()(implicit fromEntity: FromEntity[A]) = Projection[E, A]()
+}
+
+case class Projection[E, A]()(implicit datastore: Datastore, format: EntityFormat[E, _], fromEntity: FromEntity[A]) {
+  def mapping(firstMapping: (String, String), remainingMappings: (String, String)*): Query[A] = {
+    val mappings = (firstMapping +: remainingMappings).toMap
+    val kind = format.kind.name
+    val queryBuilder = com.google.cloud.datastore.Query.newProjectionEntityQueryBuilder().setKind(kind).setProjection(firstMapping._1, remainingMappings.map(_._1): _*)
+    ProjectionQuery(mappings, queryBuilder)
+  }
+}
+
+case class ProjectionQuery[E, A](mappings: Map[String, String], queryBuilder: StructuredQuery.Builder[ProjectionEntity])(implicit datastore: Datastore, format: EntityFormat[E, _], fromEntity: FromEntity[A]) extends Query[A] {
+  override def withAncestor(ancestor: Ancestor) = {
+    val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())
+    ProjectionQuery(mappings, queryBuilder.setFilter(PropertyFilter.hasAncestor(key)))
+  }
+
+  override def withPropertyEq(propertyName: String, value: Int) = ProjectionQuery(mappings, queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
+
+  override def withPropertyEq(propertyName: String, value: String) = ProjectionQuery(mappings, queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
+
+  override def stream() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toStream.map { e =>
+    val builder = ProjectionEntity.newBuilder(e)
+    for ((original, newValue) <- mappings) {
+      val value: Value[_] = e.getValue(original)
+      builder.set(newValue, value)
+    }
+    builder.build()
+  }.map(fromEntity.fromEntity(_))
 }

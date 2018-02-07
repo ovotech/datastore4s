@@ -20,7 +20,6 @@ trait DefaultDatastoreSupport {
 
   def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): Option[E] = DatastoreService.findOne(key)
 
-  def project[E](firstField: String, remainingFields: String*)(implicit format: EntityFormat[E, _]): Project =
-    DatastoreService.project(firstField, remainingFields: _*)
+  def project[E]()(implicit format: EntityFormat[E, _]): Project[E] = DatastoreService.project[E]
 
 }
