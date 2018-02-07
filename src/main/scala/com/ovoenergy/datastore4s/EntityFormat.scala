@@ -29,24 +29,20 @@ object EntityFormat {
 
     val keyExpression = // TODO figure out what is going on with the scala Long implicitness?? NoSuchMethod??? Have to use java.lang.Long temporarily.
       q"""val keyFactory = new com.ovoenergy.datastore4s.KeyFactoryFacade(keyFactorySupplier().setKind(kind.name))
-               implicitly[com.ovoenergy.datastore4s.ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
+          val key = implicitly[com.ovoenergy.datastore4s.ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
 
-    // TODO can we remove the empty q"" in fold left?
-    // TODO when wrapped in a monad for failures maybe replace with a for comprehension? Does it even matter? Does the generated code need to be nice to read? I would say so but not sure.
-    val builderExpression = helper.caseClassFieldList(entityType).foldLeft(q"": context.universe.Tree) {
-      case (expression, field) =>
-        val fieldName = field.asTerm.name
-        q"""$expression
-            implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, ${fieldName.toString}, builder)
-          """
+    // TODO when wrapped in a monad for failures maybe replace with a for comprehension?
+    // TODO One more abstractable here
+    val builderExpressions = helper.caseClassFieldList(entityType).map { field =>
+      val fieldName = field.asTerm.name
+      q"""implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, ${fieldName.toString}, builder)"""
     }
 
-    // TODO why does builder expression open a new scope??
     val toExpression =
       q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): com.google.cloud.datastore.Entity = {
-            val key = $keyExpression
+            ..$keyExpression
             val builder = com.google.cloud.datastore.Entity.newBuilder(key)
-            $builderExpression
+            ..$builderExpressions
             builder.build()
           }
         """
@@ -88,6 +84,7 @@ object FromEntity {
     val entityType = weakTypeTag[A].tpe
     helper.requireCaseClass(entityType)
 
+    // TODO One more abstractable here
     val companion = entityType.typeSymbol.companion
     val companionNamedArguments = helper.caseClassFieldList(entityType).map { field =>
       AssignOrNamedArg(Ident(field.name), q"implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${field.asTerm.name.toString})")
@@ -96,7 +93,9 @@ object FromEntity {
     val expression =
       q"""new com.ovoenergy.datastore4s.FromEntity[$entityType] {
             override def fromEntity[E <:  com.google.cloud.datastore.BaseEntity[_]](entity: E): $entityType = {
-              $companion.apply(..$companionNamedArguments)
+              $companion.apply(
+                ..$companionNamedArguments
+              )
             }
           }
         """

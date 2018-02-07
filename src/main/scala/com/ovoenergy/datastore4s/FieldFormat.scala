@@ -115,13 +115,10 @@ object NestedFieldFormat {
 
     val fields = helper.caseClassFieldList(fieldType)
 
-    // TODO can we remove the empty q"" in fold left?
-    val builderExpression = fields.foldLeft(q"": context.universe.Tree) {
-      case (expression, field) =>
+    // TODO Two more abstractables here
+    val builderExpressions = fields.map { field =>
         val fieldName = field.asTerm.name
-        q"""$expression
-            implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, fieldName + "." + ${fieldName.toString}, builder)
-          """
+        q"""implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, fieldName + "." + ${fieldName.toString}, entityBuilder)"""
     }
 
     val companion = fieldType.typeSymbol.companion
@@ -132,13 +129,14 @@ object NestedFieldFormat {
     val expression =
       q"""new com.ovoenergy.datastore4s.FieldFormat[$fieldType] {
             override def addField(value: $fieldType, fieldName: String, entityBuilder: com.google.cloud.datastore.Entity.Builder): com.google.cloud.datastore.Entity.Builder = {
-              val builder = entityBuilder
-              $builderExpression
-              builder
+              ..$builderExpressions
+              entityBuilder
             }
 
             override def fromField[E <: com.google.cloud.datastore.BaseEntity[_]](entity: E, fieldName: String): $fieldType = {
-              $companion.apply(..$companionNamedArguments)
+              $companion.apply(
+                ..$companionNamedArguments
+              )
             }
           }
         """
