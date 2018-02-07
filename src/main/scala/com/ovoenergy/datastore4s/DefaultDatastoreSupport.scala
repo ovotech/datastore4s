@@ -5,6 +5,7 @@ trait DefaultDatastoreSupport {
   def dataStoreConfiguration: DataStoreConfiguration
 
   private implicit val datastore = DatastoreService.createDatastore(dataStoreConfiguration)
+  implicit val keyFactorySupplier = () => datastore.newKeyFactory()
 
   def fieldFormatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: FieldFormat[B]): FieldFormat[A] =
     FieldFormat.fieldFormatFromFunctions(constructor)(extractor)
