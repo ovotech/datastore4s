@@ -8,7 +8,7 @@ import com.google.cloud.datastore.{BaseEntity, Blob, Entity, LatLng}
 import scala.reflect.macros.blackbox.Context
 
 trait FieldFormat[A] {
-  // TODO should there be some form of asValue(a:A):Value[_]  for queries? How would this affect the nestedfield format?
+  // TODO should there be some form of asValue(a:A):Value[_]  for queries? How would this affect the nested field format?
 
   def addField(value: A, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder
 
@@ -79,7 +79,7 @@ object FieldFormat {
     override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): BigDecimal = BigDecimal(entity.getString(fieldName))
   }
 
-  implicit def optionFormat[A](implicit format:FieldFormat[A]): FieldFormat[Option[A]] = new  FieldFormat[Option[A]] {
+  implicit def optionFormat[A](implicit format: FieldFormat[A]): FieldFormat[Option[A]] = new FieldFormat[Option[A]] {
     override def addField(value: Option[A], fieldName: String, entityBuilder: Entity.Builder) = value match {
       case Some(a) => format.addField(a, fieldName, entityBuilder)
       case None => entityBuilder.setNull(fieldName)
@@ -108,15 +108,15 @@ object NestedFieldFormat {
 
   def applyImpl[A: context.WeakTypeTag](context: Context)(): context.Expr[FieldFormat[A]] = {
     import context.universe._
+    val helper = MacroHelper(context)
 
     val fieldType = weakTypeTag[A].tpe
-    if(!fieldType.typeSymbol.asClass.isCaseClass){ context.abort(context.enclosingPosition, s"NestedFieldFormat classes must be a case class but $fieldType is not") }
+    helper.requireCaseClass(fieldType)
 
-    // TODO this relies on entity mutation. Is this avoidable? If not is it acceptable??
-    // TODO is there some way to store the format as val ${fieldName}Format = implicitly[FieldFormat[A]]
+    val fields = helper.caseClassFieldList(fieldType)
+
     // TODO can we remove the empty q"" in fold left?
-    // TODO Again create a helper to abstract this common code
-    val builderExpression = fieldType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.foldLeft(q"": context.universe.Tree) {
+    val builderExpression = fields.foldLeft(q"": context.universe.Tree) {
       case (expression, field) =>
         val fieldName = field.asTerm.name
         q"""$expression
@@ -124,16 +124,10 @@ object NestedFieldFormat {
           """
     }
 
-    // TODO create helper to abstract the common reflection code involved in all of these macros
-    val constructionExpressions = fieldType.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten.map { field =>
-      (q"""implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${field.asTerm.name.toString})""", field)
-    }
-
-    val args = constructionExpressions.map {
-      case (expression, field) => AssignOrNamedArg(Ident(field.name), expression)
-    }
-
     val companion = fieldType.typeSymbol.companion
+    val companionNamedArguments = fields.map { field =>
+      AssignOrNamedArg(Ident(field.name), q"""implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${field.asTerm.name.toString})""")
+    }
 
     val expression =
       q"""new com.ovoenergy.datastore4s.FieldFormat[$fieldType] {
@@ -144,7 +138,7 @@ object NestedFieldFormat {
             }
 
             override def fromField[E <: com.google.cloud.datastore.BaseEntity[_]](entity: E, fieldName: String): $fieldType = {
-              $companion.apply(..$args)
+              $companion.apply(..$companionNamedArguments)
             }
           }
         """
