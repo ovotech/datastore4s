@@ -24,7 +24,7 @@ object DatastoreService {
   }
 
   def put[E](entityObject: E)(implicit format: EntityFormat[E, _], datastore: Datastore): Persisted[E] = {
-    implicit val keyFactorySupplier = datastore.newKeyFactory()
+    implicit val keyFactorySupplier = () => datastore.newKeyFactory()
     Persisted(entityObject, datastore.put(format.toEntity(entityObject)))
   }
 
