@@ -21,4 +21,13 @@ object ValueFormat {
     }
   }
 
+  implicit object LongValueFormat extends ValueFormat[Long] {
+    override def toValue(a: Long): DatastoreValue = LongValue(a)
+
+    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Long] = datastoreValue match {
+      case LongValue(long) => Right(long)
+      case other => wrongType(LongValue, other)
+    }
+  }
+
 }

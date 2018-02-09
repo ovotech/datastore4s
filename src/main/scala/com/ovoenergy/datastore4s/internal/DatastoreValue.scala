@@ -29,6 +29,11 @@ object StringValue extends DsType {
 
 object LongValue extends DsType {
   def apply(long: Long): DatastoreValue = new WrappedValue(new com.google.cloud.datastore.LongValue(long))
+
+  def unapply(value: DatastoreValue): Option[Long] = value.dsValue match {
+    case l: com.google.cloud.datastore.LongValue => Some(l.get())
+    case _ => None
+  }
 }
 
 object DoubleValue extends DsType {
