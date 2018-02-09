@@ -12,6 +12,7 @@ private[internal] class WrappedValue(val dsValue: Value[_]) extends DatastoreVal
     case StringValue(s) => s"StringValue($s)"
     case LongValue(l) => s"LongValue($l)"
     case DoubleValue(d) => s"DoubleValue($d)"
+    case BooleanValue(d) => s"BooleanValue($d)"
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {
@@ -51,6 +52,11 @@ case object DoubleValue extends DsType {
 
 case object BooleanValue extends DsType {
   def apply(boolean: Boolean): DatastoreValue = new WrappedValue(new com.google.cloud.datastore.BooleanValue(boolean))
+
+  def unapply(value: DatastoreValue): Option[Boolean] = value.dsValue match {
+    case b: com.google.cloud.datastore.BooleanValue => Some(b.get())
+    case _ => None
+  }
 }
 
 case object TimestampValue extends DsType {

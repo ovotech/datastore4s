@@ -20,7 +20,7 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   }
 
   it should "not read other types to strings" in {
-    forAll(Gen.oneOf(longValueGen, doubleValueGen)) { value =>
+    forAll(Gen.oneOf(longValueGen, doubleValueGen, booleanValueGen)) { value =>
       StringValueFormat.fromValue(value) shouldBe 'Left
     }
   }
@@ -38,7 +38,7 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   }
 
   it should "not read other types to longs" in {
-    forAll(Gen.oneOf(stringValueGen, doubleValueGen)) { value =>
+    forAll(Gen.oneOf(stringValueGen, doubleValueGen, booleanValueGen)) { value =>
       LongValueFormat.fromValue(value) shouldBe 'Left
     }
   }
@@ -56,8 +56,26 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   }
 
   it should "not read other types to doubles" in {
-    forAll(Gen.oneOf(stringValueGen, longValueGen)) { value =>
+    forAll(Gen.oneOf(stringValueGen, longValueGen, booleanValueGen)) { value =>
       DoubleValueFormat.fromValue(value) shouldBe 'Left
+    }
+  }
+
+  "The Boolean value format" should "write booleans to a boolean value" in {
+    forAll(Gen.oneOf(true, false)) { bool =>
+      BooleanValueFormat.toValue(bool) shouldBe BooleanValue(bool)
+    }
+  }
+
+  it should "read boolean values into booleans" in {
+    forAll(Gen.oneOf(true, false)) { bool =>
+      BooleanValueFormat.fromValue(BooleanValue(bool)) shouldBe Right(bool)
+    }
+  }
+
+  it should "not read other types to booleans" in {
+    forAll(Gen.oneOf(stringValueGen, longValueGen, doubleValueGen)) { value =>
+      BooleanValueFormat.fromValue(value) shouldBe 'Left
     }
   }
 
@@ -65,5 +83,6 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   private val stringValueGen = Gen.alphaNumStr.map(StringValue(_))
   private val longValueGen = Gen.choose(Long.MinValue, Long.MaxValue).map(LongValue(_))
   private val doubleValueGen = Gen.choose(Double.MinValue, Double.MaxValue).map(DoubleValue(_))
+  private val booleanValueGen = Gen.oneOf(true, false).map(BooleanValue(_))
 
 }

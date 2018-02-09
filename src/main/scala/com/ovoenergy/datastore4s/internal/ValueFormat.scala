@@ -41,4 +41,13 @@ object ValueFormat {
     }
   }
 
+  implicit object BooleanValueFormat extends ValueFormat[Boolean] {
+    override def toValue(a: Boolean): DatastoreValue = BooleanValue(a)
+
+    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Boolean] = datastoreValue match {
+      case BooleanValue(bool) => Right(bool)
+      case other => wrongType(BooleanValue, other)
+    }
+  }
+
 }
