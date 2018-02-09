@@ -6,7 +6,9 @@ trait ValueFormat[A] {
 
   def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, A]
 
-  def wrongType(expectedType: DsType, datastoreValue: DatastoreValue): Either[DatastoreError, A] = Left(new DatastoreError {})
+  def wrongType(expectedType: DsType, datastoreValue: DatastoreValue): Either[DatastoreError, A] = Left(new DatastoreError {
+    override def toString: String = s"Expected a $expectedType but got $datastoreValue"
+  })
 
 }
 
@@ -27,6 +29,15 @@ object ValueFormat {
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Long] = datastoreValue match {
       case LongValue(long) => Right(long)
       case other => wrongType(LongValue, other)
+    }
+  }
+
+  implicit object DoubleValueFormat extends ValueFormat[Double] {
+    override def toValue(a: Double): DatastoreValue = DoubleValue(a)
+
+    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Double] = datastoreValue match {
+      case DoubleValue(long) => Right(long)
+      case other => wrongType(DoubleValue, other)
     }
   }
 

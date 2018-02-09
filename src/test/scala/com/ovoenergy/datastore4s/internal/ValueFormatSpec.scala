@@ -43,6 +43,24 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     }
   }
 
+  "The Double value format" should "write doubles to a double value" in {
+    forAll(Gen.choose(Double.MinValue, Double.MaxValue)) { double =>
+      DoubleValueFormat.toValue(double) shouldBe DoubleValue(double)
+    }
+  }
+
+  it should "read double values into doubles" in {
+    forAll(Gen.choose(Double.MinValue, Double.MaxValue)) { double =>
+      DoubleValueFormat.fromValue(DoubleValue(double)) shouldBe Right(double)
+    }
+  }
+
+  it should "not read other types to doubles" in {
+    forAll(Gen.oneOf(stringValueGen, longValueGen)) { value =>
+      DoubleValueFormat.fromValue(value) shouldBe 'Left
+    }
+  }
+
 
   private val stringValueGen = Gen.alphaNumStr.map(StringValue(_))
   private val longValueGen = Gen.choose(Long.MinValue, Long.MaxValue).map(LongValue(_))
