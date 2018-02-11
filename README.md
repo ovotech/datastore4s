@@ -135,6 +135,7 @@ There are `FieldFormat[A]`s already implicitly available for:
 - `BigDecimal`
 - `java.time.Instant`
 - `Option[A]` for any `[A]` for which a format exists
+- `Seq[A]` for any `[A]` for which a format exists
 - `com.google.cloud.Timestamp`
 - `com.google.cloud.datastore.LatLng`
 

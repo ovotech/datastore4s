@@ -7,9 +7,9 @@ import com.google.cloud.datastore.{Blob, LatLng}
 import com.ovoenergy.datastore4s.internal.ValueFormat._
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{FlatSpec, Inside, Matchers}
 
-class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matchers {
+class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matchers with Inside {
 
   "The String value format" should "write strings to a string value" in {
     forAll(Gen.alphaNumStr) { str =>
@@ -178,6 +178,33 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
       BigDecimalStringValueFormat.fromValue(StringValue(string)) shouldBe 'Left
     }
   }
+
+  "The list value format" should "write nay A to a list value" in {
+    forAll(Gen.listOf(Gen.alphaNumStr)) { stringList =>
+      val format = implicitly[ValueFormat[Seq[String]]]
+      format.toValue(stringList) shouldBe ListValue(stringList.map(StringValue(_)))
+    }
+  }
+
+  it should "read list values into lists" in {
+    forAll(Gen.listOf(Gen.alphaNumStr)) { stringList =>
+      Right(Seq("", "")) shouldBe Right(Seq("", ""))
+      val format = implicitly[ValueFormat[Seq[String]]]
+      inside(format.fromValue(ListValue(stringList.map(StringValue(_))))){
+        case Right(list) => list should contain theSameElementsAs stringList
+        case Left(error) => fail(s"Expected a Right of a list of strings but got: $error")
+      }
+    }
+  }
+
+   it should "return an error if any element of the list is the wrong type" in {
+     forAll(Gen.listOf(Gen.alphaNumStr)) { stringList =>
+       val format = implicitly[ValueFormat[Seq[String]]]
+
+       val values = LongValue(0) +: stringList.map(StringValue(_))
+       format.fromValue(ListValue(values)) shouldBe 'Left
+     }
+   }
 
   private val stringValueGen = Gen.alphaNumStr.map(StringValue(_))
   private val longValueGen = Gen.choose(Long.MinValue, Long.MaxValue).map(LongValue(_))

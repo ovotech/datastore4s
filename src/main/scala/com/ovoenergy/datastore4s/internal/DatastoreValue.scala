@@ -9,13 +9,14 @@ sealed trait DatastoreValue {
 
 private[internal] class WrappedValue(val dsValue: Value[_]) extends DatastoreValue {
   override def toString: String = this match {
-    case StringValue(s) => s"StringValue($s)"
+    case StringValue(s) => s"""StringValue("$s")"""
     case LongValue(l) => s"LongValue($l)"
     case DoubleValue(d) => s"DoubleValue($d)"
     case BooleanValue(d) => s"BooleanValue($d)"
     case BlobValue(b) => s"BlobValue($b)"
     case TimestampValue(t) => s"TimestampValue($t)"
     case LatLngValue(ll) => s"LatLngValue($ll)"
+    case ListValue(values) => s"ListValue(${values.mkString(", ")})"
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {
@@ -93,5 +94,10 @@ case object ListValue extends DsType {
 
   import scala.collection.JavaConverters._
 
-  def apply(values: DatastoreValue*): DatastoreValue = new WrappedValue(new com.google.cloud.datastore.ListValue(values.map(_.dsValue).asJava))
+  def apply(values: Seq[DatastoreValue]): DatastoreValue = new WrappedValue(new com.google.cloud.datastore.ListValue(values.map(_.dsValue).asJava))
+
+  def unapply(value: DatastoreValue): Option[Seq[DatastoreValue]] = value.dsValue match {
+    case l: com.google.cloud.datastore.ListValue => Some(l.get().asScala.map(new WrappedValue(_)))
+    case _ => None
+  }
 }

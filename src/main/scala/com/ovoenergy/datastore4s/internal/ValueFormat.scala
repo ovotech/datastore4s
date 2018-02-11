@@ -114,7 +114,25 @@ object ValueFormat {
       }
   }
 
-  // TODO implicit def for list
-  // TODO implicit def for Entity? So that we can have nested entities? Or should that go in field format so we can pass in key factory????
+  implicit def listValueFormat[A](implicit elementFormat: ValueFormat[A]): ValueFormat[Seq[A]] = new ValueFormat[Seq[A]] {
+    override def toValue(scalaValue: Seq[A]) = ListValue(scalaValue.map(elementFormat.toValue))
+
+    override def fromValue(datastoreValue: DatastoreValue) = datastoreValue match {
+      case ListValue(values) => sequence(values.map(elementFormat.fromValue))
+      case other => wrongType(ListValue, other)
+    }
+  }
+
+  private def sequence[A](values: Seq[Either[DatastoreError, A]]): Either[DatastoreError, Seq[A]] = {
+    // TODO tidy this up. Maybe move to DatastoreError object under accumulateErrors?
+    values.foldLeft(Right(Seq.empty): Either[DatastoreError, Seq[A]]) {
+      case (Right(acc), Right(value)) => Right(value +: acc)
+      case (Left(errorAcc), Left(error)) => Left(new DatastoreError {
+        override def toString: String = s"$errorAcc\n$error"
+      })
+      case (Right(_), Left(error)) => Left(error)
+      case (Left(errorAcc), Right(_)) => Left(errorAcc)
+    }
+  }
 
 }
