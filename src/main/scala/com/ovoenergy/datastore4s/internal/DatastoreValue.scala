@@ -13,6 +13,9 @@ private[internal] class WrappedValue(val dsValue: Value[_]) extends DatastoreVal
     case LongValue(l) => s"LongValue($l)"
     case DoubleValue(d) => s"DoubleValue($d)"
     case BooleanValue(d) => s"BooleanValue($d)"
+    case BlobValue(b) => s"BlobValue($b)"
+    case TimestampValue(t) => s"TimestampValue($t)"
+    case LatLngValue(ll) => s"LatLngValue($ll)"
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {
@@ -61,14 +64,29 @@ case object BooleanValue extends DsType {
 
 case object TimestampValue extends DsType {
   def apply(timeStamp: Timestamp): DatastoreValue = new WrappedValue(new com.google.cloud.datastore.TimestampValue(timeStamp))
+
+  def unapply(value: DatastoreValue): Option[Timestamp] = value.dsValue match {
+    case t: com.google.cloud.datastore.TimestampValue => Some(t.get())
+    case _ => None
+  }
 }
 
 case object BlobValue extends DsType {
   def apply(blob: Blob): DatastoreValue = new WrappedValue(new com.google.cloud.datastore.BlobValue(blob))
+
+  def unapply(value: DatastoreValue): Option[Blob] = value.dsValue match {
+    case b: com.google.cloud.datastore.BlobValue => Some(b.get())
+    case _ => None
+  }
 }
 
 case object LatLngValue extends DsType {
   def apply(latlng: LatLng): DatastoreValue = new WrappedValue(new com.google.cloud.datastore.LatLngValue(latlng))
+
+  def unapply(value: DatastoreValue): Option[LatLng] = value.dsValue match {
+    case l: com.google.cloud.datastore.LatLngValue => Some(l.get())
+    case _ => None
+  }
 }
 
 case object ListValue extends DsType {
