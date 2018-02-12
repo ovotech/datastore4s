@@ -30,6 +30,10 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     }
   }
 
+  it should "read a written value correctly" in {
+    forAllTestRoundTrip(Gen.alphaNumStr)
+  }
+
   "The Long value format" should "write longs to a long value" in {
     forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { long =>
       LongValueFormat.toValue(long) shouldBe LongValue(long)
@@ -46,6 +50,10 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     forAll(Gen.oneOf(stringValueGen, doubleValueGen, booleanValueGen, blobValueGen, timestampValueGen, latLngValueGen)) { value =>
       LongValueFormat.fromValue(value) shouldBe 'Left
     }
+  }
+
+  it should "read a written value correctly" in {
+    forAllTestRoundTrip(Gen.choose(Long.MinValue, Long.MaxValue))
   }
 
   "The Double value format" should "write doubles to a double value" in {
@@ -66,6 +74,10 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     }
   }
 
+  it should "read a written value correctly" in {
+    forAllTestRoundTrip(Gen.choose(Double.MinValue, Double.MaxValue))
+  }
+
   "The Boolean value format" should "write booleans to a boolean value" in {
     forAll(Gen.oneOf(true, false)) { bool =>
       BooleanValueFormat.toValue(bool) shouldBe BooleanValue(bool)
@@ -82,6 +94,10 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     forAll(Gen.oneOf(stringValueGen, longValueGen, doubleValueGen, blobValueGen, timestampValueGen, latLngValueGen)) { value =>
       BooleanValueFormat.fromValue(value) shouldBe 'Left
     }
+  }
+
+  it should "read a written value correctly" in {
+    forAllTestRoundTrip(Gen.oneOf(true, false))
   }
 
   "The Blob value format" should "write blobs to a blob value" in {
@@ -102,6 +118,10 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     }
   }
 
+  it should "read a written value correctly" in {
+    forAllTestRoundTrip(byteArrayGen.map(Blob.copyFrom))
+  }
+
   "The Timestamp value format" should "write timestamps to a timestamp value" in {
     forAll(timestampGen) { timestamp =>
       TimestampValueFormat.toValue(timestamp) shouldBe TimestampValue(timestamp)
@@ -118,6 +138,10 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     forAll(Gen.oneOf(stringValueGen, longValueGen, doubleValueGen, booleanValueGen, blobValueGen, latLngValueGen)) { value =>
       TimestampValueFormat.fromValue(value) shouldBe 'Left
     }
+  }
+
+  it should "read a written value correctly" in {
+    forAllTestRoundTrip(timestampGen)
   }
 
   "The LatLng value format" should "write latlngs to a latlng value" in {
@@ -138,6 +162,10 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     }
   }
 
+  it should "read a written value correctly" in {
+    forAllTestRoundTrip(latLngGen)
+  }
+
   "The ByteArray value format" should "write byte arrays to a blob value" in {
     forAll(byteArrayGen.filter(!_.isEmpty)) { byteArray =>
       ByteArrayValueFormat.toValue(byteArray) shouldBe BlobValue(Blob.copyFrom(byteArray))
@@ -147,6 +175,12 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   it should "read blob values into byte arrays" in {
     forAll(byteArrayGen.filter(!_.isEmpty)) { byteArray =>
       ByteArrayValueFormat.fromValue(BlobValue(Blob.copyFrom(byteArray))).map(_.deep) shouldBe Right(byteArray.deep)
+    }
+  }
+
+  it should "read a written value correctly" in {
+    forAll(byteArrayGen.filter(!_.isEmpty)) { byteArray =>
+      ByteArrayValueFormat.fromValue(ByteArrayValueFormat.toValue(byteArray)).map(_.deep) shouldBe Right(byteArray.deep)
     }
   }
 
@@ -160,6 +194,11 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { millis =>
       InstantEpochMillisValueFormat.fromValue(LongValue(millis)) shouldBe Right(Instant.ofEpochMilli(millis))
     }
+  }
+
+  it should "read a written value correctly" in {
+    implicit val format = InstantEpochMillisValueFormat
+    forAllTestRoundTrip(Gen.choose(Long.MinValue, Long.MaxValue).map(Instant.ofEpochMilli))
   }
 
   "The BigDecimal value format" should "write bigdecimals to a string value" in {
@@ -180,6 +219,11 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     }
   }
 
+  it should "read a written value correctly" in {
+    implicit val format = BigDecimalStringValueFormat
+    forAllTestRoundTrip(bigDecimalFormat)
+  }
+
   "The list value format" should "write any A to a list value" in {
     forAll(Gen.listOf(Gen.alphaNumStr)) { stringList =>
       val format = implicitly[ValueFormat[Seq[String]]]
@@ -190,21 +234,32 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   it should "read list values into lists" in {
     forAll(Gen.listOf(Gen.alphaNumStr)) { stringList =>
       val format = implicitly[ValueFormat[Seq[String]]]
-      inside(format.fromValue(ListValue(stringList.map(StringValue(_))))){
+      inside(format.fromValue(ListValue(stringList.map(StringValue(_))))) {
         case Right(list) => list should contain theSameElementsAs stringList
         case Left(error) => fail(s"Expected a Right of a list of strings but got: $error")
       }
     }
   }
 
-   it should "return an error if any element of the list is the wrong type" in {
-     forAll(Gen.listOf(Gen.alphaNumStr)) { stringList =>
-       val format = implicitly[ValueFormat[Seq[String]]]
+  it should "return an error if any element of the list is the wrong type" in {
+    forAll(Gen.listOf(Gen.alphaNumStr)) { stringList =>
+      val format = implicitly[ValueFormat[Seq[String]]]
 
-       val values = LongValue(0) +: stringList.map(StringValue(_))
-       format.fromValue(ListValue(values)) shouldBe 'Left
-     }
-   }
+      val values = LongValue(0) +: stringList.map(StringValue(_))
+      format.fromValue(ListValue(values)) shouldBe 'Left
+    }
+  }
+
+  it should "read a written value correctly" in {
+    val listGen: Gen[Seq[String]] = Gen.listOf(Gen.alphaNumStr)
+    forAll(listGen) { stringList =>
+      val format = implicitly[ValueFormat[Seq[String]]]
+      inside(format.fromValue(format.toValue(stringList))) {
+        case Right(list) => list should contain theSameElementsAs stringList
+        case Left(error) => fail(s"Expected a Right of a list of strings but got: $error")
+      }
+    }
+  }
 
   "The option value format" should "write any A to a value" in {
     val format = implicitly[ValueFormat[Option[String]]]
@@ -230,6 +285,12 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     format.fromValue(NullValue()) shouldBe Right(None)
   }
 
+  it should "read a written value correctly" in {
+    val optionFormat: Gen[Option[String]] =
+      Gen.alphaNumStr.flatMap(string => Gen.oneOf(Option.empty[String], Some(string)))
+    forAllTestRoundTrip(optionFormat)
+  }
+
   private val stringValueGen = Gen.alphaNumStr.map(StringValue(_))
   private val longValueGen = Gen.choose(Long.MinValue, Long.MaxValue).map(LongValue(_))
   private val doubleValueGen = Gen.choose(Double.MinValue, Double.MaxValue).map(DoubleValue(_))
@@ -244,5 +305,9 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   } yield LatLng.of(lat, lang)
   private val latLngValueGen = latLngGen.map(LatLngValue(_))
   private val bigDecimalFormat = Gen.choose(Double.MinValue, Double.MaxValue).map(BigDecimal(_))
+
+  private def forAllTestRoundTrip[A](generator: Gen[A])(implicit format: ValueFormat[A]) = {
+    forAll(generator)(value => format.fromValue(format.toValue(value)) shouldBe Right(value))
+  }
 
 }
