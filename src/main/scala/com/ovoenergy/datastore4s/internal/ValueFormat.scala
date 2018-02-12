@@ -114,10 +114,22 @@ object ValueFormat {
       }
   }
 
-  implicit def listValueFormat[A](implicit elementFormat: ValueFormat[A]): ValueFormat[Seq[A]] = new ValueFormat[Seq[A]] {
-    override def toValue(scalaValue: Seq[A]) = ListValue(scalaValue.map(elementFormat.toValue))
+  implicit def optionValueFormat[A](implicit elementFormat: ValueFormat[A]): ValueFormat[Option[A]] = new ValueFormat[Option[A]]{
+    override def toValue(scalaValue: Option[A]): DatastoreValue = scalaValue match {
+      case Some(a) => elementFormat.toValue(a)
+      case None => NullValue()
+    }
 
-    override def fromValue(datastoreValue: DatastoreValue) = datastoreValue match {
+    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Option[A]] = datastoreValue match {
+      case NullValue(_) => Right(None)
+      case value => elementFormat.fromValue(value).map(Some(_))
+    }
+  }
+
+  implicit def listValueFormat[A](implicit elementFormat: ValueFormat[A]): ValueFormat[Seq[A]] = new ValueFormat[Seq[A]] {
+    override def toValue(scalaValue: Seq[A]): DatastoreValue = ListValue(scalaValue.map(elementFormat.toValue))
+
+    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Seq[A]] = datastoreValue match {
       case ListValue(values) => sequence(values.map(elementFormat.fromValue))
       case other => wrongType(ListValue, other)
     }

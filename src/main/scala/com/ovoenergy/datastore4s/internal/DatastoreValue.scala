@@ -17,6 +17,7 @@ private[internal] class WrappedValue(val dsValue: Value[_]) extends DatastoreVal
     case TimestampValue(t) => s"TimestampValue($t)"
     case LatLngValue(ll) => s"LatLngValue($ll)"
     case ListValue(values) => s"ListValue(${values.mkString(", ")})"
+    case NullValue(_) => s"NullValue"
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {
@@ -98,6 +99,15 @@ case object ListValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[Seq[DatastoreValue]] = value.dsValue match {
     case l: com.google.cloud.datastore.ListValue => Some(l.get().asScala.map(new WrappedValue(_)))
+    case _ => None
+  }
+}
+
+private[internal] case object NullValue {
+  def apply(): DatastoreValue = new WrappedValue(new com.google.cloud.datastore.NullValue())
+
+  def unapply(value: DatastoreValue): Option[Null] = value.dsValue match {
+    case _: com.google.cloud.datastore.NullValue => Some(null)
     case _ => None
   }
 }

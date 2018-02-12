@@ -11,6 +11,7 @@ import org.scalatest.{FlatSpec, Inside, Matchers}
 
 class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matchers with Inside {
 
+  // TODO round trip tests
   "The String value format" should "write strings to a string value" in {
     forAll(Gen.alphaNumStr) { str =>
       StringValueFormat.toValue(str) shouldBe StringValue(str)
@@ -179,7 +180,7 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     }
   }
 
-  "The list value format" should "write nay A to a list value" in {
+  "The list value format" should "write any A to a list value" in {
     forAll(Gen.listOf(Gen.alphaNumStr)) { stringList =>
       val format = implicitly[ValueFormat[Seq[String]]]
       format.toValue(stringList) shouldBe ListValue(stringList.map(StringValue(_)))
@@ -188,7 +189,6 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
 
   it should "read list values into lists" in {
     forAll(Gen.listOf(Gen.alphaNumStr)) { stringList =>
-      Right(Seq("", "")) shouldBe Right(Seq("", ""))
       val format = implicitly[ValueFormat[Seq[String]]]
       inside(format.fromValue(ListValue(stringList.map(StringValue(_))))){
         case Right(list) => list should contain theSameElementsAs stringList
@@ -205,6 +205,30 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
        format.fromValue(ListValue(values)) shouldBe 'Left
      }
    }
+
+  "The option value format" should "write any A to a value" in {
+    val format = implicitly[ValueFormat[Option[String]]]
+    forAll(Gen.alphaNumStr) { someString =>
+      format.toValue(Some(someString)) shouldBe StringValue(someString)
+    }
+  }
+
+  it should "write a None to a null value" in {
+    val format = implicitly[ValueFormat[Option[String]]]
+    format.toValue(None) shouldBe NullValue()
+  }
+
+  it should "read a value into options" in {
+    val format = implicitly[ValueFormat[Option[String]]]
+    forAll(Gen.alphaNumStr) { someString =>
+      format.fromValue(StringValue(someString)) shouldBe Right(Some(someString))
+    }
+  }
+
+  it should "read a null value to a None" in {
+    val format = implicitly[ValueFormat[Option[String]]]
+    format.fromValue(NullValue()) shouldBe Right(None)
+  }
 
   private val stringValueGen = Gen.alphaNumStr.map(StringValue(_))
   private val longValueGen = Gen.choose(Long.MinValue, Long.MaxValue).map(LongValue(_))
