@@ -1,6 +1,7 @@
 package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.Entity
+import com.ovoenergy.datastore4s.ToKey.JavaLong
 import com.ovoenergy.datastore4s.internal.ValueFormat
 import com.ovoenergy.datastore4s.utils.TestDatastore
 import org.scalatest.{FeatureSpec, Matchers}
@@ -22,7 +23,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       """EntityFormat[MissingKeyFormatEntity, MissingFieldFormatType]("missing")(_.missingTypeField)""" shouldNot compile
     }
     scenario("A simple case class with only a long key") {
-      val longEntityFormat = EntityFormat[LongKeyObject, java.lang.Long]("long-type")(_.key)
+      val longEntityFormat = EntityFormat[LongKeyObject, JavaLong]("long-type")(_.key)
       val record = LongKeyObject(20)
       val e = longEntityFormat.toEntity(record)
       val entity = e.rawEntity // TODO try and remove this method.

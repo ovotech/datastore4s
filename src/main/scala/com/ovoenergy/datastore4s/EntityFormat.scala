@@ -28,7 +28,7 @@ object EntityFormat {
 
     val keyType = weakTypeTag[KeyType].tpe
 
-    val keyExpression = // TODO figure out what is going on with the scala Long implicitness?? NoSuchMethod??? Have to use java.lang.Long temporarily.
+    val keyExpression =
       q"""val keyFactory = new KeyFactoryFacade(keyFactorySupplier().setKind(kind.name))
           val key = implicitly[ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
 
