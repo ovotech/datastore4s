@@ -29,33 +29,36 @@ object EntityFormat {
     val keyType = weakTypeTag[KeyType].tpe
 
     val keyExpression = // TODO figure out what is going on with the scala Long implicitness?? NoSuchMethod??? Have to use java.lang.Long temporarily.
-      q"""val keyFactory = new com.ovoenergy.datastore4s.KeyFactoryFacade(keyFactorySupplier().setKind(kind.name))
-          val key = implicitly[com.ovoenergy.datastore4s.ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
+      q"""val keyFactory = new KeyFactoryFacade(keyFactorySupplier().setKind(kind.name))
+          val key = implicitly[ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
 
-    // TODO when wrapped in a monad for failures maybe replace with a for comprehension?
     // TODO One more abstractable here
     val builderExpressions = helper.caseClassFieldList(entityType).map { field =>
       val fieldName = field.asTerm.name
-      q"""implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, ${fieldName.toString}, builder)"""
+      q"""implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, ${fieldName.toString}, builder)"""
     }
 
+    // TODO Change builder to be immutable. Maybe put all values in Seq[DataStoreValue} and fold?
     val toExpression =
-      q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): com.ovoenergy.datastore4s.internal.Entity = {
+      q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): internal.Entity = {
             ..$keyExpression
-            val builder = com.ovoenergy.datastore4s.internal.WrappedBuilder(com.google.cloud.datastore.Entity.newBuilder(key))
+            val builder = internal.WrappedBuilder(Entity.newBuilder(key))
             ..$builderExpressions
             builder.build()
           }
         """
 
     val expression =
-      q"""new com.ovoenergy.datastore4s.EntityFormat[$entityType, $keyType] {
+      q"""import com.ovoenergy.datastore4s._
+          import com.google.cloud.datastore.Entity
+
+          new EntityFormat[$entityType, $keyType] {
 
             val kind = Kind($kind)
 
             private val fromEntity = ${FromEntity.applyImpl[EntityType](context)}
 
-            override def fromEntity(entity: com.ovoenergy.datastore4s.internal.Entity): Either[com.ovoenergy.datastore4s.internal.DatastoreError, $entityType] = {
+            override def fromEntity(entity: internal.Entity): Either[internal.DatastoreError, $entityType] = {
               fromEntity.fromEntity(entity)
             }
 
@@ -92,12 +95,14 @@ object FromEntity {
 
     val fieldFormats = fields.map { field =>
       val fieldName = field.asTerm.name
-      fq"""${field.name} <- implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${fieldName.toString})"""
+      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${fieldName.toString})"""
     }
 
     val expression =
-      q"""new com.ovoenergy.datastore4s.FromEntity[$entityType] {
-            override def fromEntity(entity: com.ovoenergy.datastore4s.internal.Entity): Either[com.ovoenergy.datastore4s.internal.DatastoreError, $entityType] = {
+      q"""import com.ovoenergy.datastore4s._
+
+          new FromEntity[$entityType] {
+            override def fromEntity(entity: internal.Entity): Either[internal.DatastoreError, $entityType] = {
               for (
                 ..$fieldFormats
               ) yield $companion.apply(..$companionNamedArguments)

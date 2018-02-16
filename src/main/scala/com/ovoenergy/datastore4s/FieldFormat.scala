@@ -44,7 +44,7 @@ object NestedFieldFormat {
     // TODO Two more abstractables here
     val builderExpressions = fields.map { field =>
       val fieldName = field.asTerm.name
-      q"""implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, fieldName + "." + ${fieldName.toString}, entityBuilder)"""
+      q"""implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, fieldName + "." + ${fieldName.toString}, entityBuilder)"""
     }
 
     val companion = fieldType.typeSymbol.companion
@@ -52,17 +52,21 @@ object NestedFieldFormat {
 
     val fieldFormats = fields.map { field =>
       val fieldName = field.asTerm.name
-        fq"""${field.name} <- implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${fieldName.toString})"""
+        fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${fieldName.toString})"""
     }
 
     val expression =
-      q"""new com.ovoenergy.datastore4s.FieldFormat[$fieldType] {
-            override def addField(value: $fieldType, fieldName: String, entityBuilder: com.ovoenergy.datastore4s.internal.EntityBuilder): com.ovoenergy.datastore4s.internal.EntityBuilder = {
+      q"""import com.ovoenergy.datastore4s._
+          import com.ovoenergy.datastore4s.internal._
+          import com.ovoenergy.datastore4s.internal.Entity
+
+          new FieldFormat[$fieldType] {
+            override def addField(value: $fieldType, fieldName: String, entityBuilder: EntityBuilder): EntityBuilder = {
               ..$builderExpressions
               entityBuilder
             }
 
-            override def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[com.ovoenergy.datastore4s.internal.DatastoreError, $fieldType] = {
+            override def fromField(entity: Entity, fieldName: String): Either[DatastoreError, $fieldType] = {
               for (
                 ..$fieldFormats
               ) yield $companion.apply(..$companionNamedArguments)
