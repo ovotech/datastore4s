@@ -1,12 +1,19 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.Entity
 import com.ovoenergy.datastore4s.ToKey.JavaLong
 import com.ovoenergy.datastore4s.internal.ValueFormat
 import com.ovoenergy.datastore4s.utils.TestDatastore
 import org.scalatest.{FeatureSpec, Matchers}
 
 class EntityFormatSpec extends FeatureSpec with Matchers {
+
+  sealed trait SealedEntityType {
+    val key: String
+  }
+
+  case class FirstSubType(key: String, someLongValue: Long) extends SealedEntityType
+
+  case class SecondSubType(key: String, someBoolean:Boolean, someDouble: Double) extends SealedEntityType
 
   val datastore = TestDatastore()
 
@@ -29,6 +36,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val entity = e.rawEntity // TODO try and remove this method.
       entity.getKey.getKind shouldBe "long-type"
       entity.getKey().getId shouldBe 20
+      entity.getLong("key") shouldBe 20
 
       val roundTripped = longEntityFormat.fromEntity(e)
       roundTripped shouldBe Right(record)
@@ -41,6 +49,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       entity.getKey.getKind shouldBe "string-type"
       entity.getKey().getName shouldBe "key"
       entity.getString("someProperty") shouldBe "propertyValue"
+      entity.getString("someKey") shouldBe "key"
 
       val roundTripped = stringEntityFormat.fromEntity(e)
       roundTripped shouldBe Right(record)
@@ -62,8 +71,35 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val ancestor = key.getAncestors.get(0)
       ancestor.getName shouldBe "parent" // TODO proper handling of ancestors
 
+      entity.getString("id.id") shouldBe "key"
+      entity.getString("id.parent") shouldBe "parent"
+
       val roundTripped = complexEntityFormat.fromEntity(e)
       roundTripped shouldBe Right(record)
+    }
+    scenario("A sealed trait hierarchy") {
+      val sealedEntityFormat = EntityFormat[SealedEntityType, String]("sealed-type")(_.key)
+
+      val firstRecord = FirstSubType("first-key", 2036152)
+      val e1 = sealedEntityFormat.toEntity(firstRecord)
+      val firstEntity = e1.rawEntity // TODO try and remove this method.
+      firstEntity.getKey.getKind shouldBe "sealed-type"
+      firstEntity.getKey().getName shouldBe "first-key"
+      firstEntity.getString("key") shouldBe "first-key"
+      firstEntity.getLong("someLongValue") shouldBe 2036152
+
+      sealedEntityFormat.fromEntity(e1) shouldBe Right(firstRecord)
+
+      val secondRecord = SecondSubType("second-key", true, 1824672.23572)
+      val e2 = sealedEntityFormat.toEntity(secondRecord)
+      val secondEntity = e2.rawEntity // TODO try and remove this method.
+      secondEntity.getKey.getKind shouldBe "sealed-type"
+      secondEntity.getKey().getName shouldBe "second-key"
+      secondEntity.getString("key") shouldBe "second-key"
+      secondEntity.getBoolean("someBoolean") shouldBe true
+      secondEntity.getDouble("someDouble") shouldBe 1824672.23572
+
+      sealedEntityFormat.fromEntity(e2) shouldBe Right(secondRecord)
     }
   }
 

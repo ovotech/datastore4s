@@ -55,7 +55,7 @@ object NestedFieldFormat {
         fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${fieldName.toString})"""
     }
 
-    val expression =
+    context.Expr[FieldFormat[A]](
       q"""import com.ovoenergy.datastore4s._
           import com.ovoenergy.datastore4s.internal._
           import com.ovoenergy.datastore4s.internal.Entity
@@ -73,11 +73,9 @@ object NestedFieldFormat {
             }
           }
         """
-    context.info(context.enclosingPosition, expression.toString, false)
-
-    context.Expr[FieldFormat[A]](
-      expression
     )
   }
 
 }
+
+// SealedFieldFormat?

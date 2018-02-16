@@ -25,3 +25,10 @@ case class WrappedBuilder(builder: com.google.cloud.datastore.Entity.Builder) ex
 
   override def build() = WrappedEntity(builder.build())
 }
+
+object WrappedBuilder {
+  def apply(existingEntity: Entity): EntityBuilder = existingEntity.rawEntity match {
+    case ent: com.google.cloud.datastore.Entity => WrappedBuilder(com.google.cloud.datastore.Entity.newBuilder(ent))
+    case other => throw new RuntimeException(s"Need to fix up internal representation, expected Entity but was: $other")
+  }
+}
