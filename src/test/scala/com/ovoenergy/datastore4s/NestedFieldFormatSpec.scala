@@ -2,6 +2,7 @@ package com.ovoenergy.datastore4s
 
 import java.time.Instant
 
+import com.ovoenergy.datastore4s.internal.ValueFormat.InstantEpochMillisValueFormat
 import com.ovoenergy.datastore4s.utils.TestDatastore
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
@@ -13,6 +14,7 @@ class NestedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenP
 
   implicit val keyFactorySupplier = () => datastore.newKeyFactory()
 
+  implicit val instantFormat = InstantEpochMillisValueFormat
   val entityGen = for {
     id <- Gen.alphaNumStr.filter(!_.isEmpty)
     string <- Gen.alphaNumStr
@@ -28,7 +30,7 @@ class NestedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenP
 
     forAll(entityGen) { entity =>
       val roundTripped = entityFormat.fromEntity(entityFormat.toEntity(entity))
-      roundTripped shouldBe entity
+      roundTripped shouldBe Right(entity)
     }
   }
 

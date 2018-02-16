@@ -1,15 +1,16 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{BaseEntity, Entity}
+import com.ovoenergy.datastore4s.internal.{DatastoreError, Entity}
 
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
 case class Kind(name: String)
 
-// TODO should ToEntity also be split out?? Does that make sense?
 trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
   val kind: Kind
+
+  // TODO split out create key??
 
   def toEntity(record: EntityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): Entity
 
@@ -39,9 +40,9 @@ object EntityFormat {
     }
 
     val toExpression =
-      q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): com.google.cloud.datastore.Entity = {
+      q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): com.ovoenergy.datastore4s.internal.Entity = {
             ..$keyExpression
-            val builder = com.google.cloud.datastore.Entity.newBuilder(key)
+            val builder = com.ovoenergy.datastore4s.internal.WrappedBuilder(com.google.cloud.datastore.Entity.newBuilder(key))
             ..$builderExpressions
             builder.build()
           }
@@ -54,7 +55,7 @@ object EntityFormat {
 
             private val fromEntity = ${FromEntity.applyImpl[EntityType](context)}
 
-            override def fromEntity[E <:  com.google.cloud.datastore.BaseEntity[_]](entity: E): $entityType = {
+            override def fromEntity(entity: com.ovoenergy.datastore4s.internal.Entity): Either[com.ovoenergy.datastore4s.internal.DatastoreError, $entityType] = {
               fromEntity.fromEntity(entity)
             }
 
@@ -69,7 +70,7 @@ object EntityFormat {
 }
 
 trait FromEntity[A] {
-  def fromEntity[E <: BaseEntity[_]](entity: E): A
+  def fromEntity(entity: Entity): Either[DatastoreError, A]
 }
 
 // TODO Should We write separate tests for FromEntity? Rather than relying implicitly to EntityFormat tests
@@ -86,16 +87,20 @@ object FromEntity {
 
     // TODO One more abstractable here
     val companion = entityType.typeSymbol.companion
-    val companionNamedArguments = helper.caseClassFieldList(entityType).map { field =>
-      AssignOrNamedArg(Ident(field.name), q"implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${field.asTerm.name.toString})")
+    val fields = helper.caseClassFieldList(entityType)
+    val companionNamedArguments = fields.map(field =>AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
+
+    val fieldFormats = fields.map { field =>
+      val fieldName = field.asTerm.name
+      fq"""${field.name} <- implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${fieldName.toString})"""
     }
 
     val expression =
       q"""new com.ovoenergy.datastore4s.FromEntity[$entityType] {
-            override def fromEntity[E <:  com.google.cloud.datastore.BaseEntity[_]](entity: E): $entityType = {
-              $companion.apply(
-                ..$companionNamedArguments
-              )
+            override def fromEntity(entity: com.ovoenergy.datastore4s.internal.Entity): Either[com.ovoenergy.datastore4s.internal.DatastoreError, $entityType] = {
+              for (
+                ..$fieldFormats
+              ) yield $companion.apply(..$companionNamedArguments)
             }
           }
         """

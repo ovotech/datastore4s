@@ -1,6 +1,7 @@
 package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.{Datastore, DatastoreOptions, Entity, ReadOption}
+import com.ovoenergy.datastore4s.internal.{DatastoreError, WrappedEntity}
 
 case class DataStoreConfiguration(projectId: String, namespace: String)
 
@@ -17,15 +18,18 @@ object DatastoreService {
   }
 
   // TODO Unit and Integration tests for below functions
-  def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): Option[E] = {
+  def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): Option[Either[DatastoreError, E]] = {
     val keyFactory = KeyFactoryFacade(datastore, format.kind)
     val entityKey = toKey.toKey(key, keyFactory)
-    Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*)).map(format.fromEntity)
+    Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*)).map(WrappedEntity(_)).map(format.fromEntity)
   }
 
   def put[E](entityObject: E)(implicit format: EntityFormat[E, _], datastore: Datastore): Persisted[E] = {
     implicit val keyFactorySupplier = () => datastore.newKeyFactory()
-    Persisted(entityObject, datastore.put(format.toEntity(entityObject)))
+    val entity = format.toEntity(entityObject) match {
+      case WrappedEntity(e: Entity) => e
+    }
+    Persisted(entityObject, datastore.put(entity))
   }
 
   def list[E](implicit format: EntityFormat[E, _], datastore: Datastore): Query[E] = {

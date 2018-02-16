@@ -1,102 +1,28 @@
 package com.ovoenergy.datastore4s
 
-import java.time.Instant
-
-import com.google.cloud.Timestamp
-import com.google.cloud.datastore.{BaseEntity, Blob, Entity, LatLng}
+import com.ovoenergy.datastore4s.internal.{DatastoreError, EntityBuilder, ValueFormat}
 
 import scala.reflect.macros.blackbox.Context
 
-trait FieldFormat[A] {
-  // TODO should there be some form of asValue(a:A):Value[_]  for queries? How would this affect the nested field format?
+trait FieldFormat[A] { // TODO is there a way to remove the need for this trait? It only exists for the customisation of NestedFieldFormat
 
-  def addField(value: A, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder
+  def addField(value: A, fieldName: String, builder: EntityBuilder): EntityBuilder
 
-  def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): A
+  def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[DatastoreError, A]
 
 }
 
 object FieldFormat {
 
-  implicit object StringFieldFormat extends FieldFormat[String] {
-    override def addField(value: String, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, value)
-
-    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): String = entity.getString(fieldName)
-  }
-
-  implicit object LongFieldFormat extends FieldFormat[Long] {
-    override def addField(value: Long, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, value)
-
-    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): Long = entity.getLong(fieldName)
-  }
-
-  implicit object BooleanFieldFormat extends FieldFormat[Boolean] {
-    override def addField(value: Boolean, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, value)
-
-    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): Boolean = entity.getBoolean(fieldName)
-  }
-
-  implicit object DoubleFieldFormat extends FieldFormat[Double] {
-    override def addField(value: Double, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, value)
-
-    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): Double = entity.getDouble(fieldName)
-  }
-
-  implicit object IntFieldFormat extends FieldFormat[Int] {
-    override def addField(value: Int, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, value)
-
-    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): Int = entity.getLong(fieldName).toInt
-  }
-
-  implicit object ByteArrayBlobFieldFormat extends FieldFormat[Array[Byte]] {
-    override def addField(value: Array[Byte], fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, Blob.copyFrom(value))
-
-    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): Array[Byte] = entity.getBlob(fieldName).toByteArray
-  }
-
-  implicit object TimestampFieldFormat extends FieldFormat[Timestamp] {
-    override def addField(value: Timestamp, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, value)
-
-    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): Timestamp = entity.getTimestamp(fieldName)
-  }
-
-  implicit object LatLngFieldFormat extends FieldFormat[LatLng] {
-    override def addField(value: LatLng, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, value)
-
-    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): LatLng = entity.getLatLng(fieldName)
-  }
-
-  // TODO should the following have to be brought into implicit scope in case people want to persist differently?
-  implicit object InstantEpochMilliFormat extends FieldFormat[Instant] {
-    override def addField(value: Instant, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, value.toEpochMilli)
-
-    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): Instant = Instant.ofEpochMilli(entity.getLong(fieldName))
-  }
-
-  implicit object BigDecimalStringFormat extends FieldFormat[BigDecimal] {
-    override def addField(value: BigDecimal, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = entityBuilder.set(fieldName, value.toString())
-
-    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): BigDecimal = BigDecimal(entity.getString(fieldName))
-  }
-
-  implicit def optionFormat[A](implicit format: FieldFormat[A]): FieldFormat[Option[A]] = new FieldFormat[Option[A]] {
-    override def addField(value: Option[A], fieldName: String, entityBuilder: Entity.Builder) = value match {
-      case Some(a) => format.addField(a, fieldName, entityBuilder)
-      case None => entityBuilder.setNull(fieldName)
-    }
-
-    override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String) = Option(format.fromField(entity, fieldName))
-  }
-
-  def fieldFormatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: FieldFormat[B]): FieldFormat[A] = {
-    new FieldFormat[A] {
-      override def addField(value: A, fieldName: String, entityBuilder: Entity.Builder): Entity.Builder = existingFormat.addField(extractor(value), fieldName, entityBuilder)
-
-      override def fromField[E <: BaseEntity[_]](entity: E, fieldName: String): A = constructor(existingFormat.fromField(entity, fieldName))
-    }
-  }
-
   // TODO format from EntityFormats
+  // TODO Sealed trait formats using a dtype field
+  implicit def fieldFormatFromValueFormat[A](implicit valueFormat: ValueFormat[A]): FieldFormat[A] = new FieldFormat[A] {
+    override def addField(value: A, fieldName: String, builder: EntityBuilder): EntityBuilder =
+      builder.addField(fieldName, valueFormat.toValue(value))
+
+    override def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[DatastoreError, A] =
+      entity.field(fieldName).map(valueFormat.fromValue).getOrElse(DatastoreError.missingField(fieldName, entity))
+  }
 
 }
 
@@ -117,26 +43,29 @@ object NestedFieldFormat {
 
     // TODO Two more abstractables here
     val builderExpressions = fields.map { field =>
-        val fieldName = field.asTerm.name
-        q"""implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, fieldName + "." + ${fieldName.toString}, entityBuilder)"""
+      val fieldName = field.asTerm.name
+      q"""implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, fieldName + "." + ${fieldName.toString}, entityBuilder)"""
     }
 
     val companion = fieldType.typeSymbol.companion
-    val companionNamedArguments = fields.map { field =>
-      AssignOrNamedArg(Ident(field.name), q"""implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${field.asTerm.name.toString})""")
+    val companionNamedArguments = fields.map(field =>AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
+
+    val fieldFormats = fields.map { field =>
+      val fieldName = field.asTerm.name
+        fq"""${field.name} <- implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${fieldName.toString})"""
     }
 
     val expression =
       q"""new com.ovoenergy.datastore4s.FieldFormat[$fieldType] {
-            override def addField(value: $fieldType, fieldName: String, entityBuilder: com.google.cloud.datastore.Entity.Builder): com.google.cloud.datastore.Entity.Builder = {
+            override def addField(value: $fieldType, fieldName: String, entityBuilder: com.ovoenergy.datastore4s.internal.EntityBuilder): com.ovoenergy.datastore4s.internal.EntityBuilder = {
               ..$builderExpressions
               entityBuilder
             }
 
-            override def fromField[E <: com.google.cloud.datastore.BaseEntity[_]](entity: E, fieldName: String): $fieldType = {
-              $companion.apply(
-                ..$companionNamedArguments
-              )
+            override def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[com.ovoenergy.datastore4s.internal.DatastoreError, $fieldType] = {
+              for (
+                ..$fieldFormats
+              ) yield $companion.apply(..$companionNamedArguments)
             }
           }
         """

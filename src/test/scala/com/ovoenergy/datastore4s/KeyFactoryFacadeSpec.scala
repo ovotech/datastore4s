@@ -26,38 +26,15 @@ class KeyFactoryFacadeSpec extends FlatSpec with GeneratorDrivenPropertyChecks w
     }
   }
 
-  it should "be able to add both long and string ancestors" in {
-    forAll(nonEmptyString, nonEmptyString) { (kind, name) =>
-      val key = KeyFactoryFacade(datastore, Kind("ancestor-test"))
-        .addAncestor(StringAncestor(Kind(kind), name))
-        .buildWithName("test-name")
-      key.getAncestors should have size 1
-      val ancestor = key.getAncestors.get(0)
-      ancestor.getKind shouldBe kind
-      ancestor.getName shouldBe name
-    }
-
-    forAll(nonEmptyString, Gen.choose(Long.MinValue, Long.MaxValue)) { (kind, id) =>
-      val key = KeyFactoryFacade(datastore, Kind("ancestor-test"))
-        .addAncestor(LongAncestor(Kind(kind), id))
-        .buildWithName("test-name")
-      key.getAncestors should have size 1
-      val ancestor = key.getAncestors.get(0)
-      ancestor.getKind shouldBe kind
-      ancestor.getId shouldBe id
-    }
-  }
-
   it should "be able to add arbitrary ancestors given an implicit ToAncestor[A]" in {
-    case class SimpleWrapper(kind: String, name: String)
-    implicit object SimpleToAncestor extends ToAncestor[SimpleWrapper] {
-      override def toAncestor(value: SimpleWrapper) = StringAncestor(Kind(value.kind), value.name)
-    }
+    case class SimpleWrapper(name: String)
+    val kind = "simple-wrapped-kind"
+    implicit val SimpleToAncestor = ToAncestor.toStringAncestor[SimpleWrapper](kind)(_.name)
 
-    forAll(nonEmptyString, nonEmptyString) { (kind, name) =>
+    forAll(nonEmptyString) { name =>
       val key = KeyFactoryFacade(datastore, Kind("ancestor-test"))
-        .addAncestor(SimpleWrapper(kind, name))
-        .buildWithName("test-name")
+        .addAncestor(SimpleWrapper(name))
+        .buildWithName("test-name") 
       key.getAncestors should have size 1
       val ancestor = key.getAncestors.get(0)
       ancestor.getKind shouldBe kind
