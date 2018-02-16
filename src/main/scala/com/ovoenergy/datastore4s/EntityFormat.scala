@@ -38,7 +38,8 @@ object EntityFormat {
              case ..$cases
            }
         """
-      val expression =
+
+      context.Expr[EntityFormat[EntityType, KeyType]](
         q"""import com.ovoenergy.datastore4s._
           import com.google.cloud.datastore.Entity
 
@@ -56,9 +57,6 @@ object EntityFormat {
             $toExpression
           }
         """
-      context.info(context.enclosingPosition, "\n\n" + expression.toString(), true)
-      context.Expr[EntityFormat[EntityType, KeyType]](
-        expression
       )
     } else {
 
@@ -124,7 +122,7 @@ object FromEntity {
       val cases = subTypes.map { subType =>
         cq"""Right(${subType.name.toString}) => FromEntity[$subType].fromEntity(entity)"""
       }
-      val expression =
+      context.Expr[FromEntity[A]](
         q"""import com.ovoenergy.datastore4s._
 
           new FromEntity[$entityType] {
@@ -135,9 +133,6 @@ object FromEntity {
               case Left(error) => Left(error)
             }
           }"""
-      context.info(context.enclosingPosition, "\n\n" + expression.toString(), true)
-      context.Expr[FromEntity[A]](
-        expression
       )
     } else {
       helper.requireCaseClass(entityType)
