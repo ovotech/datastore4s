@@ -33,6 +33,7 @@ jobs:
   unit-test:
     <<: *defaults
     steps:
+      - checkout
       - attach_workspace:
           at: .
       - restore_cache:
