@@ -1,5 +1,6 @@
 package com.ovoenergy.datastore4s
 
+import com.ovoenergy.datastore4s.NestedFieldFormat.applyImpl
 import com.ovoenergy.datastore4s.internal.{DatastoreError, EntityBuilder, ValueFormat}
 
 import scala.reflect.macros.blackbox.Context
@@ -44,36 +45,81 @@ object NestedFieldFormat {
     // TODO Two more abstractables here
     val builderExpressions = fields.map { field =>
       val fieldName = field.asTerm.name
-      q"""implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, fieldName + "." + ${fieldName.toString}, entityBuilder)"""
+      q"""implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, fieldName + "." + ${fieldName.toString}, entityBuilder)"""
     }
 
     val companion = fieldType.typeSymbol.companion
-    val companionNamedArguments = fields.map(field =>AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
+    val companionNamedArguments = fields.map(field => AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
 
     val fieldFormats = fields.map { field =>
       val fieldName = field.asTerm.name
-        fq"""${field.name} <- implicitly[com.ovoenergy.datastore4s.FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${fieldName.toString})"""
+      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${fieldName.toString})"""
     }
 
-    val expression =
-      q"""new com.ovoenergy.datastore4s.FieldFormat[$fieldType] {
-            override def addField(value: $fieldType, fieldName: String, entityBuilder: com.ovoenergy.datastore4s.internal.EntityBuilder): com.ovoenergy.datastore4s.internal.EntityBuilder = {
+    context.Expr[FieldFormat[A]](
+      q"""import com.ovoenergy.datastore4s._
+          import com.ovoenergy.datastore4s.internal._
+          import com.ovoenergy.datastore4s.internal.Entity
+
+          new FieldFormat[$fieldType] {
+            override def addField(value: $fieldType, fieldName: String, entityBuilder: EntityBuilder): EntityBuilder = {
               ..$builderExpressions
               entityBuilder
             }
 
-            override def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[com.ovoenergy.datastore4s.internal.DatastoreError, $fieldType] = {
+            override def fromField(entity: Entity, fieldName: String): Either[DatastoreError, $fieldType] = {
               for (
                 ..$fieldFormats
               ) yield $companion.apply(..$companionNamedArguments)
             }
           }
         """
-    context.info(context.enclosingPosition, expression.toString, false)
-
-    context.Expr[FieldFormat[A]](
-      expression
     )
   }
 
+}
+
+object SealedFieldFormat { // TODO Should these be separate??
+
+  import scala.language.experimental.macros
+
+  def apply[A](): FieldFormat[A] = macro applyImpl[A]
+
+  def applyImpl[A: context.WeakTypeTag](context: Context)(): context.Expr[FieldFormat[A]] = {
+    import context.universe._
+    val helper = MacroHelper(context)
+    val fieldType = weakTypeTag[A].tpe
+    if (!helper.isSealedTrait(fieldType)) {
+      context.abort(context.enclosingPosition, s"Type must be a sealed trait but $fieldType is not")
+    }
+    val subTypes = helper.subTypes(fieldType)
+
+    val addCases = subTypes.map { subType =>
+      cq"""f: ${subType.asClass} =>
+          val withType = stringFormat.addField(${subType.name.toString}, fieldName+ ".type", entityBuilder)
+          NestedFieldFormat[$subType].addField(f, fieldName, withType)"""
+    }
+
+    val fromCases = subTypes.map { subType =>
+      cq"""Right(${subType.name.toString}) => NestedFieldFormat[$subType].fromField(entity, fieldName)"""
+    }
+
+    context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
+          import com.ovoenergy.datastore4s.internal._
+          import com.ovoenergy.datastore4s.internal.Entity
+
+          new FieldFormat[$fieldType] {
+            private val stringFormat = implicitly[FieldFormat[String]]
+            override def addField(value: $fieldType, fieldName: String, entityBuilder: EntityBuilder): EntityBuilder = value match {
+              case ..$addCases
+            }
+
+            override def fromField(entity: Entity, fieldName: String): Either[DatastoreError, $fieldType] = stringFormat.fromField(entity, fieldName + ".type") match {
+              case ..$fromCases
+              case Right(other) => internal.DatastoreError.error(s"Unknown subtype found: $$other")
+              case Left(error) => Left(error)
+            }
+          }
+        """)
+  }
 }

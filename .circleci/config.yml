@@ -18,7 +18,7 @@ jobs:
             - v2-dependencies-
       - run:
           name: Compile
-          command: sbt compile
+          command: sbt ";compile;test:compile"
       - save_cache:
           paths:
             - ~/.m2
@@ -33,6 +33,7 @@ jobs:
   unit-test:
     <<: *defaults
     steps:
+      - checkout
       - attach_workspace:
           at: .
       - restore_cache:

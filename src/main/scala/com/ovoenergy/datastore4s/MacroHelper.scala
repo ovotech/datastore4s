@@ -10,8 +10,17 @@ private[datastore4s] class MacroHelper[C <: Context](val context: C) {
     }
   }
 
-  def caseClassFieldList(tpe:context.universe.Type) ={
+  def caseClassFieldList(tpe: context.universe.Type) = {
     tpe.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten
+  }
+
+  def isSealedTrait(tpe: context.universe.Type) = {
+    val classType = tpe.typeSymbol.asClass
+    classType.isTrait && classType.isSealed
+  }
+
+  def subTypes(tpe: context.universe.Type) = {
+    tpe.typeSymbol.asClass.knownDirectSubclasses
   }
 
 }

@@ -24,7 +24,7 @@ class NestedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenP
     time <- Gen.choose(Long.MinValue, Long.MaxValue).map(Instant.ofEpochMilli(_))
   } yield EntityWithNestedType(id, SomeNestedType(string, long, int, bool, time))
 
-  "The apply method of Field Format" should "create a field format that nests the fields of case classes" in {
+  "The apply method of NestedFieldFormat" should "create a field format that nests the fields of case classes" in {
     implicit val format = NestedFieldFormat[SomeNestedType]
     val entityFormat = EntityFormat[EntityWithNestedType, String]("nested-test-kind")(_.id)
 

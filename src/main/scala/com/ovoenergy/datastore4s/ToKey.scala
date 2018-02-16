@@ -12,9 +12,10 @@ object ToKey {
     override def toKey(value: String, keyFactory: KeyFactory): Key = keyFactory.buildWithName(value)
   }
 
-  // TODO find out why resolving just normal Long does not work
-  implicit object LongToKey extends ToKey[java.lang.Long] {
-    override def toKey(value: java.lang.Long, keyFactory: KeyFactory): Key = keyFactory.buildWithId(value)
+  // TODO move to pakage
+  type JavaLong = java.lang.Long
+  implicit object LongToKey extends ToKey[JavaLong] {
+    override def toKey(value: JavaLong, keyFactory: KeyFactory): Key = keyFactory.buildWithId(value)
   }
 
 }
