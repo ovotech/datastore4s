@@ -13,15 +13,11 @@ trait ValueFormat[A] {
 
   def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, A]
 
-  def wrongType(expectedType: DsType, datastoreValue: DatastoreValue): Either[DatastoreError, A] = Left(new DatastoreError {
-    override def toString: String = s"Expected a $expectedType but got $datastoreValue"
-  })
-
 }
 
 object ValueFormat {
 
-  implicit object StringValueFormat extends ValueFormat[String] {
+  implicit object StringValueFormat extends ValueFormat[String] with DatastoreErrors {
     override def toValue(scalaValue: String): DatastoreValue = StringValue(scalaValue)
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, String] = datastoreValue match {
@@ -30,7 +26,7 @@ object ValueFormat {
     }
   }
 
-  implicit object LongValueFormat extends ValueFormat[Long] {
+  implicit object LongValueFormat extends ValueFormat[Long] with DatastoreErrors {
     override def toValue(scalaValue: Long): DatastoreValue = LongValue(scalaValue)
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Long] = datastoreValue match {
@@ -39,7 +35,16 @@ object ValueFormat {
     }
   }
 
-  implicit object DoubleValueFormat extends ValueFormat[Double] {
+  implicit object IntValueFormat extends ValueFormat[Int] with DatastoreErrors {
+    override def toValue(scalaValue: Int): DatastoreValue = LongValue(scalaValue)
+
+    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Int] = datastoreValue match {
+      case LongValue(long) => Right(long.toInt)
+      case other => wrongType(LongValue, other)
+    }
+  }
+
+  implicit object DoubleValueFormat extends ValueFormat[Double] with DatastoreErrors {
     override def toValue(scalaValue: Double): DatastoreValue = DoubleValue(scalaValue)
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Double] = datastoreValue match {
@@ -48,7 +53,7 @@ object ValueFormat {
     }
   }
 
-  implicit object BooleanValueFormat extends ValueFormat[Boolean] {
+  implicit object BooleanValueFormat extends ValueFormat[Boolean] with DatastoreErrors {
     override def toValue(scalaValue: Boolean): DatastoreValue = BooleanValue(scalaValue)
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Boolean] = datastoreValue match {
@@ -57,7 +62,7 @@ object ValueFormat {
     }
   }
 
-  implicit object BlobValueFormat extends ValueFormat[Blob] {
+  implicit object BlobValueFormat extends ValueFormat[Blob] with DatastoreErrors {
     override def toValue(scalaValue: Blob): DatastoreValue = BlobValue(scalaValue)
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Blob] = datastoreValue match {
@@ -66,7 +71,7 @@ object ValueFormat {
     }
   }
 
-  implicit object TimestampValueFormat extends ValueFormat[Timestamp] {
+  implicit object TimestampValueFormat extends ValueFormat[Timestamp] with DatastoreErrors {
     override def toValue(scalaValue: Timestamp): DatastoreValue = TimestampValue(scalaValue)
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Timestamp] = datastoreValue match {
@@ -75,7 +80,7 @@ object ValueFormat {
     }
   }
 
-  implicit object LatLngValueFormat extends ValueFormat[LatLng] {
+  implicit object LatLngValueFormat extends ValueFormat[LatLng] with DatastoreErrors {
     override def toValue(scalaValue: LatLng): DatastoreValue = LatLngValue(scalaValue)
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, LatLng] = datastoreValue match {
@@ -100,16 +105,14 @@ object ValueFormat {
 
   }
 
-  object BigDecimalStringValueFormat extends ValueFormat[BigDecimal] {
+  object BigDecimalStringValueFormat extends ValueFormat[BigDecimal] with DatastoreErrors {
     override def toValue(scalaValue: BigDecimal): DatastoreValue = StringValueFormat.toValue(scalaValue.toString())
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, BigDecimal] =
       StringValueFormat.fromValue(datastoreValue).flatMap { str =>
         Try(BigDecimal(str)) match {
           case Success(bd) => Right(bd)
-          case Failure(exception) => Left(new DatastoreError {
-            override def toString: String = s"Could not parse BigDecimal from $str. Error: ${exception.getMessage}"
-          })
+          case Failure(exception) => error(s"Could not parse BigDecimal from $str. Error: ${exception.getMessage}")
         }
       }
   }
@@ -126,24 +129,12 @@ object ValueFormat {
     }
   }
 
-  implicit def listValueFormat[A](implicit elementFormat: ValueFormat[A]): ValueFormat[Seq[A]] = new ValueFormat[Seq[A]] {
+  implicit def listValueFormat[A](implicit elementFormat: ValueFormat[A]): ValueFormat[Seq[A]] = new ValueFormat[Seq[A]] with DatastoreErrors {
     override def toValue(scalaValue: Seq[A]): DatastoreValue = ListValue(scalaValue.map(elementFormat.toValue))
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Seq[A]] = datastoreValue match {
-      case ListValue(values) => sequence(values.map(elementFormat.fromValue))
+      case ListValue(values) => DatastoreError.sequence(values.map(elementFormat.fromValue))
       case other => wrongType(ListValue, other)
-    }
-  }
-
-  private def sequence[A](values: Seq[Either[DatastoreError, A]]): Either[DatastoreError, Seq[A]] = {
-    // TODO tidy this up. Maybe move to DatastoreError object under accumulateErrors?
-    values.foldLeft(Right(Seq.empty): Either[DatastoreError, Seq[A]]) {
-      case (Right(acc), Right(value)) => Right(value +: acc)
-      case (Left(errorAcc), Left(error)) => Left(new DatastoreError {
-        override def toString: String = s"$errorAcc\n$error"
-      })
-      case (Right(_), Left(error)) => Left(error)
-      case (Left(errorAcc), Right(_)) => Left(errorAcc)
     }
   }
 

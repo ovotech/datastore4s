@@ -2,21 +2,18 @@ package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.google.cloud.datastore._
+import com.ovoenergy.datastore4s.internal.{DatastoreError, ValueFormat, WrappedEntity}
 
 import scala.collection.JavaConverters._
 
 trait Query[E] {
   // TODO replace raw query with some form of Monad representation of an action to be executed.
 
-  def withAncestor(ancestor: Ancestor): Query[E]
+  def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]): Query[E]
 
-  def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]): Query[E] = withAncestor(toAncestor.toAncestor(a))
+  def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E] // TODO extend this somehow. Perhaps with a DSL?
 
-  def withPropertyEq(propertyName: String, value: Int): Query[E] // TODO extend this somehow. Perhaps with a DSL?
-
-  def withPropertyEq(propertyName: String, value: String): Query[E] // TODO extend this somehow. Perhaps with a DSL? Annoying overloading is a problem. Implicit use of DatastoreValue?
-
-  def stream(): Stream[E]
+  def stream(): Stream[Either[DatastoreError, E]]
 
 }
 
@@ -27,18 +24,17 @@ object Query {
   }
 }
 
-case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEntity[_]])(implicit fromEntity: FromEntity[E], datastore: Datastore) extends Query[E] {
+case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEntity[Key]])(implicit fromEntity: FromEntity[E], datastore: Datastore) extends Query[E] {
 
-  override def withAncestor(ancestor: Ancestor) = {
-    val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())
+  override def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]) = {
+    val key = Query.ancestorToKey(toAncestor.toAncestor(a), datastore.newKeyFactory())
     DatastoreQuery(queryBuilder.setFilter(PropertyFilter.hasAncestor(key)))
   }
 
-  override def withPropertyEq(propertyName: String, value: Int) = DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
+  override def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]) =
+    DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, valueFormat.toValue(value).dsValue)))
 
-  override def withPropertyEq(propertyName: String, value: String) = DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
-
-  override def stream() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toStream.map(fromEntity.fromEntity)
+  override def stream() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toStream.map(WrappedEntity(_)).map(fromEntity.fromEntity)
 }
 
 case class Project[E]()(implicit datastore: Datastore, format: EntityFormat[E, _]) {
@@ -55,14 +51,14 @@ case class Projection[E, A]()(implicit datastore: Datastore, format: EntityForma
 }
 
 case class ProjectionQuery[E, A](mappings: Map[String, String], queryBuilder: StructuredQuery.Builder[ProjectionEntity])(implicit datastore: Datastore, format: EntityFormat[E, _], fromEntity: FromEntity[A]) extends Query[A] {
-  override def withAncestor(ancestor: Ancestor) = {
-    val key = Query.ancestorToKey(ancestor, datastore.newKeyFactory())
+
+  override def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]) = {
+    val key = Query.ancestorToKey(toAncestor.toAncestor(a), datastore.newKeyFactory())
     ProjectionQuery(mappings, queryBuilder.setFilter(PropertyFilter.hasAncestor(key)))
   }
 
-  override def withPropertyEq(propertyName: String, value: Int) = ProjectionQuery(mappings, queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
-
-  override def withPropertyEq(propertyName: String, value: String) = ProjectionQuery(mappings, queryBuilder.setFilter(PropertyFilter.eq(propertyName, value)))
+  override def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]) =
+    ProjectionQuery(mappings, queryBuilder.setFilter(PropertyFilter.eq(propertyName, valueFormat.toValue(value).dsValue)))
 
   override def stream() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toStream.map { e =>
     val builder = ProjectionEntity.newBuilder(e)
@@ -71,5 +67,5 @@ case class ProjectionQuery[E, A](mappings: Map[String, String], queryBuilder: St
       builder.set(newValue, value)
     }
     builder.build()
-  }.map(fromEntity.fromEntity(_))
+  }.map(WrappedEntity(_)).map(fromEntity.fromEntity(_))
 }

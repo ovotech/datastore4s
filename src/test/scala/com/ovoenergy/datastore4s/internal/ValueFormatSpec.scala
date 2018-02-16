@@ -56,6 +56,22 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     forAllTestRoundTrip(Gen.choose(Long.MinValue, Long.MaxValue))
   }
 
+  "The Int value format" should "write ints to a int value" in {
+    forAll(Gen.choose(Int.MinValue, Int.MaxValue)) { int =>
+      IntValueFormat.toValue(int) shouldBe LongValue(int)
+    }
+  }
+
+  it should "read int values into ints" in {
+    forAll(Gen.choose(Int.MinValue, Int.MaxValue)) { int =>
+      IntValueFormat.fromValue(LongValue(int)) shouldBe Right(int)
+    }
+  }
+
+  it should "read a written value correctly" in {
+    forAllTestRoundTrip(Gen.choose(Int.MinValue, Int.MaxValue))
+  }
+
   "The Double value format" should "write doubles to a double value" in {
     forAll(Gen.choose(Double.MinValue, Double.MaxValue)) { double =>
       DoubleValueFormat.toValue(double) shouldBe DoubleValue(double)

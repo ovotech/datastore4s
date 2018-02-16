@@ -1,5 +1,7 @@
 package com.ovoenergy.datastore4s
 
+import com.ovoenergy.datastore4s.internal.DatastoreError
+
 trait DefaultDatastoreSupport {
 
   def dataStoreConfiguration: DataStoreConfiguration
@@ -18,7 +20,7 @@ trait DefaultDatastoreSupport {
 
   def list[E]()(implicit format: EntityFormat[E, _]): Query[E] = DatastoreService.list
 
-  def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): Option[E] = DatastoreService.findOne(key)
+  def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): Option[Either[DatastoreError, E]] = DatastoreService.findOne(key)
 
   def project[E]()(implicit format: EntityFormat[E, _]): Project[E] = DatastoreService.project[E]
 

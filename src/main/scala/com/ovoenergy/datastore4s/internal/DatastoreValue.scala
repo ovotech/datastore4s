@@ -4,10 +4,10 @@ import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Blob, LatLng, Value}
 
 sealed trait DatastoreValue {
-  private[internal] val dsValue: Value[_]
+  val dsValue: Value[_]
 }
 
-private[internal] class WrappedValue(val dsValue: Value[_]) extends DatastoreValue {
+class WrappedValue(val dsValue: Value[_]) extends DatastoreValue {
   override def toString: String = this match {
     case StringValue(s) => s"""StringValue("$s")"""
     case LongValue(l) => s"LongValue($l)"
