@@ -26,7 +26,9 @@ jobs:
           key: v2-dependencies-{{ checksum "build.sbt" }}
       - persist_to_workspace:
           root: .
-          paths: target
+          paths:
+            - target
+            - build.sbt
 
   unit-test:
     <<: *defaults
