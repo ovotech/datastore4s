@@ -117,7 +117,7 @@ object ValueFormat {
       }
   }
 
-  implicit def optionValueFormat[A](implicit elementFormat: ValueFormat[A]): ValueFormat[Option[A]] = new ValueFormat[Option[A]]{
+  implicit def optionValueFormat[A](implicit elementFormat: ValueFormat[A]): ValueFormat[Option[A]] = new ValueFormat[Option[A]] {
     override def toValue(scalaValue: Option[A]): DatastoreValue = scalaValue match {
       case Some(a) => elementFormat.toValue(a)
       case None => NullValue()
@@ -136,6 +136,23 @@ object ValueFormat {
       case ListValue(values) => DatastoreError.sequence(values.map(elementFormat.fromValue))
       case other => wrongType(ListValue, other)
     }
+  }
+
+  def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
+    formatFromFunctionsWithError(constructor andThen (a => Right(a)))(extractor)
+
+  def formatFromFunctionsEither[A, B](constructor: B => Either[String, A])(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] = {
+    val newConstructor = constructor andThen {
+      case Left(error) => DatastoreError.error(error)
+      case Right(r) => Right(r)
+    }
+    formatFromFunctionsWithError(newConstructor)(extractor)
+  }
+
+  private def formatFromFunctionsWithError[A, B](constructor: B => Either[DatastoreError, A])(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] = new ValueFormat[A] {
+    override def toValue(scalaValue: A) = format.toValue(extractor(scalaValue))
+
+    override def fromValue(datastoreValue: DatastoreValue) = format.fromValue(datastoreValue).flatMap(constructor)
   }
 
 }

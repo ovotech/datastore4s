@@ -1,6 +1,7 @@
 package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.Entity
+import com.ovoenergy.datastore4s.internal.ValueFormat
 import com.ovoenergy.datastore4s.utils.TestDatastore
 import org.scalatest.{FeatureSpec, Matchers}
 
@@ -45,7 +46,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     }
     scenario("A case class that uses a non string or numeric key") {
       implicit val idAsKey = IdToKey
-      implicit val parentFormat = FieldFormat.fieldFormatFromFunctions(Parent.apply)(_.name)
+      implicit val parentFormat = ValueFormat.formatFromFunctions(Parent.apply)(_.name)
       implicit val idFieldFormat = NestedFieldFormat[Id]
       val complexEntityFormat = EntityFormat[ComplexKeyObject, Id]("complex-kind")(_.id)
 

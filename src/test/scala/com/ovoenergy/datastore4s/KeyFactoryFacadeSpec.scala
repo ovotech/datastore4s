@@ -34,7 +34,7 @@ class KeyFactoryFacadeSpec extends FlatSpec with GeneratorDrivenPropertyChecks w
     forAll(nonEmptyString) { name =>
       val key = KeyFactoryFacade(datastore, Kind("ancestor-test"))
         .addAncestor(SimpleWrapper(name))
-        .buildWithName("test-name")
+        .buildWithName("test-name") 
       key.getAncestors should have size 1
       val ancestor = key.getAncestors.get(0)
       ancestor.getKind shouldBe kind

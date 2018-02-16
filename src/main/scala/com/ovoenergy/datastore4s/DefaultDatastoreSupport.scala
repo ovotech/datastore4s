@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import com.ovoenergy.datastore4s.internal.DatastoreError
+import com.ovoenergy.datastore4s.internal.{DatastoreError, ValueFormat}
 
 trait DefaultDatastoreSupport {
 
@@ -9,8 +9,11 @@ trait DefaultDatastoreSupport {
   private implicit val datastore = DatastoreService.createDatastore(dataStoreConfiguration)
   implicit val keyFactorySupplier = () => datastore.newKeyFactory()
 
-  def fieldFormatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: FieldFormat[B]): FieldFormat[A] =
-    FieldFormat.fieldFormatFromFunctions(constructor)(extractor)
+  def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: ValueFormat[B]): ValueFormat[A] =
+    ValueFormat.formatFromFunctions(constructor)(extractor)
+
+  def formatFromFunctionsEither[A, B](constructor: B => Either[String, A])(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
+    ValueFormat.formatFromFunctionsEither(constructor)(extractor)
 
   def toStringAncestor[A](kind: String)(f: A => String): ToAncestor[A] = ToAncestor.toStringAncestor(kind)(f)
 

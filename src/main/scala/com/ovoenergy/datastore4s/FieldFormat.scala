@@ -14,15 +14,6 @@ trait FieldFormat[A] { // TODO is there a way to remove the need for this trait?
 
 object FieldFormat {
 
-  // TODO move this to the value format
-  def fieldFormatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: FieldFormat[B]): FieldFormat[A] = {
-    new FieldFormat[A] {
-      override def addField(value: A, fieldName: String, builder: EntityBuilder): EntityBuilder = existingFormat.addField(extractor(value), fieldName, builder)
-
-      override def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[DatastoreError, A] = existingFormat.fromField(entity, fieldName).map(constructor)
-    }
-  }
-
   // TODO format from EntityFormats
   // TODO Sealed trait formats using a dtype field
   implicit def fieldFormatFromValueFormat[A](implicit valueFormat: ValueFormat[A]): FieldFormat[A] = new FieldFormat[A] {

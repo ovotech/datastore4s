@@ -218,13 +218,13 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   }
 
   "The BigDecimal value format" should "write bigdecimals to a string value" in {
-    forAll(bigDecimalFormat) { bigDecimal =>
+    forAll(bigDecimalGen) { bigDecimal =>
       BigDecimalStringValueFormat.toValue(bigDecimal) shouldBe StringValue(bigDecimal.toString())
     }
   }
 
   it should "read string values into bigdecimals" in {
-    forAll(bigDecimalFormat) { bigDecimal =>
+    forAll(bigDecimalGen) { bigDecimal =>
       BigDecimalStringValueFormat.fromValue(StringValue(bigDecimal.toString())) shouldBe Right(bigDecimal)
     }
   }
@@ -237,7 +237,7 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
 
   it should "read a written value correctly" in {
     implicit val format = BigDecimalStringValueFormat
-    forAllTestRoundTrip(bigDecimalFormat)
+    forAllTestRoundTrip(bigDecimalGen)
   }
 
   "The list value format" should "write any A to a list value" in {
@@ -302,9 +302,33 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   }
 
   it should "read a written value correctly" in {
-    val optionFormat: Gen[Option[String]] =
+    val optionGenerator: Gen[Option[String]] =
       Gen.alphaNumStr.flatMap(string => Gen.oneOf(Option.empty[String], Some(string)))
-    forAllTestRoundTrip(optionFormat)
+    forAllTestRoundTrip(optionGenerator)
+  }
+
+  "The value format from functions" should "be able to create a value format from construction and destruction functions" in {
+    case class SimpleWrapper(innerValue: String)
+    implicit val format = ValueFormat.formatFromFunctions(SimpleWrapper.apply)(_.innerValue)
+    format.toValue(SimpleWrapper("hello")) shouldBe StringValue("hello")
+    format.fromValue(StringValue("hello")) shouldBe Right(SimpleWrapper("hello"))
+    forAllTestRoundTrip(Gen.alphaNumStr.map(SimpleWrapper(_)))
+  }
+
+  it should "be able to create a value format from construction and destruction functions where the constructor can fail" in {
+    case class PositiveIntWrapper(val innerValue: Int)
+    object PositiveIntWrapper {
+      def apply(value: Int): Either[String, PositiveIntWrapper] =
+        if (value < 0) Left("Only accepting positive ints") else Right(new PositiveIntWrapper(value))
+    }
+    implicit val format = ValueFormat.formatFromFunctionsEither(PositiveIntWrapper.apply)(_.innerValue)
+    format.toValue(new PositiveIntWrapper(10)) shouldBe LongValue(10)
+    format.fromValue(LongValue(10)) shouldBe Right(new PositiveIntWrapper(10))
+    format.fromValue(LongValue(-10)) shouldBe 'Left
+    forAll(Gen.choose(0, Int.MaxValue), Gen.choose(Int.MinValue, -1)) { (positive, negative) =>
+      format.fromValue(LongValue(positive)) shouldBe Right(new PositiveIntWrapper(positive))
+      format.fromValue(LongValue(negative)) shouldBe 'Left
+    }
   }
 
   private val stringValueGen = Gen.alphaNumStr.map(StringValue(_))
@@ -320,7 +344,7 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     lang <- Gen.choose(-90, 90)
   } yield LatLng.of(lat, lang)
   private val latLngValueGen = latLngGen.map(LatLngValue(_))
-  private val bigDecimalFormat = Gen.choose(Double.MinValue, Double.MaxValue).map(BigDecimal(_))
+  private val bigDecimalGen = Gen.choose(Double.MinValue, Double.MaxValue).map(BigDecimal(_))
 
   private def forAllTestRoundTrip[A](generator: Gen[A])(implicit format: ValueFormat[A]) = {
     forAll(generator)(value => format.fromValue(format.toValue(value)) shouldBe Right(value))

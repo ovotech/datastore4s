@@ -133,7 +133,7 @@ class FieldFormatSpec extends FlatSpec with FieldFormatTestCases {
 
   "Field format generated from functions" should "wrap an existing format in constructor and extractor functions" in {
     case class SimpleWrapper(innerValue: String)
-    implicit val format = FieldFormat.fieldFormatFromFunctions(SimpleWrapper.apply)(_.innerValue) // TODO should this be value format??? Probs
+    implicit val format = ValueFormat.formatFromFunctions(SimpleWrapper.apply)(_.innerValue) // TODO should this be value format??? Probs
     forallTestRoundTrip(Gen.alphaNumStr.map(SimpleWrapper(_)))
 
     testEntity(SimpleWrapper("hello")) { entity =>
