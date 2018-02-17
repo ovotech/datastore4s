@@ -7,6 +7,15 @@ import scala.reflect.macros.blackbox.Context
 
 case class Kind(name: String)
 
+object Kind {
+  val validationError: String = "A kind must not start with '__' or contain '/'"
+
+  def isValid(kind: String): Boolean = {
+    !(kind.contains('/') || kind.startsWith("__"))
+  }
+
+}
+
 // TODO is it possible to extract and store types as fields rather than applying macros in macros??
 trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
   val kind: Kind
@@ -23,6 +32,11 @@ object EntityFormat {
   def applyImpl[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: Context)(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
     val helper = MacroHelper(context)
+
+    val kindString = helper.literal(kind, "kind")
+    if (!Kind.isValid(kindString)) {
+      context.abort(context.enclosingPosition, Kind.validationError)
+    }
 
     val entityType = weakTypeTag[EntityType].tpe
     val keyType = weakTypeTag[KeyType].tpe
