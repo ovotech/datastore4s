@@ -16,6 +16,8 @@ trait Query[E] {
 
   def stream(): Stream[Either[DatastoreError, E]]
 
+  def sequenced(): Either[DatastoreError, Seq[E]]
+
 }
 
 object Query {
@@ -37,6 +39,8 @@ case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEnti
     DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, valueFormat.toValue(value).dsValue)), entityFunction)
 
   override def stream() = datastore.run(queryBuilder.build(), Seq.empty[ReadOption]: _*).asScala.toStream.map(entityFunction).map(fromEntity.fromEntity)
+
+  override def sequenced() = DatastoreError.sequence(stream())
 }
 
 case class Project[E]()(implicit datastore: Datastore, format: EntityFormat[E, _]) {

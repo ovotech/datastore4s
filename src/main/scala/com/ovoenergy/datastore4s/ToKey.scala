@@ -57,6 +57,7 @@ trait ToAncestor[A] {
 }
 
 object ToAncestor {
+  // TODO should these calls be macros to allow kind validation?
   def toStringAncestor[A](kind: String)(f: A => String): ToAncestor[A] = a => StringAncestor(Kind(kind), f(a))
 
   def toLongAncestor[A](kind: String)(f: A => Long): ToAncestor[A] = a => LongAncestor(Kind(kind), f(a))
