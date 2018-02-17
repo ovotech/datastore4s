@@ -23,12 +23,20 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     scenario("Attempt to make an EntityFormat of a type that is not a case class") {
       """EntityFormat[NonCaseClass, String]("non-case-class")(_.key)""" shouldNot compile
     }
+
     scenario("Attempt to make an EntityFormat when an implicit field format is not available") {
       """EntityFormat[MissingFieldFormatEntity, String]("missing")(_.stringField)""" shouldNot compile
     }
+
     scenario("Attempt to make an EntityFormat when an implicit ToKey is not available") {
       """EntityFormat[MissingKeyFormatEntity, MissingFieldFormatType]("missing")(_.missingTypeField)""" shouldNot compile
     }
+
+    scenario("Attempt to make an EntityFormat from a non literal kind string") {
+      """val kind = "string-type"
+         EntityFormat[StringKeyObject, String](kind)(_.someKey)""".stripMargin shouldNot compile
+    }
+
     scenario("A simple case class with only a long key") {
       val longEntityFormat = EntityFormat[LongKeyObject, JavaLong]("long-type")(_.key)
       val record = LongKeyObject(20)
@@ -41,6 +49,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val roundTripped = longEntityFormat.fromEntity(e)
       roundTripped shouldBe Right(record)
     }
+
     scenario("A case class with a string key and string property") {
       val stringEntityFormat = EntityFormat[StringKeyObject, String]("string-type")(_.someKey)
       val record = StringKeyObject("key", "propertyValue")
@@ -54,6 +63,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val roundTripped = stringEntityFormat.fromEntity(e)
       roundTripped shouldBe Right(record)
     }
+
     scenario("A case class that uses a non string or numeric key") {
       implicit val idAsKey = IdToKey
       implicit val parentFormat = ValueFormat.formatFromFunctions(Parent.apply)(_.name)
@@ -77,6 +87,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val roundTripped = complexEntityFormat.fromEntity(e)
       roundTripped shouldBe Right(record)
     }
+
     scenario("A sealed trait hierarchy") {
       val sealedEntityFormat = EntityFormat[SealedEntityType, String]("sealed-type")(_.key)
 

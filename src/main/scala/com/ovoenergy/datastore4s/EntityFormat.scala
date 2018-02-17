@@ -24,6 +24,8 @@ object EntityFormat {
     import context.universe._
     val helper = MacroHelper(context)
 
+    val kindString = helper.literal(kind, "kind")
+
     val entityType = weakTypeTag[EntityType].tpe
     val keyType = weakTypeTag[KeyType].tpe
     if (helper.isSealedTrait(entityType)) {
