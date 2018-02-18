@@ -20,7 +20,7 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     }
   }
 
-  "The Option implicit def format" should "take any value for which there is a a format and store that field or null" in {
+  "The Option implicit def format" should "take any value for which there is a format and store that field or null" in {
     val generator = for {
       s <- Gen.alphaNumStr
       opt <- Gen.oneOf(Option(s), None)
@@ -42,6 +42,24 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
 
     testEntity(SimpleWrapper("hello")) { entity =>
       entity.field(fieldName) shouldBe Some(StringValue("hello"))
+    }
+  }
+
+  "The Either implicit def format" should "take any value for which there is a format and store that field" in {
+    val generator: Gen[Either[String, Int]] = for {
+      left <- Gen.alphaNumStr.map(Left(_))
+      right <- Gen.choose(Int.MinValue, Int.MaxValue).map(Right(_))
+      gen <- Gen.oneOf(left, right)
+    } yield gen
+    forallTestRoundTrip(generator)
+
+    testEntity(Left("hello"): Either[String, Int]) { entity =>
+      entity.field(fieldName) shouldBe Some(StringValue("hello"))
+      entity.field(fieldName + ".either_side") shouldBe Some(StringValue("Left"))
+    }
+    testEntity(Right(12): Either[String, Int]) { entity =>
+      entity.field(fieldName) shouldBe Some(LongValue(12))
+      entity.field(fieldName + ".either_side") shouldBe Some(StringValue("Right"))
     }
   }
 
