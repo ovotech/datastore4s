@@ -103,8 +103,7 @@ case object ListValue extends DsType {
   import scala.collection.JavaConverters._
 
   def apply(values: Seq[DatastoreValue]): DatastoreValue =
-    new WrappedValue(
-      new com.google.cloud.datastore.ListValue(values.map(_.dsValue).asJava))
+    new WrappedValue(new com.google.cloud.datastore.ListValue(values.map(_.dsValue).asJava))
 
   def unapply(value: DatastoreValue): Option[Seq[DatastoreValue]] =
     value.dsValue match {

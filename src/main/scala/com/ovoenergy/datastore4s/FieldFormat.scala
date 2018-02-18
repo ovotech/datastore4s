@@ -6,27 +6,20 @@ import scala.reflect.macros.blackbox.Context
 
 trait FieldFormat[A] {
 
-  def addField(value: A,
-               fieldName: String,
-               builder: EntityBuilder): EntityBuilder
+  def addField(value: A, fieldName: String, builder: EntityBuilder): EntityBuilder
 
-  def fromField(entity: com.ovoenergy.datastore4s.internal.Entity,
-                fieldName: String): Either[DatastoreError, A]
+  def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[DatastoreError, A]
 
 }
 
 object FieldFormat {
 
-  implicit def fieldFormatFromValueFormat[A](
-      implicit valueFormat: ValueFormat[A]): FieldFormat[A] =
+  implicit def fieldFormatFromValueFormat[A](implicit valueFormat: ValueFormat[A]): FieldFormat[A] =
     new FieldFormat[A] {
-      override def addField(value: A,
-                            fieldName: String,
-                            builder: EntityBuilder): EntityBuilder =
+      override def addField(value: A, fieldName: String, builder: EntityBuilder): EntityBuilder =
         builder.addField(fieldName, valueFormat.toValue(value))
 
-      override def fromField(entity: com.ovoenergy.datastore4s.internal.Entity,
-                             fieldName: String): Either[DatastoreError, A] =
+      override def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[DatastoreError, A] =
         entity
           .field(fieldName)
           .map(valueFormat.fromValue)
@@ -56,8 +49,7 @@ object NestedFieldFormat {
 
   def apply[A](): FieldFormat[A] = macro applyImpl[A]
 
-  def applyImpl[A: context.WeakTypeTag](
-      context: Context)(): context.Expr[FieldFormat[A]] = {
+  def applyImpl[A: context.WeakTypeTag](context: Context)(): context.Expr[FieldFormat[A]] = {
     import context.universe._
     val helper = MacroHelper(context)
 
@@ -73,16 +65,14 @@ object NestedFieldFormat {
     }
 
     val companion = fieldType.typeSymbol.companion
-    val companionNamedArguments = fields.map(field =>
-      AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
+    val companionNamedArguments = fields.map(field => AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
 
     val fieldFormats = fields.map { field =>
       val fieldName = field.asTerm.name
       fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${fieldName.toString})"""
     }
 
-    context.Expr[FieldFormat[A]](
-      q"""import com.ovoenergy.datastore4s._
+    context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
           import com.ovoenergy.datastore4s.internal._
           import com.ovoenergy.datastore4s.internal.Entity
 
@@ -98,8 +88,7 @@ object NestedFieldFormat {
               ) yield $companion.apply(..$companionNamedArguments)
             }
           }
-        """
-    )
+        """)
   }
 
 }
@@ -110,14 +99,12 @@ object SealedFieldFormat { // TODO Should these be separate?? Try to unite with 
 
   def apply[A](): FieldFormat[A] = macro applyImpl[A]
 
-  def applyImpl[A: context.WeakTypeTag](
-      context: Context)(): context.Expr[FieldFormat[A]] = {
+  def applyImpl[A: context.WeakTypeTag](context: Context)(): context.Expr[FieldFormat[A]] = {
     import context.universe._
     val helper = MacroHelper(context)
     val fieldType = weakTypeTag[A].tpe
     if (!helper.isSealedTrait(fieldType)) {
-      context.abort(context.enclosingPosition,
-                    s"Type must be a sealed trait but $fieldType is not")
+      context.abort(context.enclosingPosition, s"Type must be a sealed trait but $fieldType is not")
     }
     val subTypes = helper.subTypes(fieldType)
 

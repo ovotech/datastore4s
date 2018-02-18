@@ -16,9 +16,7 @@ case class WrappedEntity(entity: BaseEntity[Key]) extends Entity {
   override def rawEntity = entity
 }
 
-case class ProjectionEntity(mappings: Map[String, String],
-                            wrappedEntity: WrappedEntity)
-    extends Entity {
+case class ProjectionEntity(mappings: Map[String, String], wrappedEntity: WrappedEntity) extends Entity {
   override def field(name: String) =
     wrappedEntity.field(mappings.getOrElse(name, name))
 
@@ -31,8 +29,7 @@ trait EntityBuilder {
   def build(): Entity
 }
 
-case class WrappedBuilder(builder: com.google.cloud.datastore.Entity.Builder)
-    extends EntityBuilder {
+case class WrappedBuilder(builder: com.google.cloud.datastore.Entity.Builder) extends EntityBuilder {
   override def addField(name: String, value: DatastoreValue) =
     WrappedBuilder(builder.set(name, value.dsValue))
 
@@ -46,7 +43,6 @@ object WrappedBuilder {
       case ent: com.google.cloud.datastore.Entity =>
         WrappedBuilder(com.google.cloud.datastore.Entity.newBuilder(ent))
       case other =>
-        throw new RuntimeException(
-          s"Need to fix up internal representation, expected Entity but was: $other")
+        throw new RuntimeException(s"Need to fix up internal representation, expected Entity but was: $other")
     }
 }
