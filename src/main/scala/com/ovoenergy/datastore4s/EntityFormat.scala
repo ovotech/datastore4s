@@ -87,7 +87,7 @@ object EntityFormat {
         q"""implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, ${fieldName.toString}, builder)"""
       }
 
-      // TODO Change builder to be immutable. Maybe put all values in Seq[DataStoreValue} and fold?
+      // TODO Change builder to be immutable. Maybe put all values in Seq[DataStoreValue} and fold? Passing in a builder to the function would be nice
       val toExpression =
         q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): internal.Entity = {
             ..$keyExpression

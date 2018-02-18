@@ -269,7 +269,8 @@ or `list[Type].sequenced` to return a `Either[DatastoreError, Seq[Type]]` depend
 It is also possible to apply two kinds of filters to these queries:
 
 - Ancestor filters: `list[Person].withAncestor(Department("IT")).stream()` which will use the implicit `ToAncestor[A]` in scope
-- Propterty filters: `list[Person].withPropertyEq("department", Department("IT")).stream()` which will use the implicit `ValueFormat[A]` in scope
+- Propterty filters: `list[Person].withPropertyEq("department", Department("IT")).stream()` which will use the implicit `ValueFormat[A]` in scope.
+You can also apply a `lessThan`, `lessThanEq`, `greaterThan` and `greaterThanEq` filter.
 
 **Note: The property filters are stringly typed and currently not checked at compile time.**
 

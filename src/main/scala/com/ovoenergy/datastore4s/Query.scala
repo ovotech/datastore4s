@@ -8,11 +8,18 @@ import com.ovoenergy.datastore4s.internal.{DatastoreError, ProjectionEntity, Val
 import scala.collection.JavaConverters._
 
 trait Query[E] {
-  // TODO replace raw query with some form of Monad representation of an action to be executed.
 
   def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]): Query[E]
 
-  def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E] // TODO extend this somehow. Perhaps with a DSL?
+  def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E]
+
+  def withPropertyLessThan[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E]
+
+  def withPropertyLessThanEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E]
+
+  def withPropertyGreaterThan[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E]
+
+  def withPropertyGreaterThanEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E]
 
   def stream(): DatastoreOperation[Stream[Either[DatastoreError, E]]]
 
@@ -42,7 +49,23 @@ case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEnti
   }
 
   override def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]) =
-    DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, valueFormat.toValue(value).dsValue)), entityFunction)
+    withFilter(propertyName, value)(PropertyFilter.eq)
+
+  override def withPropertyLessThan[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]) =
+    withFilter(propertyName, value)(PropertyFilter.lt)
+
+  override def withPropertyLessThanEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]) =
+    withFilter(propertyName, value)(PropertyFilter.le)
+
+  override def withPropertyGreaterThan[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]) =
+    withFilter(propertyName, value)(PropertyFilter.gt)
+
+  override def withPropertyGreaterThanEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]) =
+    withFilter(propertyName, value)(PropertyFilter.ge)
+
+  private def withFilter[A](propertyName: String,
+                            value: A)(filterBuilder: (String, Value[_]) => PropertyFilter)(implicit valueFormat: ValueFormat[A]): Query[E] =
+    DatastoreQuery(queryBuilder.setFilter(filterBuilder(propertyName, valueFormat.toValue(value).dsValue)), entityFunction)
 
   override def stream() = DatastoreOperation { () =>
     datastore
@@ -54,6 +77,7 @@ case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEnti
   }
 
   override def sequenced() = DatastoreOperation(() => DatastoreError.sequence(stream().get()))
+
 }
 
 case class Project[E]()(implicit datastore: Datastore, format: EntityFormat[E, _]) {

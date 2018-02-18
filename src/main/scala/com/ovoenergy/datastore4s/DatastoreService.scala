@@ -21,7 +21,6 @@ object DatastoreService {
       .build()
       .getService
 
-  // TODO Unit and Integration tests for below functions
   def findOne[E, K](
     key: K
   )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Either[DatastoreError, Option[E]]] =

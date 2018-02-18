@@ -2,7 +2,7 @@ package com.ovoenergy.datastore4s.internal
 
 trait DatastoreError
 
-// TODO tidy this up
+// TODO tidy this up with a real value not just toString()s
 object DatastoreError {
   def missingField[A](fieldName: String, entity: Entity): Either[DatastoreError, A] =
     Left(new DatastoreError {

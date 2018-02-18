@@ -13,7 +13,7 @@ object ToKey {
       keyFactory.buildWithName(value)
   }
 
-  // TODO move to pakage
+  // TODO move to package
   type JavaLong = java.lang.Long
   implicit object LongToKey extends ToKey[JavaLong] {
     override def toKey(value: JavaLong, keyFactory: KeyFactory): Key =
