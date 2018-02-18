@@ -14,9 +14,9 @@ trait Query[E] {
 
   def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E] // TODO extend this somehow. Perhaps with a DSL?
 
-  def stream(): Stream[Either[DatastoreError, E]]
+  def stream(): DatastoreOperation[Stream[Either[DatastoreError, E]]]
 
-  def sequenced(): Either[DatastoreError, Seq[E]]
+  def sequenced(): DatastoreOperation[Either[DatastoreError, Seq[E]]]
 
 }
 
@@ -44,15 +44,16 @@ case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEnti
   override def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]) =
     DatastoreQuery(queryBuilder.setFilter(PropertyFilter.eq(propertyName, valueFormat.toValue(value).dsValue)), entityFunction)
 
-  override def stream() =
+  override def stream() = DatastoreOperation { () =>
     datastore
       .run(queryBuilder.build(), Seq.empty[ReadOption]: _*)
       .asScala
       .toStream
       .map(entityFunction)
       .map(fromEntity.fromEntity)
+  }
 
-  override def sequenced() = DatastoreError.sequence(stream())
+  override def sequenced() = DatastoreOperation(() => DatastoreError.sequence(stream().get()))
 }
 
 case class Project[E]()(implicit datastore: Datastore, format: EntityFormat[E, _]) {
