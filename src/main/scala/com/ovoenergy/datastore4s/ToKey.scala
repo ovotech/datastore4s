@@ -9,17 +9,18 @@ trait ToKey[A] {
 object ToKey {
 
   implicit object StringToKey extends ToKey[String] {
-    override def toKey(value: String, keyFactory: KeyFactory): Key = keyFactory.buildWithName(value)
+    override def toKey(value: String, keyFactory: KeyFactory): Key =
+      keyFactory.buildWithName(value)
   }
 
   // TODO move to pakage
   type JavaLong = java.lang.Long
   implicit object LongToKey extends ToKey[JavaLong] {
-    override def toKey(value: JavaLong, keyFactory: KeyFactory): Key = keyFactory.buildWithId(value)
+    override def toKey(value: JavaLong, keyFactory: KeyFactory): Key =
+      keyFactory.buildWithId(value)
   }
 
 }
-
 
 trait KeyFactory {
 
@@ -36,14 +37,18 @@ class KeyFactoryFacade(val factory: com.google.cloud.datastore.KeyFactory) exten
 
   override def buildWithId(id: Long) = factory.newKey(id)
 
-  override def addAncestor[A](value: A)(implicit toAncestor: ToAncestor[A]): KeyFactory = toAncestor.toAncestor(value) match {
-    case StringAncestor(kind, name) => new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.name, name)))
-    case LongAncestor(kind, id) => new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.name, id)))
-  }
+  override def addAncestor[A](value: A)(implicit toAncestor: ToAncestor[A]): KeyFactory =
+    toAncestor.toAncestor(value) match {
+      case StringAncestor(kind, name) =>
+        new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.name, name)))
+      case LongAncestor(kind, id) =>
+        new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.name, id)))
+    }
 }
 
 object KeyFactoryFacade {
-  def apply(datastore: Datastore, kind: Kind): KeyFactoryFacade = new KeyFactoryFacade(datastore.newKeyFactory().setKind(kind.name))
+  def apply(datastore: Datastore, kind: Kind): KeyFactoryFacade =
+    new KeyFactoryFacade(datastore.newKeyFactory().setKind(kind.name))
 }
 
 sealed trait Ancestor
@@ -58,8 +63,9 @@ trait ToAncestor[A] {
 
 object ToAncestor {
   // TODO should these calls be macros to allow kind validation?
-  def toStringAncestor[A](kind: String)(f: A => String): ToAncestor[A] = a => StringAncestor(Kind(kind), f(a))
+  def toStringAncestor[A](kind: String)(f: A => String): ToAncestor[A] =
+    a => StringAncestor(Kind(kind), f(a))
 
-  def toLongAncestor[A](kind: String)(f: A => Long): ToAncestor[A] = a => LongAncestor(Kind(kind), f(a))
+  def toLongAncestor[A](kind: String)(f: A => Long): ToAncestor[A] =
+    a => LongAncestor(Kind(kind), f(a))
 }
-

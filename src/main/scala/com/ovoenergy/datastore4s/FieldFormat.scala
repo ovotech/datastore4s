@@ -14,28 +14,33 @@ trait FieldFormat[A] {
 
 object FieldFormat {
 
-  implicit def fieldFormatFromValueFormat[A](implicit valueFormat: ValueFormat[A]): FieldFormat[A] = new FieldFormat[A] {
-    override def addField(value: A, fieldName: String, builder: EntityBuilder): EntityBuilder =
-      builder.addField(fieldName, valueFormat.toValue(value))
+  implicit def fieldFormatFromValueFormat[A](implicit valueFormat: ValueFormat[A]): FieldFormat[A] =
+    new FieldFormat[A] {
+      override def addField(value: A, fieldName: String, builder: EntityBuilder): EntityBuilder =
+        builder.addField(fieldName, valueFormat.toValue(value))
 
-    override def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[DatastoreError, A] =
-      entity.field(fieldName).map(valueFormat.fromValue).getOrElse(DatastoreError.missingField(fieldName, entity))
-  }
+      override def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[DatastoreError, A] =
+        entity
+          .field(fieldName)
+          .map(valueFormat.fromValue)
+          .getOrElse(DatastoreError.missingField(fieldName, entity))
+    }
 
   private val eitherField = "either_side"
-  implicit def fieldFormatFromEither[L, R](implicit leftFormat: FieldFormat[L], rightFormat: FieldFormat[R]): FieldFormat[Either[L, R]] = new FieldFormat[Either[L, R]] {
-    override def addField(value: Either[L, R], fieldName: String, builder: EntityBuilder) = value match {
-      case Left(l) => leftFormat.addField(l, fieldName, builder.addField(s"$fieldName.$eitherField", StringValue("Left")))
-      case Right(r) => rightFormat.addField(r, fieldName, builder.addField(s"$fieldName.$eitherField", StringValue("Right")))
-    }
+  implicit def fieldFormatFromEither[L, R](implicit leftFormat: FieldFormat[L], rightFormat: FieldFormat[R]): FieldFormat[Either[L, R]] =
+    new FieldFormat[Either[L, R]] {
+      override def addField(value: Either[L, R], fieldName: String, builder: EntityBuilder) = value match {
+        case Left(l)  => leftFormat.addField(l, fieldName, builder.addField(s"$fieldName.$eitherField", StringValue("Left")))
+        case Right(r) => rightFormat.addField(r, fieldName, builder.addField(s"$fieldName.$eitherField", StringValue("Right")))
+      }
 
-    override def fromField(entity: Entity, fieldName: String) = entity.field(s"$fieldName.$eitherField") match {
-      case Some(StringValue("Left")) => leftFormat.fromField(entity, fieldName).map(Left(_))
-      case Some(StringValue("Right")) => rightFormat.fromField(entity, fieldName).map(Right(_))
-      case Some(other) => DatastoreError.error(s"Either field should be either 'Left' or 'Right' but was $other.")
-      case None => DatastoreError.missingField(eitherField, entity)
+      override def fromField(entity: Entity, fieldName: String) = entity.field(s"$fieldName.$eitherField") match {
+        case Some(StringValue("Left"))  => leftFormat.fromField(entity, fieldName).map(Left(_))
+        case Some(StringValue("Right")) => rightFormat.fromField(entity, fieldName).map(Right(_))
+        case Some(other)                => DatastoreError.error(s"Either field should be either 'Left' or 'Right' but was $other.")
+        case None                       => DatastoreError.missingField(eitherField, entity)
+      }
     }
-  }
 
 }
 
@@ -68,8 +73,7 @@ object NestedFieldFormat {
       fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, fieldName + "." + ${fieldName.toString})"""
     }
 
-    context.Expr[FieldFormat[A]](
-      q"""import com.ovoenergy.datastore4s._
+    context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
           import com.ovoenergy.datastore4s.internal._
           import com.ovoenergy.datastore4s.internal.Entity
 
@@ -85,8 +89,7 @@ object NestedFieldFormat {
               ) yield $companion.apply(..$companionNamedArguments)
             }
           }
-        """
-    )
+        """)
   }
 
 }
@@ -116,8 +119,7 @@ object SealedFieldFormat { // TODO Should these be separate?? Try to unite with 
       cq"""Right(${subType.name.toString}) => NestedFieldFormat[$subType].fromField(entity, fieldName)"""
     }
 
-    context.Expr[FieldFormat[A]](
-      q"""import com.ovoenergy.datastore4s._
+    context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
           import com.ovoenergy.datastore4s.internal._
           import com.ovoenergy.datastore4s.internal.Entity
 

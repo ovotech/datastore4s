@@ -45,6 +45,14 @@ jobs:
           name: Unit Test
           command: sbt test
 
+  format-check:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          name: Scalafmt Check
+          command: sbt ";scalafmtCheck;scalafmtSbtCheck"
+
 workflows:
   version: 2
   build-and-deploy:
@@ -53,3 +61,4 @@ workflows:
       - unit-test:
           requires:
             - build
+      - format-check
