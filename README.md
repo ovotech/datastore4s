@@ -41,9 +41,9 @@ object PersonRepository extends DefaultDatastoreSupport {
   override def dataStoreConfiguration = 
     DataStoreConfiguration("my-project", "some-namespace")
     
-  def storePerson(person: Person): Persisted[Person] = put(person)
+  def storePerson(person: Person): Future[Persisted[Person]] = runAsync(put(person))
     
-  def streamPeople: Stream[Either[DatastoreError, Person]] = list[Person].stream()
+  def streamPeople: Stream[Either[DatastoreError, Person]] = run(list[Person].stream())
 
 }
 
@@ -236,28 +236,28 @@ macro, this will store a nested `fieldname.type` field on the entity to determin
 
 **TODO: Possibly allow objects in the hierarchy?**
 
-## Datastore Actions
+## Datastore Operations
 
-Actions can be performed directly using the `DatatstoreService` object, but you will need to implicitly provide the Datastore
+Operations can be performed directly using the `DatatstoreService` object, but you will need to implicitly provide the Datastore
 object (this can be created by calling `implicit val datastore = DatastoreService.createDatastore(config)`) but it is much
 preferable to simply extend the `DefaultDatastoreSupport` trait.
 
+They can either be performed with `run` or `runAsync` which return `A` and `Future[A]` respectively.
+
 **Note: This design is likely to change so that queries and other operations
-are represented by a Monad expressing an action to be perfomed rather than being
-performed at the point functions are called. E.g. Free Monad**
+are represented by something like the Free Monad**
 
 ### Persisting Entities
 
-Simply call the `put` function with an implicit `EntityFormat[E, _]` in scope. You will get a `Persisted[E]` in return.
+Simply call the `put` function with an implicit `EntityFormat[E, _]` in scope. You will get a `DatastoreOperation[Persisted[E]]`
+ in return.
 
 ### Find One
 
 To perform a findOne operation, simply provide the expected key and the entityType. If no implicit evidence can be found that 
-they key type matches to the entity the query will not compile.
+they key type matches to the entity the query will not compile. Running findOne returns `Either[DatastoreError, Option[E]]`.
 
 ```scala
-val oli: Option[Either[DatastoreError, Person]] = findOne("OliBoyle")
-// OR
 val oli = findOne[Person, String]("OliBoyle")
 ```
 
@@ -269,7 +269,8 @@ or `list[Type].sequenced` to return a `Either[DatastoreError, Seq[Type]]` depend
 It is also possible to apply two kinds of filters to these queries:
 
 - Ancestor filters: `list[Person].withAncestor(Department("IT")).stream()` which will use the implicit `ToAncestor[A]` in scope
-- Propterty filters: `list[Person].withPropertyEq("department", Department("IT")).stream()` which will use the implicit `ValueFormat[A]` in scope
+- Propterty filters: `list[Person].withPropertyEq("department", Department("IT")).stream()` which will use the implicit `ValueFormat[A]` in scope.
+You can also apply a `lessThan`, `lessThanEq`, `greaterThan` and `greaterThanEq` filter.
 
 **Note: The property filters are stringly typed and currently not checked at compile time.**
 
@@ -297,7 +298,7 @@ object Repository extends DefaultDatastoreSupport {
   implicit val personFormat = EntityFormat[Person, String]("person-kind")(p => p.firstName + p.lastName)
   implicit val rowFromEntity = FromEntity[WeightAgeRow]
 
-  def rows = project[Person].into[WeightAgeRow].mapping("age" -> "personAge", "weight" -> "personWeight").stream()
+  def rows = run(project[Person].into[WeightAgeRow].mapping("age" -> "personAge", "weight" -> "personWeight").stream())
   
   override def dataStoreConfiguration = 
       DataStoreConfiguration("my-project", "some-namespace")

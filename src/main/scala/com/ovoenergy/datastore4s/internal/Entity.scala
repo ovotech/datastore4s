@@ -39,7 +39,7 @@ case class WrappedBuilder(builder: com.google.cloud.datastore.Entity.Builder) ex
 object WrappedBuilder {
   def apply(existingEntity: Entity): EntityBuilder =
     existingEntity.rawEntity match {
-      // TODO if we can extract this out of the entityformat we should be ok here.
+      // TODO if we can extract this out of the entityformat we should be ok here. It is only needed since a builder is not passed into the format. If A createKey interface can be extracted we should be good.
       case ent: com.google.cloud.datastore.Entity =>
         WrappedBuilder(com.google.cloud.datastore.Entity.newBuilder(ent))
       case other =>

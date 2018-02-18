@@ -11,7 +11,6 @@ import org.scalatest.{FlatSpec, Inside, Matchers}
 
 class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matchers with Inside {
 
-  // TODO round trip tests
   "The String value format" should "write strings to a string value" in {
     forAll(Gen.alphaNumStr) { str =>
       StringValueFormat.toValue(str) shouldBe StringValue(str)
