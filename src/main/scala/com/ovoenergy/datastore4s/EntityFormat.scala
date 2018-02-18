@@ -22,14 +22,21 @@ trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
 
   // TODO split out create key??
 
-  def toEntity(record: EntityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): Entity
+  def toEntity(record: EntityType)(
+      implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory)
+    : Entity
 
 }
 
 object EntityFormat {
-  def apply[EntityType, KeyType](kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] = macro applyImpl[EntityType, KeyType]
+  def apply[EntityType, KeyType](kind: String)(
+      keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] =
+    macro applyImpl[EntityType, KeyType]
 
-  def applyImpl[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: Context)(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
+  def applyImpl[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
+      context: Context)(kind: context.Expr[String])(
+      keyFunction: context.Expr[EntityType => KeyType])
+    : context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
     val helper = MacroHelper(context)
 
@@ -55,6 +62,7 @@ object EntityFormat {
 
       context.Expr[EntityFormat[EntityType, KeyType]](
         q"""import com.ovoenergy.datastore4s._
+          import com.ovoenergy.datastore4s.internal.ValueFormat
           import com.google.cloud.datastore.Entity
 
           new EntityFormat[$entityType, $keyType] {
@@ -62,7 +70,8 @@ object EntityFormat {
             val kind = Kind($kind)
 
             private val stringFormat = implicitly[ValueFormat[String]]
-            private val fromEntity = ${FromEntity.applyImpl[EntityType](context)}
+            private val fromEntity = ${FromEntity
+          .applyImpl[EntityType](context)}
 
             override def fromEntity(entity: internal.Entity): Either[internal.DatastoreError, $entityType] = {
               fromEntity.fromEntity(entity)
@@ -80,9 +89,10 @@ object EntityFormat {
           val key = implicitly[ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
 
       // TODO One more abstractable here
-      val builderExpressions = helper.caseClassFieldList(entityType).map { field =>
-        val fieldName = field.asTerm.name
-        q"""implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, ${fieldName.toString}, builder)"""
+      val builderExpressions = helper.caseClassFieldList(entityType).map {
+        field =>
+          val fieldName = field.asTerm.name
+          q"""implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, ${fieldName.toString}, builder)"""
       }
 
       // TODO Change builder to be immutable. Maybe put all values in Seq[DataStoreValue} and fold?
@@ -103,7 +113,8 @@ object EntityFormat {
 
             val kind = Kind($kind)
 
-            private val fromEntity = ${FromEntity.applyImpl[EntityType](context)}
+            private val fromEntity = ${FromEntity
+          .applyImpl[EntityType](context)}
 
             override def fromEntity(entity: internal.Entity): Either[internal.DatastoreError, $entityType] = {
               fromEntity.fromEntity(entity)
@@ -126,7 +137,8 @@ object FromEntity {
 
   def apply[A](): FromEntity[A] = macro applyImpl[A]
 
-  def applyImpl[A: context.WeakTypeTag](context: Context)(): context.Expr[FromEntity[A]] = {
+  def applyImpl[A: context.WeakTypeTag](
+      context: Context)(): context.Expr[FromEntity[A]] = {
     import context.universe._
     val helper = MacroHelper(context)
 
@@ -154,7 +166,8 @@ object FromEntity {
       // TODO One more abstractable here
       val companion = entityType.typeSymbol.companion
       val fields = helper.caseClassFieldList(entityType)
-      val companionNamedArguments = fields.map(field => AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
+      val companionNamedArguments = fields.map(field =>
+        AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
 
       val fieldFormats = fields.map { field =>
         val fieldName = field.asTerm.name
