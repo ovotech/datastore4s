@@ -42,6 +42,12 @@ object DatastoreService {
       Persisted(entityObject, datastore.put(entity))
     }
 
+  def delete[E, K](key: K)(implicit evidence: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Unit] =
+    DatastoreOperation { () =>
+      datastore.delete(toKey.toKey(key, new KeyFactoryFacade(datastore.newKeyFactory().setKind(evidence.kind.name))))
+    // TODO can this return a different type??
+    }
+
   def list[E](implicit format: EntityFormat[E, _], datastore: Datastore): Query[E] = {
     val kind = format.kind.name
     val queryBuilder =

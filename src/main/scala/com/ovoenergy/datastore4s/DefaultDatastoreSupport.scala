@@ -29,6 +29,9 @@ trait DefaultDatastoreSupport {
   def put[E](entity: E)(implicit format: EntityFormat[E, _]): DatastoreOperation[Persisted[E]] =
     DatastoreService.put(entity)
 
+  def delete[E, K](key: K)(implicit evidence: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Unit] =
+    DatastoreService.delete(key)
+
   def list[E]()(implicit format: EntityFormat[E, _]): Query[E] =
     DatastoreService.list
 
