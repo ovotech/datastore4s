@@ -15,3 +15,8 @@ libraryDependencies ++= Seq(
 configs(IntegrationTest)
 Defaults.itSettings
 testFrameworks in IntegrationTest := Seq(TestFrameworks.ScalaTest)
+
+bintrayOrganization := Some("ovotech")
+bintrayRepository := "maven-private"
+bintrayPackage := "datastore4s"
+bintrayPackageLabels := Seq("gcp", "datastore")

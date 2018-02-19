@@ -53,6 +53,25 @@ jobs:
           name: Scalafmt Check
           command: sbt ";scalafmtCheck;scalafmtSbtCheck"
 
+  publish:
+    <<: *defaults
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - restore_cache:
+          keys:
+            - v2-dependencies-{{ checksum "build.sbt" }}
+            # fallback to using the latest cache if no exact match is found
+            - v2-dependencies-
+      - run:
+          name: Extract Bintray Creds
+          command: build/bintray.sh
+      - run:
+          name: Publish
+          command: sbt publish
+
+
 workflows:
   version: 2
   build-and-deploy:
@@ -62,3 +81,12 @@ workflows:
           requires:
             - build
       - format-check
+      - publish:
+          requires:
+            - unit-test
+            - format-check
+          filters:
+            branches:
+              only:
+                - master
+                - add-publish-to-private-repo #TODO Remove this filter when successful
