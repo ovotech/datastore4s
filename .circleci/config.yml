@@ -89,4 +89,3 @@ workflows:
             branches:
               only:
                 - master
-                - add-publish-to-private-repo #TODO Remove this filter when successful

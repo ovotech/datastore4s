@@ -23,7 +23,7 @@ trait Query[E] {
 
   def stream(): DatastoreOperation[Stream[Either[DatastoreError, E]]]
 
-  def sequenced(): DatastoreOperation[Either[DatastoreError, Seq[E]]]
+  def sequenced(): DatastoreOperation[Seq[E]]
 
 }
 
@@ -67,16 +67,16 @@ case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEnti
                             value: A)(filterBuilder: (String, Value[_]) => PropertyFilter)(implicit valueFormat: ValueFormat[A]): Query[E] =
     DatastoreQuery(queryBuilder.setFilter(filterBuilder(propertyName, valueFormat.toValue(value).dsValue)), entityFunction)
 
-  override def stream() = DatastoreOperation { () =>
+  override def stream() = DatastoreOperation { () => Right(
     datastore
       .run(queryBuilder.build(), Seq.empty[ReadOption]: _*)
       .asScala
       .toStream
       .map(entityFunction)
-      .map(fromEntity.fromEntity)
+      .map(fromEntity.fromEntity)) // TODO handle connection issues.
   }
 
-  override def sequenced() = DatastoreOperation(() => DatastoreError.sequence(stream().get()))
+  override def sequenced() = stream().flatMapEither(DatastoreError.sequence(_))
 
 }
 
