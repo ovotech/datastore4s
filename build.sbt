@@ -15,3 +15,10 @@ libraryDependencies ++= Seq(
 configs(IntegrationTest)
 Defaults.itSettings
 testFrameworks in IntegrationTest := Seq(TestFrameworks.ScalaTest)
+
+bintrayOrganization := Some("ovotech")
+bintrayRepository := "maven-private"
+bintrayPackage := "datastore4s"
+bintrayPackageLabels := Seq("gcp", "datastore")
+
+licenses := Seq(("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")))
