@@ -46,6 +46,7 @@ trait DefaultDatastoreSupport {
   def runAsync[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[Either[DatastoreError, A]] =
     DatastoreService.runAsync(operation)
 
-  def runAsyncF[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[A] = DatastoreService.runAsyncF(operation)
+  def runAsyncF[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[A] =
+    DatastoreService.runAsyncF(operation)
 
 }
