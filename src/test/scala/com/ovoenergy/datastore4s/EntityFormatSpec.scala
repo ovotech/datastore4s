@@ -1,7 +1,6 @@
 package com.ovoenergy.datastore4s
 
 import com.ovoenergy.datastore4s.ToKey.JavaLong
-import com.ovoenergy.datastore4s.internal.ValueFormat
 import com.ovoenergy.datastore4s.utils.TestDatastore
 import org.scalatest.{FeatureSpec, Matchers}
 

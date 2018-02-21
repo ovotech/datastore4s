@@ -1,4 +1,4 @@
-package com.ovoenergy.datastore4s.internal
+package com.ovoenergy.datastore4s
 
 import java.time.Instant
 
@@ -56,7 +56,7 @@ object ValueFormat {
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Double] =
       datastoreValue match {
-        case DoubleValue(long) => Right(long)
+        case DoubleValue(double) => Right(double)
         case other             => wrongType(DoubleValue, other)
       }
   }

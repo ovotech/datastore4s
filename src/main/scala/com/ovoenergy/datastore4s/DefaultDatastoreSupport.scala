@@ -1,7 +1,5 @@
 package com.ovoenergy.datastore4s
 
-import com.ovoenergy.datastore4s.internal.{DatastoreError, ValueFormat}
-
 import scala.concurrent.{ExecutionContext, Future}
 
 trait DefaultDatastoreSupport {

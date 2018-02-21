@@ -1,7 +1,5 @@
 package com.ovoenergy.datastore4s
 
-import com.ovoenergy.datastore4s.internal.{DatastoreError, Entity}
-
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
@@ -46,18 +44,16 @@ object EntityFormat {
       val subTypes = helper.subTypes(entityType)
 
       val cases = subTypes.map { subType =>
-        cq"""e: ${subType.asClass} => internal.WrappedBuilder(EntityFormat[$subType, $keyType]($kind)($keyFunction).toEntity(e)).addField("type", stringFormat.toValue(${subType.name.toString})).build()"""
+        cq"""e: ${subType.asClass} => WrappedBuilder(EntityFormat[$subType, $keyType]($kind)($keyFunction).toEntity(e)).addField("type", stringFormat.toValue(${subType.name.toString})).build()"""
       }
 
       val toExpression =
-        q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): internal.Entity = value match {
+        q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): Entity = value match {
              case ..$cases
            }
         """
 
       context.Expr[EntityFormat[EntityType, KeyType]](q"""import com.ovoenergy.datastore4s._
-          import com.ovoenergy.datastore4s.internal.ValueFormat
-          import com.google.cloud.datastore.Entity
 
           new EntityFormat[$entityType, $keyType] {
 
@@ -67,7 +63,7 @@ object EntityFormat {
             private val fromEntity = ${FromEntity
         .applyImpl[EntityType](context)}
 
-            override def fromEntity(entity: internal.Entity): Either[internal.DatastoreError, $entityType] = {
+            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = {
               fromEntity.fromEntity(entity)
             }
 
@@ -89,16 +85,15 @@ object EntityFormat {
 
       // TODO Change builder to be immutable. Maybe put all values in Seq[DataStoreValue} and fold? Passing in a builder to the function would be nice
       val toExpression =
-        q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): internal.Entity = {
+        q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): Entity = {
             ..$keyExpression
-            val builder = internal.WrappedBuilder(Entity.newBuilder(key))
+            val builder = WrappedBuilder(com.google.cloud.datastore.Entity.newBuilder(key))
             ..$builderExpressions
             builder.build()
           }
         """
 
       context.Expr[EntityFormat[EntityType, KeyType]](q"""import com.ovoenergy.datastore4s._
-          import com.google.cloud.datastore.Entity
 
           new EntityFormat[$entityType, $keyType] {
 
@@ -107,7 +102,7 @@ object EntityFormat {
             private val fromEntity = ${FromEntity
         .applyImpl[EntityType](context)}
 
-            override def fromEntity(entity: internal.Entity): Either[internal.DatastoreError, $entityType] = {
+            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = {
               fromEntity.fromEntity(entity)
             }
 
@@ -141,9 +136,9 @@ object FromEntity {
 
           new FromEntity[$entityType] {
             private val stringFormat = implicitly[FieldFormat[String]]
-            override def fromEntity(entity: internal.Entity): Either[internal.DatastoreError, $entityType] = stringFormat.fromField(entity, "type") match {
+            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = stringFormat.fromField(entity, "type") match {
               case ..$cases
-              case Right(other) => internal.DatastoreError.error(s"Unknown subtype found: $$other")
+              case Right(other) => DatastoreError.error(s"Unknown subtype found: $$other")
               case Left(error) => Left(error)
             }
           }""")
@@ -163,7 +158,7 @@ object FromEntity {
       context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._
 
           new FromEntity[$entityType] {
-            override def fromEntity(entity: internal.Entity): Either[internal.DatastoreError, $entityType] = {
+            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = {
               for (
                 ..$fieldFormats
               ) yield $companion.apply(..$companionNamedArguments)

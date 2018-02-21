@@ -1,10 +1,10 @@
-package com.ovoenergy.datastore4s.internal
+package com.ovoenergy.datastore4s
 
 import java.time.Instant
+import com.ovoenergy.datastore4s.ValueFormat._
 
 import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Blob, LatLng}
-import com.ovoenergy.datastore4s.internal.ValueFormat._
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Inside, Matchers}

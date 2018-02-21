@@ -1,8 +1,7 @@
 package com.ovoenergy.datastore4s.utils
 
 import com.google.cloud.datastore.{Datastore, DatastoreOptions}
-import com.ovoenergy.datastore4s.internal.{DatastoreValue, Entity, EntityBuilder}
-import com.ovoenergy.datastore4s.{KeyFactory, KeyFactoryFacade}
+import com.ovoenergy.datastore4s._
 
 object TestDatastore {
   def apply(): Datastore = DatastoreOptions.newBuilder()

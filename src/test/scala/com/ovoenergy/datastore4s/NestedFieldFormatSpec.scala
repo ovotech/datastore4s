@@ -2,7 +2,7 @@ package com.ovoenergy.datastore4s
 
 import java.time.Instant
 
-import com.ovoenergy.datastore4s.internal.ValueFormat.InstantEpochMillisValueFormat
+import com.ovoenergy.datastore4s.ValueFormat.InstantEpochMillisValueFormat
 import com.ovoenergy.datastore4s.utils.TestDatastore
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks

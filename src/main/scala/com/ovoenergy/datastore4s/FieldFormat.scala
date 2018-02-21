@@ -1,14 +1,12 @@
 package com.ovoenergy.datastore4s
 
-import com.ovoenergy.datastore4s.internal._
-
 import scala.reflect.macros.blackbox.Context
 
 trait FieldFormat[A] {
 
   def addField(value: A, fieldName: String, builder: EntityBuilder): EntityBuilder
 
-  def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[DatastoreError, A]
+  def fromField(entity: Entity, fieldName: String): Either[DatastoreError, A]
 
 }
 
@@ -19,7 +17,7 @@ object FieldFormat {
       override def addField(value: A, fieldName: String, builder: EntityBuilder): EntityBuilder =
         builder.addField(fieldName, valueFormat.toValue(value))
 
-      override def fromField(entity: com.ovoenergy.datastore4s.internal.Entity, fieldName: String): Either[DatastoreError, A] =
+      override def fromField(entity: Entity, fieldName: String): Either[DatastoreError, A] =
         entity
           .field(fieldName)
           .map(valueFormat.fromValue)
@@ -74,8 +72,6 @@ object NestedFieldFormat {
     }
 
     context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
-          import com.ovoenergy.datastore4s.internal._
-          import com.ovoenergy.datastore4s.internal.Entity
 
           new FieldFormat[$fieldType] {
             override def addField(value: $fieldType, fieldName: String, entityBuilder: EntityBuilder): EntityBuilder = {
@@ -120,8 +116,6 @@ object SealedFieldFormat { // TODO Should these be separate?? Try to unite with 
     }
 
     context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
-          import com.ovoenergy.datastore4s.internal._
-          import com.ovoenergy.datastore4s.internal.Entity
 
           new FieldFormat[$fieldType] {
             private val stringFormat = implicitly[FieldFormat[String]]
@@ -131,7 +125,7 @@ object SealedFieldFormat { // TODO Should these be separate?? Try to unite with 
 
             override def fromField(entity: Entity, fieldName: String): Either[DatastoreError, $fieldType] = stringFormat.fromField(entity, fieldName + ".type") match {
               case ..$fromCases
-              case Right(other) => internal.DatastoreError.error(s"Unknown subtype found: $$other")
+              case Right(other) => DatastoreError.error(s"Unknown subtype found: $$other")
               case Left(error) => Left(error)
             }
           }

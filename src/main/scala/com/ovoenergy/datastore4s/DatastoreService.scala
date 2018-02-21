@@ -1,13 +1,12 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{Datastore, DatastoreOptions, Entity, ReadOption}
-import com.ovoenergy.datastore4s.internal.{DatastoreError, WrappedEntity}
+import com.google.cloud.datastore.{Datastore, DatastoreOptions, ReadOption}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 case class DataStoreConfiguration(projectId: String, namespace: String)
 
-case class Persisted[A](inputObject: A, entity: Entity)
+case class Persisted[A](inputObject: A, entity: com.google.cloud.datastore.Entity) // TODO should this just be Entity?
 
 case class DatastoreOperation[A](get: () => Either[DatastoreError, A]) {
 
@@ -43,7 +42,7 @@ object DatastoreService {
     DatastoreOperation { () =>
       implicit val keyFactorySupplier = () => datastore.newKeyFactory()
       val entity = format.toEntity(entityObject) match {
-        case WrappedEntity(e: Entity) => e
+        case WrappedEntity(e: com.google.cloud.datastore.Entity) => e
       }
       Right(Persisted(entityObject, datastore.put(entity))) // TODO handle datastore errors
     }

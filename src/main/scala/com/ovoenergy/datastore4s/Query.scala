@@ -1,9 +1,8 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.google.cloud.datastore._
+import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.ovoenergy.datastore4s.Query.EntityFunction
-import com.ovoenergy.datastore4s.internal.{DatastoreError, ProjectionEntity, ValueFormat, WrappedEntity}
 
 import scala.collection.JavaConverters._
 
@@ -34,7 +33,7 @@ object Query {
         keyFactory.setKind(kind.name).newKey(name)
       case LongAncestor(kind, id) => keyFactory.setKind(kind.name).newKey(id)
     }
-  type EntityFunction = BaseEntity[Key] => internal.Entity
+  type EntityFunction = BaseEntity[Key] => Entity
 }
 
 case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEntity[Key]], entityFunction: EntityFunction = WrappedEntity(_))(

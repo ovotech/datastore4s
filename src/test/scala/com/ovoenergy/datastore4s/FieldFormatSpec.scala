@@ -5,7 +5,6 @@ import org.scalacheck.Gen
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import com.ovoenergy.datastore4s.FieldFormat._
-import com.ovoenergy.datastore4s.internal._
 import com.ovoenergy.datastore4s.utils.StubEntityBuilder
 
 class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matchers {

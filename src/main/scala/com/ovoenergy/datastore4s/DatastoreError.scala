@@ -1,4 +1,4 @@
-package com.ovoenergy.datastore4s.internal
+package com.ovoenergy.datastore4s
 
 trait DatastoreError
 
