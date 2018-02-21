@@ -74,7 +74,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     scenario("A case class that uses a non string or numeric key") {
       implicit val idAsKey = IdToKey
       implicit val parentFormat = ValueFormat.formatFromFunctions(Parent.apply)(_.name)
-      implicit val idFieldFormat = NestedFieldFormat[Id]
+      implicit val idFieldFormat = FieldFormat[Id]
       val complexEntityFormat = EntityFormat[ComplexKeyObject, Id]("complex-kind")(_.id)
 
       val record = ComplexKeyObject(Id("key", Parent("parent")))

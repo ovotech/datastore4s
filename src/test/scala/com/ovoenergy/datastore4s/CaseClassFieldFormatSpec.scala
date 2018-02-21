@@ -8,7 +8,7 @@ import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
 
-class NestedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+class CaseClassFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
   val datastore = TestDatastore()
 
@@ -25,7 +25,7 @@ class NestedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenP
   } yield EntityWithNestedType(id, SomeNestedType(string, long, int, bool, time))
 
   "The apply method of NestedFieldFormat" should "create a field format that nests the fields of case classes" in {
-    implicit val format = NestedFieldFormat[SomeNestedType]
+    implicit val format = FieldFormat[SomeNestedType]
     val entityFormat = EntityFormat[EntityWithNestedType, String]("nested-test-kind")(_.id)
 
     forAll(entityGen) { entity =>

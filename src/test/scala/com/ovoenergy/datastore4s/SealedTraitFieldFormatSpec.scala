@@ -5,7 +5,7 @@ import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
 
-class SealedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+class SealedTraitFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
   val datastore = TestDatastore()
 
@@ -39,7 +39,7 @@ class SealedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenP
   case class EntityWithSealedType(id: String, sealedValue: ValidSealedTrait)
 
   "The apply method of SealedFieldFormat" should "create a field format that will serialise to any case class in the hierarchy" in {
-    implicit val format = SealedFieldFormat[ValidSealedTrait]
+    implicit val format = FieldFormat[ValidSealedTrait]
     val entityFormat = EntityFormat[EntityWithSealedType, String]("nested-test-kind")(_.id)
 
     forAll(entityGen) { entity =>

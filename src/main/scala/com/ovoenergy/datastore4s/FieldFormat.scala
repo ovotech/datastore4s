@@ -40,20 +40,59 @@ object FieldFormat {
       }
     }
 
-}
-
-object NestedFieldFormat {
-
   import scala.language.experimental.macros
 
   def apply[A](): FieldFormat[A] = macro applyImpl[A]
 
   def applyImpl[A: context.WeakTypeTag](context: Context)(): context.Expr[FieldFormat[A]] = {
-    import context.universe._
     val helper = MacroHelper(context)
+    import context.universe._
+    val fieldType = weakTypeTag[A].tpe
+    if(helper.isSealedTrait(fieldType)) {
+      sealedTratitFormat(context)(helper)
+    } else if(helper.isCaseClass(fieldType)) {
+      caseClassFormat(context)(helper)
+    } else{
+      context.abort(context.enclosingPosition, s"Type must either be a sealed trait or a case class but $fieldType is not")
+    }
+  }
+
+  private def sealedTratitFormat[A: context.WeakTypeTag](context: Context)(helper: MacroHelper[context.type]): context.Expr[FieldFormat[A]] = {
+    import context.universe._
+    val fieldType = weakTypeTag[A].tpe
+    val subTypes = helper.subTypes(fieldType)
+
+    val addCases = subTypes.map { subType =>
+      cq"""f: ${subType.asClass} =>
+          val withType = stringFormat.addField(${subType.name.toString}, fieldName+ ".type", entityBuilder)
+          FieldFormat[$subType].addField(f, fieldName, withType)"""
+    }
+
+    val fromCases = subTypes.map { subType =>
+      cq"""Right(${subType.name.toString}) => FieldFormat[$subType].fromField(entity, fieldName)"""
+    }
+
+    context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
+
+          new FieldFormat[$fieldType] {
+            private val stringFormat = implicitly[FieldFormat[String]]
+            override def addField(value: $fieldType, fieldName: String, entityBuilder: EntityBuilder): EntityBuilder = value match {
+              case ..$addCases
+            }
+
+            override def fromField(entity: Entity, fieldName: String): Either[DatastoreError, $fieldType] = stringFormat.fromField(entity, fieldName + ".type") match {
+              case ..$fromCases
+              case Right(other) => DatastoreError.error(s"Unknown subtype found: $$other")
+              case Left(error) => Left(error)
+            }
+          }
+        """)
+  }
+
+  private def caseClassFormat[A: context.WeakTypeTag](context: Context)(helper: MacroHelper[context.type]): context.Expr[FieldFormat[A]] = {
+    import context.universe._
 
     val fieldType = weakTypeTag[A].tpe
-    helper.requireCaseClass(fieldType)
 
     val fields = helper.caseClassFieldList(fieldType)
 
@@ -88,47 +127,4 @@ object NestedFieldFormat {
         """)
   }
 
-}
-
-object SealedFieldFormat { // TODO Should these be separate?? Try to unite with macro bundles
-
-  import scala.language.experimental.macros
-
-  def apply[A](): FieldFormat[A] = macro applyImpl[A]
-
-  def applyImpl[A: context.WeakTypeTag](context: Context)(): context.Expr[FieldFormat[A]] = {
-    import context.universe._
-    val helper = MacroHelper(context)
-    val fieldType = weakTypeTag[A].tpe
-    if (!helper.isSealedTrait(fieldType)) {
-      context.abort(context.enclosingPosition, s"Type must be a sealed trait but $fieldType is not")
-    }
-    val subTypes = helper.subTypes(fieldType)
-
-    val addCases = subTypes.map { subType =>
-      cq"""f: ${subType.asClass} =>
-          val withType = stringFormat.addField(${subType.name.toString}, fieldName+ ".type", entityBuilder)
-          NestedFieldFormat[$subType].addField(f, fieldName, withType)"""
-    }
-
-    val fromCases = subTypes.map { subType =>
-      cq"""Right(${subType.name.toString}) => NestedFieldFormat[$subType].fromField(entity, fieldName)"""
-    }
-
-    context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
-
-          new FieldFormat[$fieldType] {
-            private val stringFormat = implicitly[FieldFormat[String]]
-            override def addField(value: $fieldType, fieldName: String, entityBuilder: EntityBuilder): EntityBuilder = value match {
-              case ..$addCases
-            }
-
-            override def fromField(entity: Entity, fieldName: String): Either[DatastoreError, $fieldType] = stringFormat.fromField(entity, fieldName + ".type") match {
-              case ..$fromCases
-              case Right(other) => DatastoreError.error(s"Unknown subtype found: $$other")
-              case Left(error) => Left(error)
-            }
-          }
-        """)
-  }
 }
