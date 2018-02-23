@@ -1,25 +1,62 @@
 package com.ovoenergy.datastore4s
 
+import com.google.cloud.datastore.Key
 import com.ovoenergy.datastore4s.ToKey.JavaLong
-import com.ovoenergy.datastore4s.utils.TestDatastore
 import org.scalatest.{FeatureSpec, Matchers}
+
+sealed trait SealedEntityType
+
+sealed trait SealedKey
+
+case class StringKey(key: String) extends SealedKey
+
+case class LongKey(long: Long) extends SealedKey
+
+case class FirstSubType(key: String, someLongValue: Long) extends SealedEntityType
+
+case class SecondSubType(key: Long, someBoolean: Boolean, someDouble: Double) extends SealedEntityType
+
+object SealedEntityType {
+  def key(sealedEntityType: SealedEntityType): SealedKey = sealedEntityType match {
+    case FirstSubType(key, _) => StringKey(key)
+    case SecondSubType(key, _, _) => LongKey(key)
+  }
+}
+
+case class StringKeyObject(someKey: String, someProperty: String)
+
+case class LongKeyObject(key: Long)
+
+case class ComplexKeyObject(id: Id)
+
+case class Id(id: String, parent: Parent)
+
+case class Parent(name: String)
+
+object IdToKey extends ToKey[Id] {
+  implicit val parentToAncestor = ToAncestor.toStringAncestor[Parent]("test-ancestor")(_.name)
+  override def toKey(value: Id, keyFactory: KeyFactory) = keyFactory.addAncestor(value.parent).buildWithName(value.id)
+}
+
+class NonCaseClass(val key: String)
+
+case class MissingFieldFormatEntity(missingTypeField: MissingFieldFormatType, stringField: String)
+
+case class MissingFieldFormatType()
 
 class EntityFormatSpec extends FeatureSpec with Matchers {
 
-  sealed trait SealedEntityType {
-    val key: String
+  implicit object SealedToKey extends ToKey[SealedKey] {
+    override def toKey(value: SealedKey, keyFactory: KeyFactory): Key = value match {
+      case StringKey(name) => keyFactory.buildWithName(name)
+      case LongKey(id) => keyFactory.buildWithId(id)
+    }
   }
 
-  case class FirstSubType(key: String, someLongValue: Long) extends SealedEntityType
-
-  case class SecondSubType(key: String, someBoolean:Boolean, someDouble: Double) extends SealedEntityType
-
-  val datastore = TestDatastore()
-
-  implicit val keyFactorySupplier = () => datastore.newKeyFactory()
+  implicit val datastore = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
 
   feature("The EntityFormat macro") {
-    scenario("Attempt to make an EntityFormat of a type that is not a case class") {
+    scenario("Attempt to make an EntityFormat of a type that is not a case class or sealed trait") {
       """EntityFormat[NonCaseClass, String]("non-case-class")(_.key)""" shouldNot compile
     }
 
@@ -39,11 +76,11 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     scenario("A simple case class with only a long key") {
       val longEntityFormat = EntityFormat[LongKeyObject, JavaLong]("long-type")(_.key)
       val record = LongKeyObject(20)
-      val e = longEntityFormat.toEntity(record)
+      val e = DatastoreService.toEntity(record, longEntityFormat)
       val entity = e.rawEntity // TODO try and remove this method.
-      entity.getKey.getKind shouldBe "long-type"
-      entity.getKey().getId shouldBe 20
-      entity.getLong("key") shouldBe 20
+      longEntityFormat.kind.name shouldBe "long-type"
+      longEntityFormat.key(record) shouldBe 20
+      entity.getLong("key") shouldBe 20 // TODO move key matching to integration tests??? I feel like these tests should just check te round trip
 
       val roundTripped = longEntityFormat.fromEntity(e)
       roundTripped shouldBe Right(record)
@@ -52,10 +89,10 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     scenario("A case class with a string key and string property") {
       val stringEntityFormat = EntityFormat[StringKeyObject, String]("string-type")(_.someKey)
       val record = StringKeyObject("key", "propertyValue")
-      val e = stringEntityFormat.toEntity(record)
+      val e = DatastoreService.toEntity(record, stringEntityFormat)
       val entity = e.rawEntity // TODO try and remove this method.
-      entity.getKey.getKind shouldBe "string-type"
-      entity.getKey().getName shouldBe "key"
+      stringEntityFormat.kind.name shouldBe "string-type"
+      stringEntityFormat.key(record) shouldBe "key"
       entity.getString("someProperty") shouldBe "propertyValue"
       entity.getString("someKey") shouldBe "key"
 
@@ -70,15 +107,10 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val complexEntityFormat = EntityFormat[ComplexKeyObject, Id]("complex-kind")(_.id)
 
       val record = ComplexKeyObject(Id("key", Parent("parent")))
-      val e = complexEntityFormat.toEntity(record)
+      val e = DatastoreService.toEntity(record, complexEntityFormat)
       val entity = e.rawEntity // TODO try and remove this method.
-      entity.getKey.getKind shouldBe "complex-kind"
-      val key = entity.getKey()
-      key.getName shouldBe "key"
-
-      key.getAncestors should have size 1
-      val ancestor = key.getAncestors.get(0)
-      ancestor.getName shouldBe "parent" // TODO proper handling of ancestors
+      complexEntityFormat.kind.name shouldBe "complex-kind"
+      complexEntityFormat.key(record) shouldBe Id("key", Parent("parent"))
 
       entity.getString("id.id") shouldBe "key"
       entity.getString("id.parent") shouldBe "parent"
@@ -88,51 +120,28 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     }
 
     scenario("A sealed trait hierarchy") {
-      val sealedEntityFormat = EntityFormat[SealedEntityType, String]("sealed-type")(_.key)
+      val sealedEntityFormat = EntityFormat[SealedEntityType, SealedKey]("sealed-type")(SealedEntityType.key(_))
 
       val firstRecord = FirstSubType("first-key", 2036152)
-      val e1 = sealedEntityFormat.toEntity(firstRecord)
+      val e1 = DatastoreService.toEntity(firstRecord, sealedEntityFormat)
       val firstEntity = e1.rawEntity // TODO try and remove this method.
-      firstEntity.getKey.getKind shouldBe "sealed-type"
-      firstEntity.getKey().getName shouldBe "first-key"
+      sealedEntityFormat.kind.name shouldBe "sealed-type"
+      sealedEntityFormat.key(firstRecord) shouldBe StringKey("first-key")
       firstEntity.getString("key") shouldBe "first-key"
       firstEntity.getLong("someLongValue") shouldBe 2036152
 
       sealedEntityFormat.fromEntity(e1) shouldBe Right(firstRecord)
 
-      val secondRecord = SecondSubType("second-key", true, 1824672.23572)
-      val e2 = sealedEntityFormat.toEntity(secondRecord)
+      val secondRecord = SecondSubType(83746286466723l, true, 1824672.23572)
+      val e2 = DatastoreService.toEntity(secondRecord, sealedEntityFormat)
       val secondEntity = e2.rawEntity // TODO try and remove this method.
-      secondEntity.getKey.getKind shouldBe "sealed-type"
-      secondEntity.getKey().getName shouldBe "second-key"
-      secondEntity.getString("key") shouldBe "second-key"
+      sealedEntityFormat.key(secondRecord) shouldBe LongKey(83746286466723l)
+      secondEntity.getLong("key") shouldBe 83746286466723l
       secondEntity.getBoolean("someBoolean") shouldBe true
       secondEntity.getDouble("someDouble") shouldBe 1824672.23572
 
       sealedEntityFormat.fromEntity(e2) shouldBe Right(secondRecord)
     }
   }
-
-  case class StringKeyObject(someKey: String, someProperty: String)
-
-  case class LongKeyObject(key: Long)
-
-  case class ComplexKeyObject(id: Id)
-
-  case class Id(id: String, parent: Parent)
-
-  case class Parent(name: String)
-
-  implicit val parentToAncestor = ToAncestor.toStringAncestor[Parent]("test-ancestor")(_.name)
-
-  object IdToKey extends ToKey[Id] {
-    override def toKey(value: Id, keyFactory: KeyFactory) = keyFactory.addAncestor(value.parent).buildWithName(value.id)
-  }
-
-  class NonCaseClass(val key: String)
-
-  case class MissingFieldFormatEntity(missingTypeField: MissingFieldFormatType, stringField: String)
-
-  case class MissingFieldFormatType()
 
 }

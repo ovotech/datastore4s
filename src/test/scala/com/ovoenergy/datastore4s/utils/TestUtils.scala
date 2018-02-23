@@ -1,14 +1,7 @@
 package com.ovoenergy.datastore4s.utils
 
-import com.google.cloud.datastore.{Datastore, DatastoreOptions}
+import com.google.cloud.datastore.Datastore
 import com.ovoenergy.datastore4s._
-
-object TestDatastore {
-  def apply(): Datastore = DatastoreOptions.newBuilder()
-    .setProjectId("test-project")
-    .setNamespace("test-namespace")
-    .build().getService
-}
 
 object TestKeyFactory {
   def apply(testDatastore: Datastore): KeyFactory = new KeyFactoryFacade(testDatastore.newKeyFactory().setKind("test-kind"))
@@ -21,7 +14,7 @@ case class StubEntity(fields: Map[String, DatastoreValue]) extends Entity {
 }
 
 case class StubEntityBuilder(fields: Map[String, DatastoreValue] = Map()) extends EntityBuilder {
-  override def addField(name: String, value: DatastoreValue) = StubEntityBuilder(fields + (name -> value))
+  override def addField(field: Field) = StubEntityBuilder(field.values.toMap ++ fields)
 
   override def build() = StubEntity(fields)
 }

@@ -38,21 +38,30 @@ object DatastoreService {
       }
     }
 
-  def put[E](entityObject: E)(implicit format: EntityFormat[E, _], datastore: Datastore): DatastoreOperation[Persisted[E]] =
+  def put[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
     DatastoreOperation { () =>
-      implicit val keyFactorySupplier = () => datastore.newKeyFactory()
-      val entity = format.toEntity(entityObject) match {
-        case WrappedEntity(e: com.google.cloud.datastore.Entity) => e
+      val entity = toEntity(entityObject, format) match {
+        case WrappedEntity(e: com.google.cloud.datastore.Entity) => e // TODO better way? just make the class and extractor package private I guess?
       }
       Right(Persisted(entityObject, datastore.put(entity))) // TODO handle datastore errors
     }
 
-  def delete[E, K](key: K)(implicit evidence: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Unit] =
+  private [datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K])(implicit toKey: ToKey[K], datastore: Datastore) = {
+    val key = toKey.toKey(format.key(entityObject), new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name)))
+    val builder = WrappedBuilder(key)
+    format.toEntity(entityObject, builder)
+  }
+
+  private def createKeyFactory[K, E](format: EntityFormat[E, K], datastore: Datastore) =
+    new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name))
+
+  def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Unit] =
     DatastoreOperation { () =>
-      Right(datastore.delete(toKey.toKey(key, new KeyFactoryFacade(datastore.newKeyFactory().setKind(evidence.kind.name)))))
+      Right(datastore.delete(toKey.toKey(key, createKeyFactory(format, datastore))))
     // TODO can this return a different type??
     // TODO handle datastore errors
     }
+
 
   def list[E](implicit format: EntityFormat[E, _], datastore: Datastore): Query[E] = {
     val kind = format.kind.name

@@ -3,8 +3,8 @@ package com.ovoenergy.datastore4s
 import scala.reflect.macros.blackbox.Context
 
 private[datastore4s] class MacroHelper[C <: Context](val context: C) {
-  import context.universe._
 
+  import context.universe._
 
   def requireCaseClass(tpe: context.universe.Type) =
     if (!isCaseClass(tpe)) {
@@ -26,7 +26,19 @@ private[datastore4s] class MacroHelper[C <: Context](val context: C) {
 
   def requireLiteral[A](expression: context.Expr[A], parameter: String) = expression.tree match {
     case Literal(Constant(_)) => ()
-    case _ => context.abort(context.enclosingPosition, s"$parameter must be a literal")
+    case _ => abort(s"$parameter must be a literal")
+  }
+
+  def abort[A](error: String): A = context.abort(context.enclosingPosition, error)
+
+  def sealedTraitCaseClassOrAbort[A](tpe: context.universe.Type, sealedTraitExpression: => context.Expr[A], caseClassExpression: => context.Expr[A]): context.Expr[A] = {
+    if (isSealedTrait(tpe)) {
+      sealedTraitExpression
+    } else if (isCaseClass(tpe)) {
+      caseClassExpression
+    } else {
+      abort(s"Type must either be a sealed trait or a case class but $tpe is not")
+    }
   }
 
 }

@@ -5,7 +5,10 @@ import com.google.cloud.datastore.{BaseEntity, Key}
 trait Entity {
   def field(name: String): Option[DatastoreValue]
 
-  def rawEntity: BaseEntity[Key]
+  // TODO should I keep following method?? It may be useful in the case people don't want to use the macros
+  def fieldFromFormatPossiblyGoingToBeDeleted[A](name: String)(implicit fieldFormat: FieldFormat[A]): Either[DatastoreError, A] = fieldFormat.fromEntityField(name, this)
+
+  def rawEntity: BaseEntity[Key] // TODO delete!!!
 }
 
 case class WrappedEntity(entity: BaseEntity[Key]) extends Entity {
@@ -24,25 +27,21 @@ case class ProjectionEntity(mappings: Map[String, String], wrappedEntity: Wrappe
 }
 
 trait EntityBuilder {
-  def addField(name: String, value: DatastoreValue): EntityBuilder
+  def addField(field: Field): EntityBuilder
+
+  // TODO fix arg list. Does this make sense?? it might make sense to change the field format contract to not accept builder but instead return a fn or Seq[Field]?
+  def addFieldByFormatPossiblyGoingToBeDeleted[A](name: String, value: A)(implicit format: FieldFormat[A]): EntityBuilder = addField(format.toEntityField(name, value))
 
   def build(): Entity
 }
 
-case class WrappedBuilder(builder: com.google.cloud.datastore.Entity.Builder) extends EntityBuilder {
-  override def addField(name: String, value: DatastoreValue) =
-    WrappedBuilder(builder.set(name, value.dsValue))
+case class WrappedBuilder(key: Key, fields: Seq[(String, DatastoreValue)] = Seq.empty) extends EntityBuilder {
+  override def addField(field: Field) =
+    copy(fields = field.values ++ fields)
 
-  override def build() = WrappedEntity(builder.build())
-}
-
-object WrappedBuilder {
-  def apply(existingEntity: Entity): EntityBuilder =
-    existingEntity.rawEntity match {
-      // TODO if we can extract this out of the entityformat we should be ok here. It is only needed since a builder is not passed into the format. If A createKey interface can be extracted we should be good.
-      case ent: com.google.cloud.datastore.Entity =>
-        WrappedBuilder(com.google.cloud.datastore.Entity.newBuilder(ent))
-      case other =>
-        throw new RuntimeException(s"Need to fix up internal representation, expected Entity but was: $other")
-    }
+  override def build() = {
+    val builder = com.google.cloud.datastore.Entity.newBuilder(key)
+    val entity = fields.foldLeft(builder) { case (b, (name, value)) => b.set(name, value.dsValue) }.build()
+    WrappedEntity(entity)
+  }
 }

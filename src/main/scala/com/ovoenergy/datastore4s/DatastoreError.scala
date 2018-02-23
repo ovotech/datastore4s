@@ -5,7 +5,7 @@ trait DatastoreError
 // TODO tidy this up with a real value not just toString()s
 object DatastoreError {
   def missingField[A](fieldName: String, entity: Entity): Either[DatastoreError, A] =
-    Left(new DatastoreError {
+    Left(new DatastoreError { // TODO should this contain the whole entity as a string???
       override def toString: String =
         s"Field $fieldName could not be found on entity $entity"
     })

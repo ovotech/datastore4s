@@ -3,16 +3,13 @@ package com.ovoenergy.datastore4s
 import java.time.Instant
 
 import com.ovoenergy.datastore4s.ValueFormat.InstantEpochMillisValueFormat
-import com.ovoenergy.datastore4s.utils.TestDatastore
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
 
 class CaseClassFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
-  val datastore = TestDatastore()
-
-  implicit val keyFactorySupplier = () => datastore.newKeyFactory()
+  implicit val datastore = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
 
   implicit val instantFormat = InstantEpochMillisValueFormat
   val entityGen = for {
@@ -29,7 +26,7 @@ class CaseClassFieldFormatSpec extends FlatSpec with Matchers with GeneratorDriv
     val entityFormat = EntityFormat[EntityWithNestedType, String]("nested-test-kind")(_.id)
 
     forAll(entityGen) { entity =>
-      val roundTripped = entityFormat.fromEntity(entityFormat.toEntity(entity))
+      val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat))
       roundTripped shouldBe Right(entity)
     }
   }

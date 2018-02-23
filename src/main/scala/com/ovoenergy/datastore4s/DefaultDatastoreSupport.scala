@@ -8,7 +8,6 @@ trait DefaultDatastoreSupport {
 
   private implicit val datastore =
     DatastoreService.createDatastore(dataStoreConfiguration)
-  implicit val keyFactorySupplier = () => datastore.newKeyFactory()
 
   def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: ValueFormat[B]): ValueFormat[A] =
     ValueFormat.formatFromFunctions(constructor)(extractor)
@@ -24,7 +23,7 @@ trait DefaultDatastoreSupport {
   def toLongAncestor[A](kind: String)(f: A => Long): ToAncestor[A] =
     ToAncestor.toLongAncestor(kind)(f)
 
-  def put[E](entity: E)(implicit format: EntityFormat[E, _]): DatastoreOperation[Persisted[E]] =
+  def put[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
     DatastoreService.put(entity)
 
   def delete[E, K](key: K)(implicit evidence: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Unit] =

@@ -67,7 +67,7 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   private def forallTestRoundTrip[A](generator: Gen[A])(implicit fieldFormat: FieldFormat[A]) = {
     forAll(generator) { value =>
       val entity = createEntityWithField(fieldFormat, value)
-      val roundTripped = fieldFormat.fromField(entity, fieldName)
+      val roundTripped = fieldFormat.fromEntityField(fieldName, entity)
       roundTripped shouldBe Right(value)
     }
   }
@@ -77,7 +77,7 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   }
 
   private def createEntityWithField[A](fieldFormat: FieldFormat[A], value: A) = {
-    fieldFormat.addField(value, fieldName, StubEntityBuilder()).build()
+    StubEntityBuilder().addField(fieldFormat.toEntityField(fieldName, value)).build()
   }
 
 }

@@ -3,9 +3,9 @@ package com.ovoenergy.datastore4s
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
-class Kind private (val name: String) {
+class Kind private(val name: String) {
   override def equals(obj: scala.Any): Boolean = obj match {
-    case that:Kind => that.name == name
+    case that: Kind => that.name == name
     case _ => false
   }
 }
@@ -22,13 +22,12 @@ object Kind {
 
 }
 
-// TODO is it possible to extract and store types as fields rather than applying macros in macros??
-trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
+trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] { // TODO type KeyType??
   val kind: Kind
 
-  // TODO split out create key??
+  def key(record: EntityType): KeyType
 
-  def toEntity(record: EntityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): Entity
+  def toEntity(record: EntityType, builder: EntityBuilder): Entity
 
 }
 
@@ -45,83 +44,80 @@ object EntityFormat {
     helper.requireLiteral(kind, "kind")
 
     val entityType = weakTypeTag[EntityType].tpe
+    helper.sealedTraitCaseClassOrAbort[EntityFormat[EntityType, KeyType]](entityType,
+      sealedTraitFormat(context)(helper)(kind)(keyFunction),
+      caseClassFormat(context)(helper)(kind)(keyFunction))
+  }
+
+  private def sealedTraitFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
+    context: Context
+  )(helper: MacroHelper[context.type])(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
+    import context.universe._
+    val entityType = weakTypeTag[EntityType].tpe
     val keyType = weakTypeTag[KeyType].tpe
-    if (helper.isSealedTrait(entityType)) {
-      val subTypes = helper.subTypes(entityType)
+    val subTypes = helper.subTypes(entityType)
 
-      val cases = subTypes.map { subType =>
-        cq"""e: ${subType.asClass} => WrappedBuilder(EntityFormat[$subType, $keyType]($kind)($keyFunction).toEntity(e)).addField("type", stringFormat.toValue(${subType.name.toString})).build()"""
-      }
+    val cases = subTypes.map { subType =>
+      cq"""e: ${subType.asClass} => EntityFormat[$subType, $keyType]($kind)($keyFunction).toEntity(e, builder.addField(stringFormat.toEntityField("type", ${subType.name.toString})))"""
+    }
 
-      val toExpression =
-        q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): Entity = value match {
+    val toEntityExpression =
+      q"""override def toEntity(value: $entityType, builder: EntityBuilder): Entity = value match {
              case ..$cases
            }
         """
 
-      context.Expr[EntityFormat[EntityType, KeyType]](
-        q"""import com.ovoenergy.datastore4s._
+    context.Expr[EntityFormat[EntityType, KeyType]](
+      q"""import com.ovoenergy.datastore4s._
 
           new EntityFormat[$entityType, $keyType] {
 
             val kind = Kind($kind)
 
-            private val stringFormat = implicitly[ValueFormat[String]]
-            private val fromEntity = ${
-          FromEntity
-            .applyImpl[EntityType](context)
-        }
+            private val stringFormat = implicitly[FieldFormat[String]]
 
-            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = {
-              fromEntity.fromEntity(entity)
-            }
+            override def key(record: $entityType) = $keyFunction(record)
 
-            $toExpression
+            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = FromEntity[$entityType].fromEntity(entity)
+
+            $toEntityExpression
           }
         """)
-    } else {
+  }
 
-      helper.requireCaseClass(entityType)
-      val keyExpression =
-        q"""val keyFactory = new KeyFactoryFacade(keyFactorySupplier().setKind(kind.name))
-          val key = implicitly[ToKey[${keyType.typeSymbol}]].toKey($keyFunction(value), keyFactory)"""
+  private def caseClassFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
+    context: Context
+  )(helper: MacroHelper[context.type])(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
+    import context.universe._
+    val entityType = weakTypeTag[EntityType].tpe
+    val keyType = weakTypeTag[KeyType].tpe
 
-      // TODO One more abstractable here
-      val builderExpressions = helper.caseClassFieldList(entityType).map { field =>
-        val fieldName = field.asTerm.name
-        q"""implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].addField(value.${fieldName}, ${fieldName.toString}, builder)"""
-      }
+    // TODO One more abstractable here
+    val fieldExpressions = helper.caseClassFieldList(entityType).map { field =>
+      val fieldName = field.asTerm.name
+      q"""implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].toEntityField(${fieldName.toString}, value.${fieldName})"""
+    }
 
-      // TODO Change builder to be immutable. Maybe put all values in Seq[DataStoreValue} and fold? Passing in a builder to the function would be nice
-      val toExpression =
-        q"""override def toEntity(value: $entityType)(implicit keyFactorySupplier: () => com.google.cloud.datastore.KeyFactory): Entity = {
-            ..$keyExpression
-            val builder = WrappedBuilder(com.google.cloud.datastore.Entity.newBuilder(key))
-            ..$builderExpressions
-            builder.build()
+    val toEntityExpression =
+      q"""override def toEntity(value: $entityType, builder: EntityBuilder): Entity = {
+            Seq(..$fieldExpressions).foldLeft(builder){case (b, field) => b.addField(field)}.build()
           }
         """
 
-      context.Expr[EntityFormat[EntityType, KeyType]](
-        q"""import com.ovoenergy.datastore4s._
+    context.Expr[EntityFormat[EntityType, KeyType]](
+      q"""import com.ovoenergy.datastore4s._
 
           new EntityFormat[$entityType, $keyType] {
 
             val kind = Kind($kind)
 
-            private val fromEntity = ${
-          FromEntity
-            .applyImpl[EntityType](context)
-        }
+            override def key(record: $entityType) = $keyFunction(record)
 
-            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = {
-              fromEntity.fromEntity(entity)
-            }
+            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = FromEntity[$entityType].fromEntity(entity)
 
-            $toExpression
+            $toEntityExpression
           }
         """)
-    }
   }
 }
 
@@ -129,7 +125,6 @@ trait FromEntity[A] {
   def fromEntity(entity: Entity): Either[DatastoreError, A]
 }
 
-// TODO Should We write separate tests for FromEntity? Rather than relying implicitly to EntityFormat tests
 object FromEntity {
 
   def apply[A](): FromEntity[A] = macro applyImpl[A]
@@ -139,37 +134,46 @@ object FromEntity {
     val helper = MacroHelper(context)
 
     val entityType = weakTypeTag[A].tpe
-    if (helper.isSealedTrait(entityType)) {
-      val subTypes = helper.subTypes(entityType)
-      val cases = subTypes.map { subType =>
-        cq"""Right(${subType.name.toString}) => FromEntity[$subType].fromEntity(entity)"""
-      }
-      context.Expr[FromEntity[A]](
-        q"""import com.ovoenergy.datastore4s._
+    helper.sealedTraitCaseClassOrAbort[FromEntity[A]](entityType,
+      sealedTraitFormat(context)(helper),
+      caseClassFormat(context)(helper))
+  }
+
+  private def sealedTraitFormat[A: context.WeakTypeTag](context: Context)(helper: MacroHelper[context.type]): context.Expr[FromEntity[A]] = {
+    import context.universe._
+    val entityType = weakTypeTag[A].tpe
+    val subTypes = helper.subTypes(entityType)
+    val cases = subTypes.map { subType =>
+      cq"""Right(${subType.name.toString}) => FromEntity[$subType].fromEntity(entity)"""
+    }
+    context.Expr[FromEntity[A]](
+      q"""import com.ovoenergy.datastore4s._
 
           new FromEntity[$entityType] {
             private val stringFormat = implicitly[FieldFormat[String]]
-            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = stringFormat.fromField(entity, "type") match {
+            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = stringFormat.fromEntityField("type", entity) match {
               case ..$cases
               case Right(other) => DatastoreError.error(s"Unknown subtype found: $$other")
               case Left(error) => Left(error)
             }
           }""")
-    } else {
-      helper.requireCaseClass(entityType)
+  }
 
-      // TODO One more abstractable here
-      val companion = entityType.typeSymbol.companion
-      val fields = helper.caseClassFieldList(entityType)
-      val companionNamedArguments = fields.map(field => AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
+  private def caseClassFormat[A: context.WeakTypeTag](context: Context)(helper: MacroHelper[context.type]): context.Expr[FromEntity[A]] = {
+    import context.universe._
+    val entityType = weakTypeTag[A].tpe
+    // TODO One more abstractable here
+    val companion = entityType.typeSymbol.companion
+    val fields = helper.caseClassFieldList(entityType)
+    val companionNamedArguments = fields.map(field => AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
 
-      val fieldFormats = fields.map { field =>
-        val fieldName = field.asTerm.name
-        fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${fieldName.toString})"""
-      }
+    val fieldFormats = fields.map { field =>
+      val fieldName = field.asTerm.name
+      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromEntityField(${fieldName.toString}, entity)"""
+    }
 
-      context.Expr[FromEntity[A]](
-        q"""import com.ovoenergy.datastore4s._
+    context.Expr[FromEntity[A]](
+      q"""import com.ovoenergy.datastore4s._
 
           new FromEntity[$entityType] {
             override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = {
@@ -179,7 +183,6 @@ object FromEntity {
             }
           }
         """)
-    }
   }
 
 }
