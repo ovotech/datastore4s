@@ -36,14 +36,6 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
          EntityFormat[StringKeyObject, String](kind)(_.someKey)""".stripMargin shouldNot compile
     }
 
-    scenario("Attempt to make an EntityFormat from a kind that starts with two underscores") {
-      """EntityFormat[StringKeyObject, String]("__kind")(_.someKey)""".stripMargin shouldNot compile
-    }
-
-    scenario("Attempt to make an EntityFormat from a kind containing a '/'") {
-      """EntityFormat[StringKeyObject, String]("some/kind")(_.someKey)""".stripMargin shouldNot compile
-    }
-
     scenario("A simple case class with only a long key") {
       val longEntityFormat = EntityFormat[LongKeyObject, JavaLong]("long-type")(_.key)
       val record = LongKeyObject(20)

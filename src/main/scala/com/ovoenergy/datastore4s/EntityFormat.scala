@@ -3,13 +3,22 @@ package com.ovoenergy.datastore4s
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
-case class Kind(name: String)
+class Kind private (val name: String) {
+  override def equals(obj: scala.Any): Boolean = obj match {
+    case that:Kind => that.name == name
+    case _ => false
+  }
+}
 
 object Kind {
-  val validationError: String = "A kind must not start with '__' or contain '/'"
 
-  def isValid(kind: String): Boolean =
+  private def isValid(kind: String): Boolean =
     !(kind.contains('/') || kind.startsWith("__"))
+
+  def apply(kindName: String) = {
+    require(isValid(kindName), "A kind must not start with '__' or contain '/'")
+    new Kind(kindName)
+  }
 
 }
 
@@ -25,18 +34,15 @@ trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
 
 object EntityFormat {
   def apply[EntityType, KeyType](kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] =
-    macro applyImpl[EntityType, KeyType]
+  macro applyImpl[EntityType, KeyType]
 
+  // TODO tidy and split out
   def applyImpl[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
     context: Context
   )(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
     val helper = MacroHelper(context)
-
-    val kindString = helper.literal(kind, "kind")
-    if (!Kind.isValid(kindString)) {
-      context.abort(context.enclosingPosition, Kind.validationError)
-    }
+    helper.requireLiteral(kind, "kind")
 
     val entityType = weakTypeTag[EntityType].tpe
     val keyType = weakTypeTag[KeyType].tpe
@@ -53,15 +59,18 @@ object EntityFormat {
            }
         """
 
-      context.Expr[EntityFormat[EntityType, KeyType]](q"""import com.ovoenergy.datastore4s._
+      context.Expr[EntityFormat[EntityType, KeyType]](
+        q"""import com.ovoenergy.datastore4s._
 
           new EntityFormat[$entityType, $keyType] {
 
             val kind = Kind($kind)
 
             private val stringFormat = implicitly[ValueFormat[String]]
-            private val fromEntity = ${FromEntity
-        .applyImpl[EntityType](context)}
+            private val fromEntity = ${
+          FromEntity
+            .applyImpl[EntityType](context)
+        }
 
             override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = {
               fromEntity.fromEntity(entity)
@@ -93,14 +102,17 @@ object EntityFormat {
           }
         """
 
-      context.Expr[EntityFormat[EntityType, KeyType]](q"""import com.ovoenergy.datastore4s._
+      context.Expr[EntityFormat[EntityType, KeyType]](
+        q"""import com.ovoenergy.datastore4s._
 
           new EntityFormat[$entityType, $keyType] {
 
             val kind = Kind($kind)
 
-            private val fromEntity = ${FromEntity
-        .applyImpl[EntityType](context)}
+            private val fromEntity = ${
+          FromEntity
+            .applyImpl[EntityType](context)
+        }
 
             override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = {
               fromEntity.fromEntity(entity)
@@ -132,7 +144,8 @@ object FromEntity {
       val cases = subTypes.map { subType =>
         cq"""Right(${subType.name.toString}) => FromEntity[$subType].fromEntity(entity)"""
       }
-      context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._
+      context.Expr[FromEntity[A]](
+        q"""import com.ovoenergy.datastore4s._
 
           new FromEntity[$entityType] {
             private val stringFormat = implicitly[FieldFormat[String]]
@@ -155,7 +168,8 @@ object FromEntity {
         fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromField(entity, ${fieldName.toString})"""
       }
 
-      context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._
+      context.Expr[FromEntity[A]](
+        q"""import com.ovoenergy.datastore4s._
 
           new FromEntity[$entityType] {
             override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = {

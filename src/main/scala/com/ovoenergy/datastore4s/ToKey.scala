@@ -13,7 +13,7 @@ object ToKey {
       keyFactory.buildWithName(value)
   }
 
-  // TODO move to package
+  // TODO move to package? Is it all primitives???? Try with Int.
   type JavaLong = java.lang.Long
   implicit object LongToKey extends ToKey[JavaLong] {
     override def toKey(value: JavaLong, keyFactory: KeyFactory): Key =
@@ -62,7 +62,7 @@ trait ToAncestor[A] {
 }
 
 object ToAncestor {
-  // TODO should these calls be macros to allow kind validation?
+
   def toStringAncestor[A](kind: String)(f: A => String): ToAncestor[A] =
     a => StringAncestor(Kind(kind), f(a))
 
