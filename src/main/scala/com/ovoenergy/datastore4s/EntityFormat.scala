@@ -3,25 +3,6 @@ package com.ovoenergy.datastore4s
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
-class Kind private(val name: String) {
-  override def equals(obj: scala.Any): Boolean = obj match {
-    case that: Kind => that.name == name
-    case _ => false
-  }
-}
-
-object Kind {
-
-  private def isValid(kind: String): Boolean =
-    !(kind.contains('/') || kind.startsWith("__"))
-
-  def apply(kindName: String) = {
-    require(isValid(kindName), "A kind must not start with '__' or contain '/'")
-    new Kind(kindName)
-  }
-
-}
-
 trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] { // TODO type KeyType??
   val kind: Kind
 
