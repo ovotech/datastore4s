@@ -1,14 +1,17 @@
 package com.ovoenergy.datastore4s
 
+import java.util.UUID
+import java.util.concurrent.ThreadLocalRandom
+
 import org.scalatest.{FeatureSpec, Matchers}
 
-case class SomeEntityType(id: Long, parent: Parent, possibleInt: Option[Int], compositeField: CompositeField)
+case class SomeEntityType(id: String, parent: Parent, possibleInt: Option[Int], compositeField: CompositeField)
 
 case class CompositeField(doubles: Seq[Double], someBoolean: Boolean)
 
-case class Parent(name: String)
+case class Parent(id: Long)
 
-case class ComplexKey(id: Long, parent: Parent)
+case class ComplexKey(id: String, parent: Parent)
 
 trait TestDatastoreSupport extends DefaultDatastoreSupport {
   override def dataStoreConfiguration = DataStoreConfiguration("datastore4s-project", "datastore4s")
@@ -22,7 +25,13 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
 
   feature("Datastore support for persistence") {
     scenario("Persist single entity") {
-      pending
+      val entity = randomEntityWithId("Entity1")
+      val result = run(put(entity))
+      result match {
+        case Right(persisted) =>
+          persisted.inputObject shouldBe entity
+        case Left(error) => fail(s"There was an error: $error")
+      }
     }
   }
 
@@ -56,8 +65,19 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
   feature("Datastore support for projections") {
     scenario("Project a seqence of entities into a row format") {
       // TODO Note here that the type of parent is different. But the internal datastore type is still string. Don't know if we want to allow this.
-      case class ProjectedRow(entityId: Long, boolean: Boolean, parentAsString: String)
+      case class ProjectedRow(entityId: String, boolean: Boolean, parentAsString: String)
       pending
     }
+  }
+
+  private def randomEntityWithId(id: String) = {
+    val random = ThreadLocalRandom.current()
+    val doubles = random.doubles().limit(random.nextInt(10)).toArray.toSeq
+    SomeEntityType(
+      id,
+      Parent(UUID.randomUUID().toString),
+      if (random.nextBoolean()) Some(random.nextInt()) else None,
+      CompositeField(doubles, random.nextBoolean())
+    )
   }
 }
