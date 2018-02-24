@@ -33,7 +33,7 @@ jobs:
   unit-test:
     <<: *defaults
     steps:
-      - checkout
+      - checkout #TODO Do I need checkout??
       - attach_workspace:
           at: .
       - restore_cache:
@@ -52,6 +52,30 @@ jobs:
       - run:
           name: Scalafmt Check
           command: sbt ";scalafmtCheck;scalafmtSbtCheck"
+
+  integration-test:
+    <<: *defaults
+    docker:
+      - image: xaviiic/alpine-cloud-datastore-emulator:1.2.1
+        entrypoint: ["gcloud", "beta", "emulators", "datastore", "start", "--project=datastore4s", "--no-store-on-disk", "--host-port=localhost:8380"]
+    environment:
+      - DATASTORE_PROJECT_ID: datastore4s
+      - DATASTORE_HOST: http://localhost:8380
+      - DATASTORE_EMULATOR_HOST: http://localhost:8380
+      - DATASTORE_EMULATOR_HOST_PATH: localhost:8380/datastore
+      - DATASTORE_DATASET: datastore4s
+    steps:
+      - checkout #TODO Do I need checkout??
+      - attach_workspace:
+          at: .
+      - restore_cache:
+          keys:
+            - v2-dependencies-{{ checksum "build.sbt" }}
+            # fallback to using the latest cache if no exact match is found
+            - v2-dependencies-
+      - run:
+          name: Integration Test
+          command: sbt it:test
 
   publish:
     <<: *defaults
@@ -80,10 +104,14 @@ workflows:
       - unit-test:
           requires:
             - build
+      - integration-test:
+          requires:
+            - build
       - format-check
       - publish:
           requires:
             - unit-test
+            - integration-test
             - format-check
           filters:
             branches:
