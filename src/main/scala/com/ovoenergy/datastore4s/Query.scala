@@ -3,6 +3,7 @@ package com.ovoenergy.datastore4s
 import com.google.cloud.datastore._
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.ovoenergy.datastore4s.Query.EntityFunction
+import com.ovoenergy.datastore4s.ToAncestor.{LongAncestor, StringAncestor}
 
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}

@@ -1,5 +1,6 @@
 package com.ovoenergy.datastore4s
 
+import com.ovoenergy.datastore4s.ToAncestor.{LongAncestor, StringAncestor}
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
@@ -46,7 +47,7 @@ class KeyFactoryFacadeSpec extends FlatSpec with GeneratorDrivenPropertyChecks w
     val toAncestor = ToAncestor.toLongAncestor[BigDecimal](kindName)(_.longValue())
     forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { long =>
       val ancestor = toAncestor.toAncestor(BigDecimal(long))
-      ancestor shouldBe LongAncestor(Kind(kindName), long)
+      ancestor shouldBe new LongAncestor(Kind(kindName), long)
     }
   }
 
@@ -55,7 +56,7 @@ class KeyFactoryFacadeSpec extends FlatSpec with GeneratorDrivenPropertyChecks w
     val toAncestor = ToAncestor.toStringAncestor[(String, String)](kindName)(pair => pair._1 + pair._2)
     forAll(Gen.alphaNumStr, Gen.alphaNumStr) { (string1, string2) =>
       val ancestor = toAncestor.toAncestor(string1, string2)
-      ancestor shouldBe StringAncestor(Kind(kindName), string1 + string2)
+      ancestor shouldBe new StringAncestor(Kind(kindName), string1 + string2)
     }
   }
 

@@ -13,8 +13,8 @@ object ToKey {
       keyFactory.buildWithName(value)
   }
 
-  // TODO move to package? Is it all primitives???? Try with Int.
   type JavaLong = java.lang.Long
+
   implicit object LongToKey extends ToKey[JavaLong] {
     override def toKey(value: JavaLong, keyFactory: KeyFactory): Key =
       keyFactory.buildWithId(value)
@@ -33,6 +33,7 @@ trait KeyFactory {
 }
 
 class KeyFactoryFacade(val factory: com.google.cloud.datastore.KeyFactory) extends KeyFactory {
+  import com.ovoenergy.datastore4s.ToAncestor.{StringAncestor, LongAncestor}
   override def buildWithName(name: String) = factory.newKey(name)
 
   override def buildWithId(id: Long) = factory.newKey(id)
@@ -53,10 +54,6 @@ object KeyFactoryFacade {
 
 sealed trait Ancestor
 
-private case class StringAncestor(kind: Kind, name: String) extends Ancestor
-
-private case class LongAncestor(kind: Kind, id: Long) extends Ancestor
-
 trait ToAncestor[A] {
   def toAncestor(value: A): Ancestor
 }
@@ -64,8 +61,28 @@ trait ToAncestor[A] {
 object ToAncestor {
 
   def toStringAncestor[A](kind: String)(f: A => String): ToAncestor[A] =
-    a => StringAncestor(Kind(kind), f(a))
+    a => new StringAncestor(Kind(kind), f(a))
 
   def toLongAncestor[A](kind: String)(f: A => Long): ToAncestor[A] =
-    a => LongAncestor(Kind(kind), f(a))
+    a => new LongAncestor(Kind(kind), f(a))
+
+  private[datastore4s] class StringAncestor(val kind: Kind, val name: String) extends Ancestor{
+    override def equals(obj: scala.Any): Boolean = obj match {
+      case StringAncestor(thatKind, thatName) => thatKind == kind && thatName == name
+      case _ => false
+    }
+  }
+  private[datastore4s] object StringAncestor {
+    def unapply(arg: StringAncestor): Option[(Kind, String)] = Some(arg.kind, arg.name)
+  }
+
+  private[datastore4s] class LongAncestor(val kind: Kind, val id: Long) extends Ancestor {
+    override def equals(obj: scala.Any): Boolean = obj match {
+      case LongAncestor(thatKind, thatId) => thatKind == kind && thatId == id
+      case _ => false
+    }
+  }
+  private[datastore4s] object LongAncestor {
+    def unapply(arg: LongAncestor): Option[(Kind, Long)] = Some(arg.kind, arg.id)
+  }
 }
