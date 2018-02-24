@@ -2,17 +2,14 @@ package com.ovoenergy.datastore4s
 
 import java.time.Instant
 
-import com.ovoenergy.datastore4s.internal.ValueFormat.InstantEpochMillisValueFormat
-import com.ovoenergy.datastore4s.utils.TestDatastore
+import com.ovoenergy.datastore4s.ValueFormat.InstantEpochMillisValueFormat
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
 
-class NestedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+class CaseClassFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
-  val datastore = TestDatastore()
-
-  implicit val keyFactorySupplier = () => datastore.newKeyFactory()
+  implicit val datastore = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
 
   implicit val instantFormat = InstantEpochMillisValueFormat
   val entityGen = for {
@@ -25,11 +22,11 @@ class NestedFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenP
   } yield EntityWithNestedType(id, SomeNestedType(string, long, int, bool, time))
 
   "The apply method of NestedFieldFormat" should "create a field format that nests the fields of case classes" in {
-    implicit val format = NestedFieldFormat[SomeNestedType]
+    implicit val format = FieldFormat[SomeNestedType]
     val entityFormat = EntityFormat[EntityWithNestedType, String]("nested-test-kind")(_.id)
 
     forAll(entityGen) { entity =>
-      val roundTripped = entityFormat.fromEntity(entityFormat.toEntity(entity))
+      val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat))
       roundTripped shouldBe Right(entity)
     }
   }

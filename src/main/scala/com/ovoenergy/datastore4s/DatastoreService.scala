@@ -1,9 +1,9 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{Datastore, DatastoreOptions, Entity, ReadOption}
-import com.ovoenergy.datastore4s.internal.{DatastoreError, WrappedEntity}
+import com.google.cloud.datastore.{Datastore, DatastoreOptions, ReadOption}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 case class DataStoreConfiguration(projectId: String, namespace: String)
 
@@ -39,20 +39,36 @@ object DatastoreService {
       }
     }
 
-  def put[E](entityObject: E)(implicit format: EntityFormat[E, _], datastore: Datastore): DatastoreOperation[Persisted[E]] =
+  def put[E, K](
+    entityObject: E
+  )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
     DatastoreOperation { () =>
-      implicit val keyFactorySupplier = () => datastore.newKeyFactory()
-      val entity = format.toEntity(entityObject) match {
-        case WrappedEntity(e: Entity) => e
+      val entity = toEntity(entityObject, format) match {
+        case WrappedEntity(e: com.google.cloud.datastore.Entity) =>
+          e // TODO better way? just make the class and extractor package private I guess?
       }
-      Right(Persisted(entityObject, datastore.put(entity))) // TODO handle datastore errors
+      Try(datastore.put(entity)) match {
+        case Success(entity) => Right(Persisted(entityObject, WrappedEntity(entity)))
+        case Failure(f)      => DatastoreError.error(f.getMessage)
+      }
     }
 
-  def delete[E, K](key: K)(implicit evidence: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Unit] =
+  private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K])(implicit toKey: ToKey[K], datastore: Datastore) = {
+    val key = toKey.toKey(format.key(entityObject), new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name)))
+    val builder = WrappedBuilder(key)
+    format.toEntity(entityObject, builder)
+  }
+
+  private def createKeyFactory[K, E](format: EntityFormat[E, K], datastore: Datastore) =
+    new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name))
+
+  def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[K] =
     DatastoreOperation { () =>
-      Right(datastore.delete(toKey.toKey(key, new KeyFactoryFacade(datastore.newKeyFactory().setKind(evidence.kind.name)))))
-    // TODO can this return a different type??
-    // TODO handle datastore errors
+      val dsKey = toKey.toKey(key, createKeyFactory(format, datastore))
+      Try(datastore.delete(dsKey)) match {
+        case Success(_) => Right(key)
+        case Failure(f) => DatastoreError.error(f.getMessage)
+      }
     }
 
   def list[E](implicit format: EntityFormat[E, _], datastore: Datastore): Query[E] = {

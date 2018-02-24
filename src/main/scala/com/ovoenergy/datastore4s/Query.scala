@@ -1,11 +1,11 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.google.cloud.datastore._
+import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.ovoenergy.datastore4s.Query.EntityFunction
-import com.ovoenergy.datastore4s.internal.{DatastoreError, ProjectionEntity, ValueFormat, WrappedEntity}
 
 import scala.collection.JavaConverters._
+import scala.util.{Failure, Success, Try}
 
 trait Query[E] {
 
@@ -34,7 +34,7 @@ object Query {
         keyFactory.setKind(kind.name).newKey(name)
       case LongAncestor(kind, id) => keyFactory.setKind(kind.name).newKey(id)
     }
-  type EntityFunction = BaseEntity[Key] => internal.Entity
+  type EntityFunction = BaseEntity[Key] => Entity
 }
 
 case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEntity[Key]], entityFunction: EntityFunction = WrappedEntity(_))(
@@ -68,14 +68,17 @@ case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEnti
     DatastoreQuery(queryBuilder.setFilter(filterBuilder(propertyName, valueFormat.toValue(value).dsValue)), entityFunction)
 
   override def stream() = DatastoreOperation { () =>
-    Right(
+    Try(
       datastore
         .run(queryBuilder.build(), Seq.empty[ReadOption]: _*)
         .asScala
         .toStream
         .map(entityFunction)
         .map(fromEntity.fromEntity)
-    ) // TODO handle connection issues.
+    ) match {
+      case Success(stream) => Right(stream)
+      case Failure(f)      => DatastoreError.error(f.getMessage)
+    }
   }
 
   override def sequenced() = stream().flatMapEither(DatastoreError.sequence(_))

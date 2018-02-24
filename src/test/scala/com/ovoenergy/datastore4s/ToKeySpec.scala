@@ -2,7 +2,7 @@ package com.ovoenergy.datastore4s
 
 import com.ovoenergy.datastore4s.ToKey._
 import com.google.cloud.datastore.Key
-import com.ovoenergy.datastore4s.utils.{TestDatastore, TestKeyFactory}
+import com.ovoenergy.datastore4s.utils.TestKeyFactory
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
@@ -21,7 +21,7 @@ class ToKeySpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matcher
     }
   }
 
-  private val datastore = TestDatastore()
+  private val datastore = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
 
   def testKey[A](asKey: ToKey[A])(value: A)(assertion: Key => Unit) = {
     assertion(createKey(asKey, value))
