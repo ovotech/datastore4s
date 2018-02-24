@@ -60,10 +60,17 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
 
   feature("Datastore support for deleting entities") {
     scenario("Entity with key does not exist") {
-      pending
+      val result = run(delete[SomeEntityType, ComplexKey](ComplexKey("Non Existant Entity", EntityParent(10))))
+      result shouldBe 'Left
     }
     scenario("Entity with a key that exists") {
-      pending
+      val entity = randomEntityWithId("Entity That Exists")
+      val key = ComplexKey(entity.id, entity.parent)
+      val result = run(for {
+        _ <- put(entity)
+        deleted <- delete[SomeEntityType, ComplexKey](key)
+      } yield deleted)
+      result shouldBe Right(Some(key))
     }
   }
 
