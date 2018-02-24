@@ -2,7 +2,6 @@ package com.ovoenergy.datastore4s
 
 import com.ovoenergy.datastore4s.ToKey._
 import com.google.cloud.datastore.Key
-import com.ovoenergy.datastore4s.utils.TestKeyFactory
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
@@ -28,7 +27,8 @@ class ToKeySpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matcher
   }
 
   private def createKey[A](asKey: ToKey[A], value: A) = {
-    asKey.toKey(value, TestKeyFactory(datastore))
+    val keyFactory = new KeyFactoryFacade(datastore.newKeyFactory().setKind("test-kind"))
+    asKey.toKey(value, keyFactory)
   }
 
 }

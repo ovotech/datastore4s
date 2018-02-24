@@ -33,9 +33,10 @@ object DatastoreService {
     DatastoreOperation { () =>
       val keyFactory = KeyFactoryFacade(datastore, format.kind)
       val entityKey = toKey.toKey(key, keyFactory)
-      Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*)) match {
-        case None         => Right(None)
-        case Some(entity) => format.fromEntity(WrappedEntity(entity)).map(Some(_))
+      Try(Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*))) match {
+        case Success(None)         => Right(None)
+        case Success(Some(entity)) => format.fromEntity(new WrappedEntity(entity)).map(Some(_))
+        case Failure(f)            => DatastoreError.error(f.getMessage)
       }
     }
 
@@ -43,19 +44,23 @@ object DatastoreService {
     entityObject: E
   )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
     DatastoreOperation { () =>
-      val entity = toEntity(entityObject, format) match {
-        case WrappedEntity(e: com.google.cloud.datastore.Entity) =>
-          e // TODO better way? just make the class and extractor package private I guess?
+      toEntity(entityObject, format) match {
+        case wrapped: WrappedEntity =>
+          Try(datastore.put(wrapped.entity)) match {
+            case Success(entity) => Right(Persisted(entityObject, new WrappedEntity(entity)))
+            case Failure(f)      => DatastoreError.error(f.getMessage)
+          }
+        case projection: ProjectionEntity =>
+          DatastoreError.error(
+            s"Projection entity was returned from a mapping instead of WrappedEntity. This should never happen. Projection; $projection"
+          )
       }
-      Try(datastore.put(entity)) match {
-        case Success(entity) => Right(Persisted(entityObject, WrappedEntity(entity)))
-        case Failure(f)      => DatastoreError.error(f.getMessage)
-      }
+
     }
 
   private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K])(implicit toKey: ToKey[K], datastore: Datastore) = {
     val key = toKey.toKey(format.key(entityObject), new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name)))
-    val builder = WrappedBuilder(key)
+    val builder = new WrappedBuilder(key)
     format.toEntity(entityObject, builder)
   }
 
@@ -75,12 +80,17 @@ object DatastoreService {
     val kind = format.kind.name
     val queryBuilder =
       com.google.cloud.datastore.Query.newEntityQueryBuilder().setKind(kind)
-    DatastoreQuery(queryBuilder)
+    new DatastoreQuery[E, com.google.cloud.datastore.Entity](queryBuilder, new WrappedEntity(_))
   }
 
   def project[E]()(implicit format: EntityFormat[E, _], datastore: Datastore): Project[E] = Project()
 
   def run[A](operation: DatastoreOperation[A]): Either[DatastoreError, A] = operation.get()
+
+  def runF[A](operation: DatastoreOperation[A]): Try[A] = run(operation) match {
+    case Right(a)    => Success(a)
+    case Left(error) => Failure(new RuntimeException(error.toString))
+  }
 
   def runAsync[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[Either[DatastoreError, A]] =
     Future(run(operation))
