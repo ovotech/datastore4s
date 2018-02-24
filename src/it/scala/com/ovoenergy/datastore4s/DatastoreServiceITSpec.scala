@@ -20,6 +20,7 @@ trait TestDatastoreSupport extends DefaultDatastoreSupport {
   implicit val parentFormat = formatFromFunctions(EntityParent.apply)(_.id)
   implicit val compositeFieldFormat = FieldFormat[CompositeField]
   implicit val entityFormat = EntityFormat[SomeEntityType, ComplexKey]("entity-kind")(entity => ComplexKey(entity.id, entity.parent))
+
   implicit object ComplexKeyToKey extends ToKey[ComplexKey] {
     override def toKey(value: ComplexKey, keyFactory: KeyFactory): Key = {
       keyFactory.addAncestor(value.parent).buildWithName(value.id)
@@ -32,7 +33,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
 
   feature("Datastore support for persistence") {
     scenario("Persist single entity") {
-      val entity = randomEntityWithId("Entity1")
+      val entity = randomEntityWithId("Entity")
       val result = run(put(entity))
       result match {
         case Right(persisted) =>
@@ -44,10 +45,16 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
 
   feature("Datastore support for finding single entities") {
     scenario("Entity with key does not exist") {
-      pending
+      val result = run(findOne[SomeEntityType, ComplexKey](ComplexKey("Non Existant Entity", EntityParent(10))))
+      result shouldBe Right(None)
     }
     scenario("Entity with a key that exists") {
-      pending
+      val entity = randomEntityWithId("Entity That Exists")
+      val result = run(for {
+        _ <- put(entity)
+        retrieved <- findOne[SomeEntityType, ComplexKey](ComplexKey(entity.id, entity.parent)) // TODO moving the KeyType to a type field may help this readability issue
+      } yield retrieved)
+      result shouldBe Right(Some(entity))
     }
   }
 
