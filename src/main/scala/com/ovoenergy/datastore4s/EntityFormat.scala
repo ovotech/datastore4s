@@ -14,7 +14,7 @@ trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] { // TODO
 
 object EntityFormat {
   def apply[EntityType, KeyType](kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] =
-  macro applyImpl[EntityType, KeyType]
+    macro applyImpl[EntityType, KeyType]
 
   // TODO tidy and split out
   def applyImpl[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
@@ -25,14 +25,16 @@ object EntityFormat {
     helper.requireLiteral(kind, "kind")
 
     val entityType = weakTypeTag[EntityType].tpe
-    helper.sealedTraitCaseClassOrAbort[EntityFormat[EntityType, KeyType]](entityType,
+    helper.sealedTraitCaseClassOrAbort[EntityFormat[EntityType, KeyType]](
+      entityType,
       sealedTraitFormat(context)(helper)(kind)(keyFunction),
-      caseClassFormat(context)(helper)(kind)(keyFunction))
+      caseClassFormat(context)(helper)(kind)(keyFunction)
+    )
   }
 
-  private def sealedTraitFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
-    context: Context
-  )(helper: MacroHelper[context.type])(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
+  private def sealedTraitFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: Context)(
+    helper: MacroHelper[context.type]
+  )(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
     val entityType = weakTypeTag[EntityType].tpe
     val keyType = weakTypeTag[KeyType].tpe
@@ -48,8 +50,7 @@ object EntityFormat {
            }
         """
 
-    context.Expr[EntityFormat[EntityType, KeyType]](
-      q"""import com.ovoenergy.datastore4s._
+    context.Expr[EntityFormat[EntityType, KeyType]](q"""import com.ovoenergy.datastore4s._
 
           new EntityFormat[$entityType, $keyType] {
 
@@ -66,9 +67,9 @@ object EntityFormat {
         """)
   }
 
-  private def caseClassFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
-    context: Context
-  )(helper: MacroHelper[context.type])(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
+  private def caseClassFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: Context)(
+    helper: MacroHelper[context.type]
+  )(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
     val entityType = weakTypeTag[EntityType].tpe
     val keyType = weakTypeTag[KeyType].tpe
@@ -85,8 +86,7 @@ object EntityFormat {
           }
         """
 
-    context.Expr[EntityFormat[EntityType, KeyType]](
-      q"""import com.ovoenergy.datastore4s._
+    context.Expr[EntityFormat[EntityType, KeyType]](q"""import com.ovoenergy.datastore4s._
 
           new EntityFormat[$entityType, $keyType] {
 
@@ -115,20 +115,19 @@ object FromEntity {
     val helper = MacroHelper(context)
 
     val entityType = weakTypeTag[A].tpe
-    helper.sealedTraitCaseClassOrAbort[FromEntity[A]](entityType,
-      sealedTraitFormat(context)(helper),
-      caseClassFormat(context)(helper))
+    helper.sealedTraitCaseClassOrAbort[FromEntity[A]](entityType, sealedTraitFormat(context)(helper), caseClassFormat(context)(helper))
   }
 
-  private def sealedTraitFormat[A: context.WeakTypeTag](context: Context)(helper: MacroHelper[context.type]): context.Expr[FromEntity[A]] = {
+  private def sealedTraitFormat[A: context.WeakTypeTag](
+    context: Context
+  )(helper: MacroHelper[context.type]): context.Expr[FromEntity[A]] = {
     import context.universe._
     val entityType = weakTypeTag[A].tpe
     val subTypes = helper.subTypes(entityType)
     val cases = subTypes.map { subType =>
       cq"""Right(${subType.name.toString}) => FromEntity[$subType].fromEntity(entity)"""
     }
-    context.Expr[FromEntity[A]](
-      q"""import com.ovoenergy.datastore4s._
+    context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._
 
           new FromEntity[$entityType] {
             private val stringFormat = implicitly[FieldFormat[String]]
@@ -153,8 +152,7 @@ object FromEntity {
       fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromEntityField(${fieldName.toString}, entity)"""
     }
 
-    context.Expr[FromEntity[A]](
-      q"""import com.ovoenergy.datastore4s._
+    context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._
 
           new FromEntity[$entityType] {
             override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = {

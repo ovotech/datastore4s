@@ -26,12 +26,14 @@ private[datastore4s] class MacroHelper[C <: Context](val context: C) {
 
   def requireLiteral[A](expression: context.Expr[A], parameter: String) = expression.tree match {
     case Literal(Constant(_)) => ()
-    case _ => abort(s"$parameter must be a literal")
+    case _                    => abort(s"$parameter must be a literal")
   }
 
   def abort[A](error: String): A = context.abort(context.enclosingPosition, error)
 
-  def sealedTraitCaseClassOrAbort[A](tpe: context.universe.Type, sealedTraitExpression: => context.Expr[A], caseClassExpression: => context.Expr[A]): context.Expr[A] = {
+  def sealedTraitCaseClassOrAbort[A](tpe: context.universe.Type,
+                                     sealedTraitExpression: => context.Expr[A],
+                                     caseClassExpression: => context.Expr[A]): context.Expr[A] =
     if (isSealedTrait(tpe)) {
       sealedTraitExpression
     } else if (isCaseClass(tpe)) {
@@ -39,7 +41,6 @@ private[datastore4s] class MacroHelper[C <: Context](val context: C) {
     } else {
       abort(s"Type must either be a sealed trait or a case class but $tpe is not")
     }
-  }
 
 }
 

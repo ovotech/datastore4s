@@ -34,19 +34,22 @@ object DatastoreService {
       val keyFactory = KeyFactoryFacade(datastore, format.kind)
       val entityKey = toKey.toKey(key, keyFactory)
       Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*)) match {
-        case None => Right(None)
+        case None         => Right(None)
         case Some(entity) => format.fromEntity(WrappedEntity(entity)).map(Some(_))
       }
     }
 
-  def put[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
+  def put[E, K](
+    entityObject: E
+  )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
     DatastoreOperation { () =>
       val entity = toEntity(entityObject, format) match {
-        case WrappedEntity(e: com.google.cloud.datastore.Entity) => e // TODO better way? just make the class and extractor package private I guess?
+        case WrappedEntity(e: com.google.cloud.datastore.Entity) =>
+          e // TODO better way? just make the class and extractor package private I guess?
       }
       Try(datastore.put(entity)) match {
         case Success(entity) => Right(Persisted(entityObject, WrappedEntity(entity)))
-        case Failure(f) => DatastoreError.error(f.getMessage)
+        case Failure(f)      => DatastoreError.error(f.getMessage)
       }
     }
 
@@ -68,7 +71,6 @@ object DatastoreService {
       }
     }
 
-
   def list[E](implicit format: EntityFormat[E, _], datastore: Datastore): Query[E] = {
     val kind = format.kind.name
     val queryBuilder =
@@ -84,7 +86,7 @@ object DatastoreService {
     Future(run(operation))
 
   def runAsyncF[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[A] = runAsync(operation).flatMap {
-    case Right(a) => Future.successful(a)
+    case Right(a)    => Future.successful(a)
     case Left(error) => Future.failed(new RuntimeException(error.toString))
   }
 

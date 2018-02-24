@@ -57,7 +57,7 @@ object ValueFormat {
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Double] =
       datastoreValue match {
         case DoubleValue(double) => Right(double)
-        case other             => wrongType(DoubleValue, other)
+        case other               => wrongType(DoubleValue, other)
       }
   }
 

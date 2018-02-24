@@ -77,7 +77,7 @@ case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEnti
         .map(fromEntity.fromEntity)
     ) match {
       case Success(stream) => Right(stream)
-      case Failure(f) => DatastoreError.error(f.getMessage)
+      case Failure(f)      => DatastoreError.error(f.getMessage)
     }
   }
 

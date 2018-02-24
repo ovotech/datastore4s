@@ -39,15 +39,15 @@ object FieldFormat {
   implicit def fieldFormatFromEither[L, R](implicit leftFormat: FieldFormat[L], rightFormat: FieldFormat[R]): FieldFormat[Either[L, R]] =
     new FieldFormat[Either[L, R]] {
       override def toEntityField(fieldName: String, value: Either[L, R]) = value match {
-        case Left(l) => leftFormat.toEntityField(fieldName, l) + (s"$fieldName.$eitherField", StringValue("Left"))
+        case Left(l)  => leftFormat.toEntityField(fieldName, l) + (s"$fieldName.$eitherField", StringValue("Left"))
         case Right(r) => rightFormat.toEntityField(fieldName, r) + (s"$fieldName.$eitherField", StringValue("Right"))
       }
 
       override def fromEntityField(fieldName: String, entity: Entity) = entity.field(s"$fieldName.$eitherField") match {
-        case Some(StringValue("Left")) => leftFormat.fromEntityField(fieldName, entity).map(Left(_))
+        case Some(StringValue("Left"))  => leftFormat.fromEntityField(fieldName, entity).map(Left(_))
         case Some(StringValue("Right")) => rightFormat.fromEntityField(fieldName, entity).map(Right(_))
-        case Some(other) => DatastoreError.error(s"Either field should be either 'Left' or 'Right' but was $other.")
-        case None => DatastoreError.missingField(eitherField, entity)
+        case Some(other)                => DatastoreError.error(s"Either field should be either 'Left' or 'Right' but was $other.")
+        case None                       => DatastoreError.missingField(eitherField, entity)
       }
     }
 
@@ -59,12 +59,12 @@ object FieldFormat {
     val helper = MacroHelper(context)
     import context.universe._
     val fieldType = weakTypeTag[A].tpe
-    helper.sealedTraitCaseClassOrAbort[FieldFormat[A]](fieldType,
-      sealedTraitFormat(context)(helper),
-      caseClassFormat(context)(helper))
+    helper.sealedTraitCaseClassOrAbort[FieldFormat[A]](fieldType, sealedTraitFormat(context)(helper), caseClassFormat(context)(helper))
   }
 
-  private def sealedTraitFormat[A: context.WeakTypeTag](context: Context)(helper: MacroHelper[context.type]): context.Expr[FieldFormat[A]] = {
+  private def sealedTraitFormat[A: context.WeakTypeTag](
+    context: Context
+  )(helper: MacroHelper[context.type]): context.Expr[FieldFormat[A]] = {
     import context.universe._
     val fieldType = weakTypeTag[A].tpe
     val subTypes = helper.subTypes(fieldType)
@@ -77,8 +77,7 @@ object FieldFormat {
       cq"""Right(${subType.name.toString}) => FieldFormat[$subType].fromEntityField(fieldName, entity)"""
     }
 
-    context.Expr[FieldFormat[A]](
-      q"""import com.ovoenergy.datastore4s._
+    context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
 
           new FieldFormat[$fieldType] {
             private val stringFormat = implicitly[FieldFormat[String]]
@@ -116,8 +115,7 @@ object FieldFormat {
       fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromEntityField(fieldName + "." + ${fieldName.toString}, entity)"""
     }
 
-    context.Expr[FieldFormat[A]](
-      q"""import com.ovoenergy.datastore4s._
+    context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
 
           new FieldFormat[$fieldType] {
             override def toEntityField(fieldName: String, value: $fieldType): Field = {
@@ -133,10 +131,10 @@ object FieldFormat {
         """)
   }
 
-  private def addFieldExpressions(context: Context)(fieldExpression1: context.universe.Tree, fieldExpression2: context.universe.Tree): context.universe.Tree = {
+  private def addFieldExpressions(context: Context)(fieldExpression1: context.universe.Tree,
+                                                    fieldExpression2: context.universe.Tree): context.universe.Tree = {
     import context.universe._
     q"$fieldExpression1 + $fieldExpression2"
   }
-
 
 }

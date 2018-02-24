@@ -2,10 +2,10 @@ package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.{BaseEntity, Key}
 
-class Kind private(val name: String) {
+class Kind private (val name: String) {
   override def equals(obj: scala.Any): Boolean = obj match {
     case that: Kind => that.name == name
-    case _ => false
+    case _          => false
   }
 }
 
@@ -25,7 +25,8 @@ trait Entity {
   def field(name: String): Option[DatastoreValue]
 
   // TODO should I keep following method?? It may be useful in the case people don't want to use the macros
-  def fieldFromFormatPossiblyGoingToBeDeleted[A](name: String)(implicit fieldFormat: FieldFormat[A]): Either[DatastoreError, A] = fieldFormat.fromEntityField(name, this)
+  def fieldFromFormatPossiblyGoingToBeDeleted[A](name: String)(implicit fieldFormat: FieldFormat[A]): Either[DatastoreError, A] =
+    fieldFormat.fromEntityField(name, this)
 
   def rawEntity: BaseEntity[Key] // TODO delete!!!
 }
@@ -49,7 +50,8 @@ trait EntityBuilder {
   def addField(field: Field): EntityBuilder
 
   // TODO fix arg list. Does this make sense?? it might make sense to change the field format contract to not accept builder but instead return a fn or Seq[Field]?
-  def addFieldByFormatPossiblyGoingToBeDeleted[A](name: String, value: A)(implicit format: FieldFormat[A]): EntityBuilder = addField(format.toEntityField(name, value))
+  def addFieldByFormatPossiblyGoingToBeDeleted[A](name: String, value: A)(implicit format: FieldFormat[A]): EntityBuilder =
+    addField(format.toEntityField(name, value))
 
   def build(): Entity
 }
