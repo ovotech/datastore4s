@@ -36,7 +36,7 @@ object DatastoreService {
       Try(Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*))) match {
         case Success(None)         => Right(None)
         case Success(Some(entity)) => format.fromEntity(new WrappedEntity(entity)).map(Some(_))
-        case Failure(f)      => DatastoreError.error(f.getMessage)
+        case Failure(f)            => DatastoreError.error(f.getMessage)
       }
     }
 
@@ -45,11 +45,15 @@ object DatastoreService {
   )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
     DatastoreOperation { () =>
       toEntity(entityObject, format) match {
-        case wrapped: WrappedEntity => Try(datastore.put(wrapped.entity)) match {
-          case Success(entity) => Right(Persisted(entityObject, new WrappedEntity(entity)))
-          case Failure(f)      => DatastoreError.error(f.getMessage)
-        }
-        case projection: ProjectionEntity =>DatastoreError.error(s"Projection entity was returned from a mapping instead of WrappedEntity. This should never happen. Projection; $projection")
+        case wrapped: WrappedEntity =>
+          Try(datastore.put(wrapped.entity)) match {
+            case Success(entity) => Right(Persisted(entityObject, new WrappedEntity(entity)))
+            case Failure(f)      => DatastoreError.error(f.getMessage)
+          }
+        case projection: ProjectionEntity =>
+          DatastoreError.error(
+            s"Projection entity was returned from a mapping instead of WrappedEntity. This should never happen. Projection; $projection"
+          )
       }
 
     }
@@ -82,6 +86,11 @@ object DatastoreService {
   def project[E]()(implicit format: EntityFormat[E, _], datastore: Datastore): Project[E] = Project()
 
   def run[A](operation: DatastoreOperation[A]): Either[DatastoreError, A] = operation.get()
+
+  def runF[A](operation: DatastoreOperation[A]): Try[A] = run(operation) match {
+    case Right(a)    => Success(a)
+    case Left(error) => Failure(new RuntimeException(error.toString))
+  }
 
   def runAsync[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[Either[DatastoreError, A]] =
     Future(run(operation))

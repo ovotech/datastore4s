@@ -2,10 +2,10 @@ package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.{FullEntity, Key}
 
-class Kind private(val name: String) {
+class Kind private (val name: String) {
   override def equals(obj: scala.Any): Boolean = obj match {
     case that: Kind => that.name == name
-    case _ => false
+    case _          => false
   }
 }
 
@@ -35,7 +35,8 @@ private[datastore4s] class WrappedEntity(val entity: FullEntity[Key]) extends En
     else None
 }
 
-private[datastore4s] class ProjectionEntity(mappings: Map[String, String], actualEntity: com.google.cloud.datastore.ProjectionEntity) extends Entity {
+private[datastore4s] class ProjectionEntity(mappings: Map[String, String], actualEntity: com.google.cloud.datastore.ProjectionEntity)
+    extends Entity {
   override def field(name: String) = {
     val fieldName = mappings.getOrElse(name, name)
     if (actualEntity.contains(fieldName)) Some(new WrappedValue(actualEntity.getValue(fieldName)))

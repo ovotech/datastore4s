@@ -10,7 +10,7 @@ trait FieldFormat[A] {
 
 }
 
-class Field private(val values: Seq[(String, DatastoreValue)]) { // TODO remove primitive obsession. Does the whole builder process cause performance overhead?
+class Field private (val values: Seq[(String, DatastoreValue)]) { // TODO remove primitive obsession. Does the whole builder process cause performance overhead?
   def +(name: String, value: DatastoreValue) = new Field((name -> value) +: values)
 
   def +(other: Field) = new Field(other.values ++ values) // Composite field

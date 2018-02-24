@@ -62,8 +62,9 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilder:
   override def withPropertyGreaterThanEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]) =
     withFilter(propertyName, value)(PropertyFilter.ge)
 
-  private def withFilter[A](propertyName: String,
-                            value: A)(filterBuilder: (String, Value[_]) => PropertyFilter)(implicit valueFormat: ValueFormat[A]): Query[E] ={
+  private def withFilter[A](propertyName: String, value: A)(
+    filterBuilder: (String, Value[_]) => PropertyFilter
+  )(implicit valueFormat: ValueFormat[A]): Query[E] = {
     val dsValue = valueFormat.toValue(value) match { case WrappedValue(value) => value }
     new DatastoreQuery(queryBuilder.setFilter(filterBuilder(propertyName, dsValue)), entityFunction)
   }

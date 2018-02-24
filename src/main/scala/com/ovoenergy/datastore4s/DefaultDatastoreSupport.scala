@@ -1,6 +1,7 @@
 package com.ovoenergy.datastore4s
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 trait DefaultDatastoreSupport {
 
@@ -39,6 +40,8 @@ trait DefaultDatastoreSupport {
     DatastoreService.project[E]
 
   def run[A](operation: DatastoreOperation[A]): Either[DatastoreError, A] = DatastoreService.run(operation)
+
+  def runF[A](operation: DatastoreOperation[A]): Try[A] = DatastoreService.runF(operation)
 
   def runAsync[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[Either[DatastoreError, A]] =
     DatastoreService.runAsync(operation)

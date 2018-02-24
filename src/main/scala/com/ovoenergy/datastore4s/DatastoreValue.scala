@@ -36,7 +36,7 @@ case object StringValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[String] = value match {
     case WrappedValue(s: com.google.cloud.datastore.StringValue) => Some(s.get())
-    case _                                         => None
+    case _                                                       => None
   }
 }
 
@@ -46,7 +46,7 @@ case object LongValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[Long] = value match {
     case WrappedValue(l: com.google.cloud.datastore.LongValue) => Some(l.get())
-    case _                                       => None
+    case _                                                     => None
   }
 }
 
@@ -56,7 +56,7 @@ case object DoubleValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[Double] = value match {
     case WrappedValue(d: com.google.cloud.datastore.DoubleValue) => Some(d.get())
-    case _                                         => None
+    case _                                                       => None
   }
 }
 
@@ -66,7 +66,7 @@ case object BooleanValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[Boolean] = value match {
     case WrappedValue(b: com.google.cloud.datastore.BooleanValue) => Some(b.get())
-    case _                                          => None
+    case _                                                        => None
   }
 }
 
@@ -76,7 +76,7 @@ case object TimestampValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[Timestamp] = value match {
     case WrappedValue(t: com.google.cloud.datastore.TimestampValue) => Some(t.get())
-    case _                                            => None
+    case _                                                          => None
   }
 }
 
@@ -86,7 +86,7 @@ case object BlobValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[Blob] = value match {
     case WrappedValue(b: com.google.cloud.datastore.BlobValue) => Some(b.get())
-    case _                                       => None
+    case _                                                     => None
   }
 }
 
@@ -96,7 +96,7 @@ case object LatLngValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[LatLng] = value match {
     case WrappedValue(l: com.google.cloud.datastore.LatLngValue) => Some(l.get())
-    case _                                         => None
+    case _                                                       => None
   }
 }
 
@@ -105,7 +105,7 @@ case object ListValue extends DsType {
   import scala.collection.JavaConverters._
 
   def apply(values: Seq[DatastoreValue]): DatastoreValue =
-    new WrappedValue(new com.google.cloud.datastore.ListValue(values.map{ case WrappedValue(v) => v }.asJava))
+    new WrappedValue(new com.google.cloud.datastore.ListValue(values.map { case WrappedValue(v) => v }.asJava))
 
   def unapply(value: DatastoreValue): Option[Seq[DatastoreValue]] =
     value match {
@@ -121,6 +121,6 @@ private[datastore4s] case object NullValue {
 
   def unapply(value: DatastoreValue): Option[Null] = value match {
     case WrappedValue(_: com.google.cloud.datastore.NullValue) => Some(null)
-    case _                                       => None
+    case _                                                     => None
   }
 }

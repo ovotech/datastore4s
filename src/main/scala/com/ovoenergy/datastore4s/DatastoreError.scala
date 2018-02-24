@@ -3,6 +3,7 @@ package com.ovoenergy.datastore4s
 trait DatastoreError
 
 // TODO tidy this up with a real value not just toString()s
+// TODO aggregation of errors. Rename to Result. Should we rework this to be more like a Validation[A]?
 object DatastoreError {
   def missingField[A](fieldName: String, entity: Entity): Either[DatastoreError, A] =
     Left(new DatastoreError { // TODO should this contain the whole entity as a string???
@@ -33,10 +34,6 @@ object DatastoreError {
     }
 
 }
-
-// TODO implicit toTry
-// TODO success type
-// TODO aggregation of errors. Rename to Result. Should we rework this to be more like a Validation[A]?
 
 trait DatastoreErrors {
   def missingField[A](fieldName: String, entity: Entity): Either[DatastoreError, A] =
