@@ -1,24 +1,31 @@
 package com.ovoenergy.datastore4s
 
-import java.util.UUID
 import java.util.concurrent.ThreadLocalRandom
 
+import com.google.cloud.datastore.Key
 import org.scalatest.{FeatureSpec, Matchers}
 
-case class SomeEntityType(id: String, parent: Parent, possibleInt: Option[Int], compositeField: CompositeField)
+case class SomeEntityType(id: String, parent: EntityParent, possibleInt: Option[Int], compositeField: CompositeField)
 
 case class CompositeField(doubles: Seq[Double], someBoolean: Boolean)
 
-case class Parent(id: Long)
+case class EntityParent(id: Long)
 
-case class ComplexKey(id: String, parent: Parent)
+case class ComplexKey(id: String, parent: EntityParent)
 
 trait TestDatastoreSupport extends DefaultDatastoreSupport {
   override def dataStoreConfiguration = DataStoreConfiguration("datastore4s-project", "datastore4s")
 
-  implicit val parentToAncestor = toStringAncestor[Parent]("parent")(_.name)
-  implicit val parentFormat = formatFromFunctions(Parent.apply)(_.name)
+  implicit val parentToAncestor = toLongAncestor[EntityParent]("parent")(_.id)
+  implicit val parentFormat = formatFromFunctions(EntityParent.apply)(_.id)
+  implicit val compositeFieldFormat = FieldFormat[CompositeField]
   implicit val entityFormat = EntityFormat[SomeEntityType, ComplexKey]("entity-kind")(entity => ComplexKey(entity.id, entity.parent))
+  implicit object ComplexKeyToKey extends ToKey[ComplexKey] {
+    override def toKey(value: ComplexKey, keyFactory: KeyFactory): Key = {
+      keyFactory.addAncestor(value.parent).buildWithName(value.id)
+    }
+  }
+
 }
 
 class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastoreSupport {
@@ -75,7 +82,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
     val doubles = random.doubles().limit(random.nextInt(10)).toArray.toSeq
     SomeEntityType(
       id,
-      Parent(UUID.randomUUID().toString),
+      EntityParent(random.nextLong()),
       if (random.nextBoolean()) Some(random.nextInt()) else None,
       CompositeField(doubles, random.nextBoolean())
     )

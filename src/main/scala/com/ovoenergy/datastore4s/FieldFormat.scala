@@ -104,7 +104,7 @@ object FieldFormat {
     // TODO Two more abstractables here
     val fieldExpressions = fields.map { field =>
       val fieldName = field.asTerm.name
-      q"""implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].toEntityField(fieldName + "." + ${fieldName.toString}, value.${fieldName})"""
+      q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(fieldName + "." + ${fieldName.toString}, value.${fieldName})"""
     }
 
     val companion = fieldType.typeSymbol.companion
@@ -112,7 +112,7 @@ object FieldFormat {
 
     val fieldFormats = fields.map { field =>
       val fieldName = field.asTerm.name
-      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromEntityField(fieldName + "." + ${fieldName.toString}, entity)"""
+      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature}]].fromEntityField(fieldName + "." + ${fieldName.toString}, entity)"""
     }
 
     context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
