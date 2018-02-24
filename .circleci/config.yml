@@ -58,7 +58,7 @@ jobs:
     docker:
       - image: bulbview/circleci-primary
       - image: xaviiic/alpine-cloud-datastore-emulator:1.2.1
-        entrypoint: ["gcloud", "beta", "emulators", "datastore", "start", "--project=datastore4s", "--no-store-on-disk", "--host-port=localhost:8380"]
+        entrypoint: ["gcloud", "beta", "emulators", "datastore", "start", "--project=datastore4s-project", "--no-store-on-disk", "--host-port=localhost:8380"]
     environment:
       - DATASTORE_PROJECT_ID: datastore4s
       - DATASTORE_HOST: http://localhost:8380
