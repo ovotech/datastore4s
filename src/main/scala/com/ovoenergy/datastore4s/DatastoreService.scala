@@ -75,7 +75,7 @@ object DatastoreService {
     val kind = format.kind.name
     val queryBuilder =
       com.google.cloud.datastore.Query.newEntityQueryBuilder().setKind(kind)
-    DatastoreQuery(queryBuilder)
+    new DatastoreQuery(queryBuilder)
   }
 
   def project[E]()(implicit format: EntityFormat[E, _], datastore: Datastore): Project[E] = Project()

@@ -38,7 +38,7 @@ object Query {
   type EntityFunction = BaseEntity[Key] => Entity
 }
 
-case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEntity[Key]], entityFunction: EntityFunction = WrappedEntity(_))(
+private[datastore4s] class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEntity[Key]], entityFunction: EntityFunction = WrappedEntity(_))(
   implicit fromEntity: FromEntity[E],
   datastore: Datastore
 ) extends Query[E] {
@@ -46,7 +46,7 @@ case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEnti
   override def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]) = {
     val key =
       Query.ancestorToKey(toAncestor.toAncestor(a), datastore.newKeyFactory())
-    DatastoreQuery(queryBuilder.setFilter(PropertyFilter.hasAncestor(key)), entityFunction)
+    new DatastoreQuery(queryBuilder.setFilter(PropertyFilter.hasAncestor(key)), entityFunction)
   }
 
   override def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]) =
@@ -66,7 +66,7 @@ case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEnti
 
   private def withFilter[A](propertyName: String,
                             value: A)(filterBuilder: (String, Value[_]) => PropertyFilter)(implicit valueFormat: ValueFormat[A]): Query[E] =
-    DatastoreQuery(queryBuilder.setFilter(filterBuilder(propertyName, valueFormat.toValue(value).dsValue)), entityFunction)
+    new DatastoreQuery(queryBuilder.setFilter(filterBuilder(propertyName, valueFormat.toValue(value).dsValue)), entityFunction)
 
   override def stream() = DatastoreOperation { () =>
     Try(
@@ -98,6 +98,6 @@ case class Projection[E, A]()(implicit datastore: Datastore, format: EntityForma
       .newProjectionEntityQueryBuilder()
       .setKind(kind)
       .setProjection(firstMapping._1, remainingMappings.map(_._1): _*)
-    DatastoreQuery[A](queryBuilder, (e: BaseEntity[Key]) => ProjectionEntity(mappings, WrappedEntity(e)))
+    new DatastoreQuery[A](queryBuilder, (e: BaseEntity[Key]) => ProjectionEntity(mappings, WrappedEntity(e)))
   }
 }

@@ -33,7 +33,7 @@ trait KeyFactory {
 }
 
 class KeyFactoryFacade(val factory: com.google.cloud.datastore.KeyFactory) extends KeyFactory {
-  import com.ovoenergy.datastore4s.ToAncestor.{StringAncestor, LongAncestor}
+  import com.ovoenergy.datastore4s.ToAncestor.{LongAncestor, StringAncestor}
   override def buildWithName(name: String) = factory.newKey(name)
 
   override def buildWithId(id: Long) = factory.newKey(id)
@@ -66,12 +66,13 @@ object ToAncestor {
   def toLongAncestor[A](kind: String)(f: A => Long): ToAncestor[A] =
     a => new LongAncestor(Kind(kind), f(a))
 
-  private[datastore4s] class StringAncestor(val kind: Kind, val name: String) extends Ancestor{
+  private[datastore4s] class StringAncestor(val kind: Kind, val name: String) extends Ancestor {
     override def equals(obj: scala.Any): Boolean = obj match {
       case StringAncestor(thatKind, thatName) => thatKind == kind && thatName == name
-      case _ => false
+      case _                                  => false
     }
   }
+
   private[datastore4s] object StringAncestor {
     def unapply(arg: StringAncestor): Option[(Kind, String)] = Some(arg.kind, arg.name)
   }
@@ -79,9 +80,10 @@ object ToAncestor {
   private[datastore4s] class LongAncestor(val kind: Kind, val id: Long) extends Ancestor {
     override def equals(obj: scala.Any): Boolean = obj match {
       case LongAncestor(thatKind, thatId) => thatKind == kind && thatId == id
-      case _ => false
+      case _                              => false
     }
   }
+
   private[datastore4s] object LongAncestor {
     def unapply(arg: LongAncestor): Option[(Kind, Long)] = Some(arg.kind, arg.id)
   }
