@@ -22,7 +22,7 @@ object ToKey {
 
 }
 
-trait KeyFactory {
+sealed trait KeyFactory {
 
   def addAncestor[A](value: A)(implicit toAncestor: ToAncestor[A]): KeyFactory
 

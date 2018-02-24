@@ -5,7 +5,6 @@ import org.scalacheck.Gen
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import com.ovoenergy.datastore4s.FieldFormat._
-import com.ovoenergy.datastore4s.utils.StubEntityBuilder
 
 class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matchers {
 
@@ -76,8 +75,11 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     assertion(createEntityWithField(fieldFormat, value))
   }
 
+  private val datastore = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
+
   private def createEntityWithField[A](fieldFormat: FieldFormat[A], value: A) = {
-    StubEntityBuilder().addField(fieldFormat.toEntityField(fieldName, value)).build()
+    val key = datastore.newKeyFactory().setKind("test-kind").newKey("test-key")
+    new WrappedBuilder(key).addField(fieldFormat.toEntityField(fieldName, value)).build()
   }
 
 }

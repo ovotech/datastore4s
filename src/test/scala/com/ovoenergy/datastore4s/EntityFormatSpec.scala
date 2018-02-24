@@ -76,27 +76,25 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     scenario("A simple case class with only a long key") {
       val longEntityFormat = EntityFormat[LongKeyObject, JavaLong]("long-type")(_.key)
       val record = LongKeyObject(20)
-      val e = DatastoreService.toEntity(record, longEntityFormat)
-      val entity = e.rawEntity // TODO try and remove this method.
+      val entity = DatastoreService.toEntity(record, longEntityFormat)
       longEntityFormat.kind.name shouldBe "long-type"
       longEntityFormat.key(record) shouldBe 20
-      entity.getLong("key") shouldBe 20 // TODO move key matching to integration tests??? I feel like these tests should just check te round trip
+      entity.fieldOfType[Long]("key") shouldBe Right(20)
 
-      val roundTripped = longEntityFormat.fromEntity(e)
+      val roundTripped = longEntityFormat.fromEntity(entity)
       roundTripped shouldBe Right(record)
     }
 
     scenario("A case class with a string key and string property") {
       val stringEntityFormat = EntityFormat[StringKeyObject, String]("string-type")(_.someKey)
       val record = StringKeyObject("key", "propertyValue")
-      val e = DatastoreService.toEntity(record, stringEntityFormat)
-      val entity = e.rawEntity // TODO try and remove this method.
+      val entity = DatastoreService.toEntity(record, stringEntityFormat)
       stringEntityFormat.kind.name shouldBe "string-type"
       stringEntityFormat.key(record) shouldBe "key"
-      entity.getString("someProperty") shouldBe "propertyValue"
-      entity.getString("someKey") shouldBe "key"
+      entity.fieldOfType[String]("someProperty") shouldBe Right("propertyValue")
+      entity.fieldOfType[String]("someKey") shouldBe  Right("key")
 
-      val roundTripped = stringEntityFormat.fromEntity(e)
+      val roundTripped = stringEntityFormat.fromEntity(entity)
       roundTripped shouldBe Right(record)
     }
 
@@ -107,15 +105,13 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val complexEntityFormat = EntityFormat[ComplexKeyObject, Id]("complex-kind")(_.id)
 
       val record = ComplexKeyObject(Id("key", Parent("parent")))
-      val e = DatastoreService.toEntity(record, complexEntityFormat)
-      val entity = e.rawEntity // TODO try and remove this method.
+      val entity = DatastoreService.toEntity(record, complexEntityFormat)
       complexEntityFormat.kind.name shouldBe "complex-kind"
       complexEntityFormat.key(record) shouldBe Id("key", Parent("parent"))
 
-      entity.getString("id.id") shouldBe "key"
-      entity.getString("id.parent") shouldBe "parent"
+      entity.fieldOfType[Id]("id") shouldBe Right(Id("key", Parent("parent")))
 
-      val roundTripped = complexEntityFormat.fromEntity(e)
+      val roundTripped = complexEntityFormat.fromEntity(entity)
       roundTripped shouldBe Right(record)
     }
 
@@ -123,24 +119,22 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val sealedEntityFormat = EntityFormat[SealedEntityType, SealedKey]("sealed-type")(SealedEntityType.key(_))
 
       val firstRecord = FirstSubType("first-key", 2036152)
-      val e1 = DatastoreService.toEntity(firstRecord, sealedEntityFormat)
-      val firstEntity = e1.rawEntity // TODO try and remove this method.
+      val firstEntity = DatastoreService.toEntity(firstRecord, sealedEntityFormat)
       sealedEntityFormat.kind.name shouldBe "sealed-type"
       sealedEntityFormat.key(firstRecord) shouldBe StringKey("first-key")
-      firstEntity.getString("key") shouldBe "first-key"
-      firstEntity.getLong("someLongValue") shouldBe 2036152
+      firstEntity.fieldOfType[String]("key") shouldBe Right("first-key")
+      firstEntity.fieldOfType[Long]("someLongValue") shouldBe Right(2036152)
 
-      sealedEntityFormat.fromEntity(e1) shouldBe Right(firstRecord)
+      sealedEntityFormat.fromEntity(firstEntity) shouldBe Right(firstRecord)
 
       val secondRecord = SecondSubType(83746286466723l, true, 1824672.23572)
-      val e2 = DatastoreService.toEntity(secondRecord, sealedEntityFormat)
-      val secondEntity = e2.rawEntity // TODO try and remove this method.
+      val secondEntity = DatastoreService.toEntity(secondRecord, sealedEntityFormat)
       sealedEntityFormat.key(secondRecord) shouldBe LongKey(83746286466723l)
-      secondEntity.getLong("key") shouldBe 83746286466723l
-      secondEntity.getBoolean("someBoolean") shouldBe true
-      secondEntity.getDouble("someDouble") shouldBe 1824672.23572
+      secondEntity.fieldOfType[Long]("key") shouldBe Right(83746286466723l)
+      secondEntity.fieldOfType[Boolean]("someBoolean") shouldBe Right(true)
+      secondEntity.fieldOfType[Double]("someDouble") shouldBe Right(1824672.23572)
 
-      sealedEntityFormat.fromEntity(e2) shouldBe Right(secondRecord)
+      sealedEntityFormat.fromEntity(secondEntity) shouldBe Right(secondRecord)
     }
   }
 
