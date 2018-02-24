@@ -5,6 +5,7 @@ import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.ovoenergy.datastore4s.Query.EntityFunction
 
 import scala.collection.JavaConverters._
+import scala.util.{Failure, Success, Try}
 
 trait Query[E] {
 
@@ -67,14 +68,17 @@ case class DatastoreQuery[E](queryBuilder: StructuredQuery.Builder[_ <: BaseEnti
     DatastoreQuery(queryBuilder.setFilter(filterBuilder(propertyName, valueFormat.toValue(value).dsValue)), entityFunction)
 
   override def stream() = DatastoreOperation { () =>
-    Right(
+    Try(
       datastore
         .run(queryBuilder.build(), Seq.empty[ReadOption]: _*)
         .asScala
         .toStream
         .map(entityFunction)
         .map(fromEntity.fromEntity)
-    ) // TODO handle connection issues.
+    ) match {
+      case Success(stream) => Right(stream)
+      case Failure(f) => DatastoreError.error(f.getMessage)
+    }
   }
 
   override def sequenced() = stream().flatMapEither(DatastoreError.sequence(_))

@@ -3,10 +3,11 @@ package com.ovoenergy.datastore4s
 import com.google.cloud.datastore.{Datastore, DatastoreOptions, ReadOption}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 case class DataStoreConfiguration(projectId: String, namespace: String)
 
-case class Persisted[A](inputObject: A, entity: com.google.cloud.datastore.Entity) // TODO should this just be Entity?
+case class Persisted[A](inputObject: A, entity: Entity)
 
 case class DatastoreOperation[A](get: () => Either[DatastoreError, A]) {
 
@@ -33,7 +34,7 @@ object DatastoreService {
       val keyFactory = KeyFactoryFacade(datastore, format.kind)
       val entityKey = toKey.toKey(key, keyFactory)
       Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*)) match {
-        case None         => Right(None)
+        case None => Right(None)
         case Some(entity) => format.fromEntity(WrappedEntity(entity)).map(Some(_))
       }
     }
@@ -43,10 +44,13 @@ object DatastoreService {
       val entity = toEntity(entityObject, format) match {
         case WrappedEntity(e: com.google.cloud.datastore.Entity) => e // TODO better way? just make the class and extractor package private I guess?
       }
-      Right(Persisted(entityObject, datastore.put(entity))) // TODO handle datastore errors
+      Try(datastore.put(entity)) match {
+        case Success(entity) => Right(Persisted(entityObject, WrappedEntity(entity)))
+        case Failure(f) => DatastoreError.error(f.getMessage)
+      }
     }
 
-  private [datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K])(implicit toKey: ToKey[K], datastore: Datastore) = {
+  private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K])(implicit toKey: ToKey[K], datastore: Datastore) = {
     val key = toKey.toKey(format.key(entityObject), new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name)))
     val builder = WrappedBuilder(key)
     format.toEntity(entityObject, builder)
@@ -55,11 +59,13 @@ object DatastoreService {
   private def createKeyFactory[K, E](format: EntityFormat[E, K], datastore: Datastore) =
     new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name))
 
-  def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Unit] =
+  def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[K] =
     DatastoreOperation { () =>
-      Right(datastore.delete(toKey.toKey(key, createKeyFactory(format, datastore))))
-    // TODO can this return a different type??
-    // TODO handle datastore errors
+      val dsKey = toKey.toKey(key, createKeyFactory(format, datastore))
+      Try(datastore.delete(dsKey)) match {
+        case Success(_) => Right(key)
+        case Failure(f) => DatastoreError.error(f.getMessage)
+      }
     }
 
 
@@ -78,7 +84,7 @@ object DatastoreService {
     Future(run(operation))
 
   def runAsyncF[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[A] = runAsync(operation).flatMap {
-    case Right(a)    => Future.successful(a)
+    case Right(a) => Future.successful(a)
     case Left(error) => Future.failed(new RuntimeException(error.toString))
   }
 

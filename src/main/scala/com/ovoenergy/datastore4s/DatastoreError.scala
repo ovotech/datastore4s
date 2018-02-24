@@ -34,6 +34,10 @@ object DatastoreError {
 
 }
 
+// TODO implicit toTry
+// TODO success type
+// TODO aggregation of errors. Rename to Result. Should we rework this to be more like a Validation[A]?
+
 trait DatastoreErrors {
   def missingField[A](fieldName: String, entity: Entity): Either[DatastoreError, A] =
     DatastoreError.missingField(fieldName, entity)
