@@ -122,6 +122,8 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
     scenario("Project a seqence of entities into a row format") {
       // TODO Note here that the type of parent is different. But the internal datastore type is still long. I don't know if we want to allow this.
       case class ProjectedRow(entityId: String, boolean: Boolean, parentAsLong: Long)
+      implicit val projectedFromEntity = FromEntity[ProjectedRow]
+
       val entity = randomEntityWithId("ProjectedEntity")
       val expectedProjection = ProjectedRow(entity.id, entity.compositeField.someBoolean, entity.parent.id)
       val result = run(for {
