@@ -7,7 +7,15 @@ import org.scalatest.{FeatureSpec, Matchers}
 
 case class SomeEntityType(id: String, parent: EntityParent, possibleInt: Option[Int], compositeField: CompositeField)
 
-case class CompositeField(doubles: Seq[Double], someBoolean: Boolean)
+case class CompositeField(doubles: Seq[Double], someBoolean: Boolean) {
+  override def equals(obj: scala.Any): Boolean = obj match {
+    case CompositeField(thatDoubles, thatBoolean) =>
+      thatBoolean == someBoolean &&
+      thatDoubles.size == doubles.size &&
+      thatDoubles.forall(doubles.contains(_))
+    case _ => false
+  }
+}
 
 case class EntityParent(id: Long)
 
@@ -60,8 +68,9 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
 
   feature("Datastore support for deleting entities") {
     scenario("Entity with key does not exist") {
-      val result = run(delete[SomeEntityType, ComplexKey](ComplexKey("Non Existant Entity", EntityParent(10))))
-      result shouldBe 'Left
+      val key = ComplexKey("Non Existant Entity", EntityParent(10))
+      val result = run(delete[SomeEntityType, ComplexKey](key))
+      result shouldBe Right(key) // TODO should this be Right?? This gives the impression something was deleted. Can datastore actually help here??
     }
     scenario("Entity with a key that exists") {
       val entity = randomEntityWithId("Entity That Exists")
@@ -70,7 +79,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
         _ <- put(entity)
         deleted <- delete[SomeEntityType, ComplexKey](key)
       } yield deleted)
-      result shouldBe Right(Some(key))
+      result shouldBe Right(key)
     }
   }
 

@@ -33,7 +33,7 @@ private[datastore4s] class MacroHelper[C <: Context](val context: C) {
 
   def sealedTraitCaseClassOrAbort[A](tpe: context.universe.Type,
                                      sealedTraitExpression: => context.Expr[A],
-                                     caseClassExpression: => context.Expr[A]): context.Expr[A] = {
+                                     caseClassExpression: => context.Expr[A]): context.Expr[A] =
     if (isSealedTrait(tpe)) {
       sealedTraitExpression
     } else if (isCaseClass(tpe)) {
@@ -41,7 +41,6 @@ private[datastore4s] class MacroHelper[C <: Context](val context: C) {
     } else {
       abort(s"Type must either be a sealed trait or a case class but $tpe is not")
     }
-  }
 
 }
 
