@@ -11,8 +11,8 @@ case class CompositeField(doubles: Seq[Double], someBoolean: Boolean) {
   override def equals(obj: scala.Any): Boolean = obj match {
     case CompositeField(thatDoubles, thatBoolean) =>
       thatBoolean == someBoolean &&
-      thatDoubles.size == doubles.size &&
-      thatDoubles.forall(doubles.contains(_))
+        thatDoubles.size == doubles.size &&
+        thatDoubles.forall(doubles.contains(_))
     case _ => false
   }
 }
@@ -85,10 +85,36 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
 
   feature("Datastore support for listing entities of a kind") {
     scenario("Sequence a type of entity") {
-      pending
+      val (entity1, entity2, entity3) = (randomEntityWithId("Entity1"), randomEntityWithId("Entity2"), randomEntityWithId("Entity3"))
+      val result = run(for {
+        _ <- put(entity1)
+        _ <- put(entity2)
+        sequence <- list[SomeEntityType].sequenced()
+        _ <- put(entity3)
+      } yield sequence)
+      result match {
+        case Right(seq) =>
+          seq should contain (entity1)
+          seq should contain (entity2)
+          seq should not contain (entity3)
+        case Left(error) => fail(s"There was an error: $error")
+      }
     }
     scenario("Stream a type of entity") {
-      pending
+      val (entity1, entity2, entity3) = (randomEntityWithId("StreamEntity1"), randomEntityWithId("StreamEntity2"), randomEntityWithId("StreamEntity3"))
+      val result = run(for {
+        _ <- put(entity1)
+        _ <- put(entity2)
+        stream <- list[SomeEntityType].stream()
+        _ <- put(entity3)
+      } yield stream)
+      result match {
+        case Right(stream) =>
+          stream should contain (Right(entity1))
+          stream should contain (Right(entity2))
+          stream should  contain (Right(entity3))
+        case Left(error) => fail(s"There was an error: $error")
+      }
     }
   }
 
@@ -99,6 +125,8 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
       pending
     }
   }
+
+  // TODO queries. Property and ancestor
 
   private def randomEntityWithId(id: String) = {
     val random = ThreadLocalRandom.current()
