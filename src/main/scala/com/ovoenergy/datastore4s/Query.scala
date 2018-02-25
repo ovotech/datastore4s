@@ -93,12 +93,12 @@ case class Project[E]()(implicit datastore: Datastore, format: EntityFormat[E, _
 
 case class Projection[E, A]()(implicit datastore: Datastore, format: EntityFormat[E, _], fromEntity: FromEntity[A]) {
   def mapping(firstMapping: (String, String), remainingMappings: (String, String)*): Query[A] = {
-    val mappings = (firstMapping +: remainingMappings).toMap
     val kind = format.kind.name
     val queryBuilder = com.google.cloud.datastore.Query
       .newProjectionEntityQueryBuilder()
       .setKind(kind)
       .setProjection(firstMapping._1, remainingMappings.map(_._1): _*)
+    val mappings = (firstMapping.swap +: remainingMappings.map(_.swap)).toMap
     new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](queryBuilder, new ProjectionEntity(mappings, _))
   }
 }
