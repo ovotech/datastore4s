@@ -21,6 +21,8 @@ case class EntityParent(id: Long)
 
 case class ComplexKey(id: String, parent: EntityParent)
 
+case class ProjectedRow(entityId: String, boolean: Boolean, parentAsLong: Long)
+
 trait TestDatastoreSupport extends DefaultDatastoreSupport {
   override def dataStoreConfiguration = DataStoreConfiguration("datastore4s-project", "datastore4s")
 
@@ -28,6 +30,7 @@ trait TestDatastoreSupport extends DefaultDatastoreSupport {
   implicit val parentFormat = formatFromFunctions(EntityParent.apply)(_.id)
   implicit val compositeFieldFormat = FieldFormat[CompositeField]
   implicit val entityFormat = EntityFormat[SomeEntityType, ComplexKey]("entity-kind")(entity => ComplexKey(entity.id, entity.parent))
+  implicit val projectedFromEntity = FromEntity[ProjectedRow]
 
   implicit object ComplexKeyToKey extends ToKey[ComplexKey] {
     override def toKey(value: ComplexKey, keyFactory: KeyFactory): Key = {
@@ -121,9 +124,6 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
   feature("Datastore support for projections") {
     scenario("Project a seqence of entities into a row format") {
       // TODO Note here that the type of parent is different. But the internal datastore type is still long. I don't know if we want to allow this.
-      case class ProjectedRow(entityId: String, boolean: Boolean, parentAsLong: Long)
-      implicit val projectedFromEntity = FromEntity[ProjectedRow]
-
       val entity = randomEntityWithId("ProjectedEntity")
       val expectedProjection = ProjectedRow(entity.id, entity.compositeField.someBoolean, entity.parent.id)
       val result = run(for {
