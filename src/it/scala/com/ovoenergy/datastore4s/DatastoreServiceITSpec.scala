@@ -83,7 +83,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
     }
   }
 
-  feature("Datastore support for listing entities of a kind") {
+  feature("Datastore support for listing entities of a type") {
     scenario("Sequence a type of entity") {
       val (entity1, entity2, entity3) = (randomEntityWithId("Entity1"), randomEntityWithId("Entity2"), randomEntityWithId("Entity3"))
       val result = run(for {
@@ -94,8 +94,8 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
       } yield sequence)
       result match {
         case Right(seq) =>
-          seq should contain (entity1)
-          seq should contain (entity2)
+          seq should contain(entity1)
+          seq should contain(entity2)
           seq should not contain (entity3)
         case Left(error) => fail(s"There was an error: $error")
       }
@@ -110,9 +110,9 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
       } yield stream)
       result match {
         case Right(stream) =>
-          stream should contain (Right(entity1))
-          stream should contain (Right(entity2))
-          stream should  contain (Right(entity3))
+          stream should contain(Right(entity1))
+          stream should contain(Right(entity2))
+        // stream should contain(Right(entity3)) TODO See if it is possible to make this assertion i.e. when is there a consistency guarantee?
         case Left(error) => fail(s"There was an error: $error")
       }
     }
@@ -120,9 +120,20 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
 
   feature("Datastore support for projections") {
     scenario("Project a seqence of entities into a row format") {
-      // TODO Note here that the type of parent is different. But the internal datastore type is still string. Don't know if we want to allow this.
-      case class ProjectedRow(entityId: String, boolean: Boolean, parentAsString: String)
-      pending
+      // TODO Note here that the type of parent is different. But the internal datastore type is still long. I don't know if we want to allow this.
+      case class ProjectedRow(entityId: String, boolean: Boolean, parentAsLong: Long)
+      val entity = randomEntityWithId("ProjectedEntity")
+      val expectedProjection = ProjectedRow(entity.id, entity.compositeField.someBoolean, entity.parent.id)
+      val result = run(for {
+        _ <- put(entity)
+        projections <- project[SomeEntityType].into[ProjectedRow]
+          .mapping("id" -> "entityId", "compositeField.someBoolean" -> "boolean", "parent" -> "parentAsLong").sequenced()
+      } yield projections)
+      result match {
+        case Right(seq) =>
+          seq should contain(expectedProjection)
+        case Left(error) => fail(s"There was an error: $error")
+      }
     }
   }
 
