@@ -3,7 +3,7 @@ package com.ovoenergy.datastore4s
 import java.util.concurrent.ThreadLocalRandom
 
 import com.google.cloud.datastore.Key
-import org.scalatest.{FeatureSpec, Matchers}
+import org.scalatest.{FeatureSpec, Inside, Matchers}
 
 case class SomeEntityType(id: String, parent: EntityParent, possibleInt: Option[Int], compositeField: CompositeField)
 
@@ -39,7 +39,7 @@ trait TestDatastoreSupport extends DefaultDatastoreSupport {
   }
 }
 
-class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastoreSupport {
+class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with TestDatastoreSupport {
 
   feature("Datastore support for persistence") {
     scenario("Put single entity") {
@@ -83,7 +83,9 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
         _ <- save(entity)
         _ <- save(failingEntity)
       } yield ())
-      result should be 'Left
+      inside(result){
+        case Right(unit) => fail(s"Expected an error but got none")
+      }
     }
   }
 

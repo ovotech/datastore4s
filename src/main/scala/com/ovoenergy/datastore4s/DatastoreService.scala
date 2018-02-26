@@ -46,14 +46,15 @@ object DatastoreService {
     persistEntity(entityObject, datastore.put)
 
   def save[E, K](
-                 entityObject: E
-               )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
+    entityObject: E
+  )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
     persistEntity(entityObject, datastore.add)
 
   type DsEntity = com.google.cloud.datastore.FullEntity[Key]
   private def persistEntity[E, K](
-                                   entityObject: E, persistingFunction: DsEntity => DsEntity
-                                 )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
+    entityObject: E,
+    persistingFunction: DsEntity => DsEntity
+  )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
     DatastoreOperation { () =>
       toEntity(entityObject, format) match {
         case wrapped: WrappedEntity =>

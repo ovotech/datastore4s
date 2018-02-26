@@ -23,16 +23,16 @@ object DatastoreError {
 
   def sequence[A](values: Seq[Either[DatastoreError, A]]): Either[DatastoreError, Seq[A]] =
     values.foldLeft(Right(Seq.empty): Either[ComposedError, Seq[A]]) {
-      case (Right(acc), Right(value)) => Right(value +: acc)
+      case (Right(acc), Right(value))    => Right(value +: acc)
       case (Left(errorAcc), Left(error)) => Left(new ComposedError(error +: errorAcc.errors))
-      case (Right(_), Left(error)) => Left(new ComposedError(Seq(error)))
-      case (Left(errorAcc), Right(_)) => Left(errorAcc)
+      case (Right(_), Left(error))       => Left(new ComposedError(Seq(error)))
+      case (Left(errorAcc), Right(_))    => Left(errorAcc)
     }
 
   def asException(error: DatastoreError): Throwable = error match {
-    case e: DatastoreException => e.exception
+    case e: DatastoreException   => e.exception
     case e: DeserialisationError => new RuntimeException(e.error)
-    case e: ComposedError => ComposedException(e.errors.map(asException))
+    case e: ComposedError        => ComposedException(e.errors.map(asException))
   }
 
   case class ComposedException(throwables: Seq[Throwable]) extends Exception
