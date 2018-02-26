@@ -150,12 +150,45 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
         case Right(stream) =>
           stream should contain(Right(entity1))
           stream should contain(Right(entity2))
-        // stream should contain(Right(entity3)) TODO See if it is possible to make this assertion i.e. when is there a consistency guarantee?
+          stream should not contain(Right(entity3))
         case Left(error) => fail(s"There was an error: $error")
       }
     }
-
-    // TODO queries. Property and ancestor
+    scenario("Sequence all entities with a certain ancestor") {
+      val ancestor = EntityParent(10000)
+      val entity1 = randomEntityWithKey(ComplexKey("AncestorEntity1", ancestor))
+      val entity2 = randomEntityWithKey(ComplexKey("AncestorEntity2", ancestor))
+      val entity3 = randomEntityWithKey(ComplexKey("EntityWithDifferenceAncestor", EntityParent(20000)))
+      val result = run(for {
+        _ <- put(entity1)
+        stream <- list[SomeEntityType].withAncestor(ancestor).stream()
+        _ <- put(entity2)
+        _ <- put(entity3)
+      } yield stream)
+      result match {
+        case Right(stream) =>
+          stream should contain(Right(entity1))
+          stream should contain(Right(entity2))
+          stream should not contain entity3
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
+    scenario("Sequence all entities with a certain property value") {
+      val (entity1, entity2, entity3) = (randomEntityWithId("Entity1"), randomEntityWithId("Entity2"), randomEntityWithId("Entity3"))
+      val result = run(for {
+        _ <- put(entity1.copy(possibleInt = Some(-20)))
+        _ <- put(entity2.copy(possibleInt = Some(-20)))
+        _ <- put(entity3.copy(possibleInt = None))
+        sequence <- list[SomeEntityType].withPropertyEq("possibleInt", Some(-20)).sequenced()
+      } yield sequence)
+      result match {
+        case Right(seq) =>
+          seq should contain(entity1)
+          seq should contain(entity2)
+          seq should not contain entity3
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
   }
 
   feature("Datastore support for projections") {
