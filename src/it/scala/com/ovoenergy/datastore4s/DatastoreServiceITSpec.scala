@@ -80,9 +80,11 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
       val key = ComplexKey(entity.id, entity.parent)
       val result = run(for {
         _ <- put(entity)
+        before <- findOne[SomeEntityType, ComplexKey](key)
         deleted <- delete[SomeEntityType, ComplexKey](key)
-      } yield deleted)
-      result shouldBe Right(key)
+        after <- findOne[SomeEntityType, ComplexKey](key)
+      } yield (before, deleted, after))
+      result shouldBe Right((Some(entity), key, None))
     }
   }
 
