@@ -84,7 +84,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         _ <- save(failingEntity)
       } yield ())
       inside(result){
-        case Right(unit) => fail(s"Expected an error but got none")
+        case Right(_) => fail(s"Expected an error but got none")
       }
     }
   }
@@ -178,10 +178,10 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
     scenario("Sequence all entities with a certain property value") {
       val (entity1, entity2, entity3) = (randomEntityWithId("Entity1"), randomEntityWithId("Entity2"), randomEntityWithId("Entity3"))
       val result = run(for {
-        _ <- put(entity1.copy(possibleInt = Some(-20)))
-        _ <- put(entity2.copy(possibleInt = Some(-20)))
+        _ <- put(entity1.copy(possibleInt = Option(-20)))
+        _ <- put(entity2.copy(possibleInt = Option(-20)))
         _ <- put(entity3.copy(possibleInt = None))
-        sequence <- list[SomeEntityType].withPropertyEq("possibleInt", Some(-20)).sequenced()
+        sequence <- list[SomeEntityType].withPropertyEq("possibleInt", Option(-20)).sequenced()
       } yield sequence)
       result match {
         case Right(seq) =>
