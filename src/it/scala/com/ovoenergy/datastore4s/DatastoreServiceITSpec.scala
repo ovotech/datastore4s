@@ -63,7 +63,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
       val entity = randomEntityWithId("Entity That Exists")
       val result = run(for {
         _ <- put(entity)
-        retrieved <- findOne[SomeEntityType, ComplexKey](ComplexKey(entity.id, entity.parent)) // TODO moving the KeyType to a type field may help this readability issue
+        retrieved <- findOne[SomeEntityType, ComplexKey](ComplexKey(entity.id, entity.parent))
       } yield retrieved)
       result shouldBe Right(Some(entity))
     }
