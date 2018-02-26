@@ -77,7 +77,7 @@ object EntityFormat {
     // TODO One more abstractable here
     val fieldExpressions = helper.caseClassFieldList(entityType).map { field =>
       val fieldName = field.asTerm.name
-      q"""implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].toEntityField(${fieldName.toString}, value.${fieldName})"""
+      q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(${fieldName.toString}, value.${fieldName})"""
     }
 
     val toEntityExpression =
@@ -149,7 +149,7 @@ object FromEntity {
 
     val fieldFormats = fields.map { field =>
       val fieldName = field.asTerm.name
-      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature.typeSymbol}]].fromEntityField(${fieldName.toString}, entity)"""
+      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature}]].fromEntityField(${fieldName.toString}, entity)"""
     }
 
     context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._
