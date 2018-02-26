@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{Datastore, DatastoreOptions, ReadOption}
+import com.google.cloud.datastore.{Datastore, DatastoreOptions, Key, ReadOption}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -43,10 +43,21 @@ object DatastoreService {
   def put[E, K](
     entityObject: E
   )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
+    persistEntity(entityObject, datastore.put)
+
+  def save[E, K](
+                 entityObject: E
+               )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
+    persistEntity(entityObject, datastore.add)
+
+  type DsEntity = com.google.cloud.datastore.FullEntity[Key]
+  private def persistEntity[E, K](
+                                   entityObject: E, persistingFunction: DsEntity => DsEntity
+                                 )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
     DatastoreOperation { () =>
       toEntity(entityObject, format) match {
         case wrapped: WrappedEntity =>
-          Try(datastore.put(wrapped.entity)) match {
+          Try(persistingFunction(wrapped.entity)) match {
             case Success(entity) => Right(Persisted(entityObject, new WrappedEntity(entity)))
             case Failure(f)      => DatastoreError.error(f.getMessage)
           }
@@ -55,7 +66,6 @@ object DatastoreService {
             s"Projection entity was returned from a mapping instead of WrappedEntity. This should never happen. Projection; $projection"
           )
       }
-
     }
 
   private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K])(implicit toKey: ToKey[K], datastore: Datastore) = {

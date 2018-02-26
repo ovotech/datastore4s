@@ -37,14 +37,13 @@ trait TestDatastoreSupport extends DefaultDatastoreSupport {
       keyFactory.addAncestor(value.parent).buildWithName(value.id)
     }
   }
-
 }
 
 class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastoreSupport {
 
   feature("Datastore support for persistence") {
-    scenario("Persist single entity") {
-      val entity = randomEntityWithId("Entity")
+    scenario("Put single entity") {
+      val entity = randomEntityWithId("PutEntity")
       val result = run(put(entity))
       result match {
         case Right(persisted) =>
@@ -52,11 +51,45 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
         case Left(error) => fail(s"There was an error: $error")
       }
     }
+    scenario("Put entity with the same key as an entity in the database") {
+      val key = ComplexKey("Key that already exists", EntityParent(230))
+      val entity = randomEntityWithKey(key)
+      val replacementEntity = randomEntityWithKey(key)
+      val result = run(for {
+        _ <- put(entity)
+        _ <- put(replacementEntity)
+        retrieved <- findOne[SomeEntityType, ComplexKey](key)
+      } yield retrieved)
+      result match {
+        case Right(persisted) =>
+          persisted shouldBe Some(replacementEntity)
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
+    scenario("Save single entity") {
+      val entity = randomEntityWithId("SaveEntity")
+      val result = run(save(entity))
+      result match {
+        case Right(persisted) =>
+          persisted.inputObject shouldBe entity
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
+    scenario("Save entity that for a key that already exists") {
+      val key = ComplexKey("Key for saving with error", EntityParent(240))
+      val entity = randomEntityWithKey(key)
+      val failingEntity = randomEntityWithKey(key)
+      val result = run(for {
+        _ <- save(entity)
+        _ <- save(failingEntity)
+      } yield ())
+      result should be 'Left
+    }
   }
 
   feature("Datastore support for finding single entities") {
     scenario("Entity with key does not exist") {
-      val result = run(findOne[SomeEntityType, ComplexKey](ComplexKey("Non Existant Entity", EntityParent(10))))
+      val result = run(findOne[SomeEntityType, ComplexKey](ComplexKey("Non Existent Entity", EntityParent(10))))
       result shouldBe Right(None)
     }
     scenario("Entity with a key that exists") {
@@ -101,7 +134,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
         case Right(seq) =>
           seq should contain(entity1)
           seq should contain(entity2)
-          seq should not contain (entity3)
+          seq should not contain entity3
         case Left(error) => fail(s"There was an error: $error")
       }
     }
@@ -121,6 +154,8 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
         case Left(error) => fail(s"There was an error: $error")
       }
     }
+
+    // TODO queries. Property and ancestor
   }
 
   feature("Datastore support for projections") {
@@ -141,14 +176,15 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
     }
   }
 
-  // TODO queries. Property and ancestor
+  private val random = ThreadLocalRandom.current()
 
-  private def randomEntityWithId(id: String) = {
-    val random = ThreadLocalRandom.current()
+  private def randomEntityWithId(id: String) = randomEntityWithKey(ComplexKey(id, EntityParent(random.nextLong())))
+
+  private def randomEntityWithKey(complexKey: ComplexKey) = {
     val doubles = random.doubles().limit(random.nextInt(10)).toArray.toSeq
     SomeEntityType(
-      id,
-      EntityParent(random.nextLong()),
+      complexKey.id,
+      complexKey.parent,
       if (random.nextBoolean()) Some(random.nextInt()) else None,
       CompositeField(doubles, random.nextBoolean())
     )
