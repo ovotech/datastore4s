@@ -2,11 +2,11 @@ package com.ovoenergy.datastore4s
 
 sealed trait DatastoreError
 
-private[datastore4s] class DatastoreException(val exception: Throwable) extends DatastoreError{
+private[datastore4s] class DatastoreException(val exception: Throwable) extends DatastoreError {
   override def toString: String = exception.getMessage
 }
 
-private[datastore4s] class DeserialisationError(val error: String) extends DatastoreError{
+private[datastore4s] class DeserialisationError(val error: String) extends DatastoreError {
   override def toString: String = error
 }
 

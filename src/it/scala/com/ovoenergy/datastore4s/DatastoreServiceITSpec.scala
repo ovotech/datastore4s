@@ -162,9 +162,9 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       val entity3 = randomEntityWithKey(ComplexKey("EntityWithDifferenceAncestor", EntityParent(20000)))
       val result = run(for {
         _ <- put(entity1)
-        stream <- list[SomeEntityType].withAncestor(ancestor).stream()
         _ <- put(entity2)
         _ <- put(entity3)
+        stream <- list[SomeEntityType].withAncestor(ancestor).stream()
       } yield stream)
       result match {
         case Right(stream) =>
