@@ -37,6 +37,7 @@ trait TestDatastoreSupport extends DefaultDatastoreSupport {
       keyFactory.addAncestor(value.parent).buildWithName(value.id)
     }
   }
+
 }
 
 class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with TestDatastoreSupport {
@@ -83,9 +84,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         _ <- save(entity)
         _ <- save(failingEntity)
       } yield ())
-      inside(result){
-        case Right(_) => fail(s"Expected an error but got none")
-      }
+      result should be('Left)
     }
   }
 
@@ -152,7 +151,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         case Right(stream) =>
           stream should contain(Right(entity1))
           stream should contain(Right(entity2))
-          stream should not contain(Right(entity3))
+          stream should not contain Right(entity3)
         case Left(error) => fail(s"There was an error: $error")
       }
     }
@@ -176,10 +175,10 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       }
     }
     scenario("Sequence all entities with a certain property value") {
-      val (entity1, entity2, entity3) = (randomEntityWithId("Entity1"), randomEntityWithId("Entity2"), randomEntityWithId("Entity3"))
+      val (entity1, entity2, entity3) = (randomEntityWithId("Entity1").copy(possibleInt = Option(-20)), randomEntityWithId("Entity2").copy(possibleInt = Option(-20)), randomEntityWithId("Entity3"))
       val result = run(for {
-        _ <- put(entity1.copy(possibleInt = Option(-20)))
-        _ <- put(entity2.copy(possibleInt = Option(-20)))
+        _ <- put(entity1)
+        _ <- put(entity2)
         _ <- put(entity3.copy(possibleInt = None))
         sequence <- list[SomeEntityType].withPropertyEq("possibleInt", Option(-20)).sequenced()
       } yield sequence)
