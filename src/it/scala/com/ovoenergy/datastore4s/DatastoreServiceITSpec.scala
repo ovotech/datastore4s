@@ -3,7 +3,7 @@ package com.ovoenergy.datastore4s
 import java.util.concurrent.ThreadLocalRandom
 
 import com.google.cloud.datastore.Key
-import org.scalatest.{FeatureSpec, Matchers}
+import org.scalatest.{FeatureSpec, Inside, Matchers}
 
 case class SomeEntityType(id: String, parent: EntityParent, possibleInt: Option[Int], compositeField: CompositeField)
 
@@ -40,11 +40,11 @@ trait TestDatastoreSupport extends DefaultDatastoreSupport {
 
 }
 
-class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastoreSupport {
+class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with TestDatastoreSupport {
 
   feature("Datastore support for persistence") {
-    scenario("Persist single entity") {
-      val entity = randomEntityWithId("Entity")
+    scenario("Put single entity") {
+      val entity = randomEntityWithId("PutEntity")
       val result = run(put(entity))
       result match {
         case Right(persisted) =>
@@ -52,18 +52,52 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
         case Left(error) => fail(s"There was an error: $error")
       }
     }
+    scenario("Put entity with the same key as an entity in the database") {
+      val key = ComplexKey("Key that already exists", EntityParent(230))
+      val entity = randomEntityWithKey(key)
+      val replacementEntity = randomEntityWithKey(key)
+      val result = run(for {
+        _ <- put(entity)
+        _ <- put(replacementEntity)
+        retrieved <- findOne[SomeEntityType, ComplexKey](key)
+      } yield retrieved)
+      result match {
+        case Right(persisted) =>
+          persisted shouldBe Some(replacementEntity)
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
+    scenario("Save single entity") {
+      val entity = randomEntityWithId("SaveEntity")
+      val result = run(save(entity))
+      result match {
+        case Right(persisted) =>
+          persisted.inputObject shouldBe entity
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
+    scenario("Save entity that for a key that already exists") {
+      val key = ComplexKey("Key for saving with error", EntityParent(240))
+      val entity = randomEntityWithKey(key)
+      val failingEntity = randomEntityWithKey(key)
+      val result = run(for {
+        _ <- save(entity)
+        _ <- save(failingEntity)
+      } yield ())
+      result should be('Left)
+    }
   }
 
   feature("Datastore support for finding single entities") {
     scenario("Entity with key does not exist") {
-      val result = run(findOne[SomeEntityType, ComplexKey](ComplexKey("Non Existant Entity", EntityParent(10))))
+      val result = run(findOne[SomeEntityType, ComplexKey](ComplexKey("Non Existent Entity", EntityParent(10))))
       result shouldBe Right(None)
     }
     scenario("Entity with a key that exists") {
       val entity = randomEntityWithId("Entity That Exists")
       val result = run(for {
         _ <- put(entity)
-        retrieved <- findOne[SomeEntityType, ComplexKey](ComplexKey(entity.id, entity.parent)) // TODO moving the KeyType to a type field may help this readability issue
+        retrieved <- findOne[SomeEntityType, ComplexKey](ComplexKey(entity.id, entity.parent))
       } yield retrieved)
       result shouldBe Right(Some(entity))
     }
@@ -101,7 +135,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
         case Right(seq) =>
           seq should contain(entity1)
           seq should contain(entity2)
-          seq should not contain (entity3)
+          seq should not contain entity3
         case Left(error) => fail(s"There was an error: $error")
       }
     }
@@ -117,7 +151,42 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
         case Right(stream) =>
           stream should contain(Right(entity1))
           stream should contain(Right(entity2))
-        // stream should contain(Right(entity3)) TODO See if it is possible to make this assertion i.e. when is there a consistency guarantee?
+          stream should not contain Right(entity3)
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
+    scenario("Sequence all entities with a certain ancestor") {
+      val ancestor = EntityParent(10000)
+      val entity1 = randomEntityWithKey(ComplexKey("AncestorEntity1", ancestor))
+      val entity2 = randomEntityWithKey(ComplexKey("AncestorEntity2", ancestor))
+      val entity3 = randomEntityWithKey(ComplexKey("EntityWithDifferenceAncestor", EntityParent(20000)))
+      val result = run(for {
+        _ <- put(entity1)
+        _ <- put(entity2)
+        _ <- put(entity3)
+        stream <- list[SomeEntityType].withAncestor(ancestor).stream()
+      } yield stream)
+      result match {
+        case Right(stream) =>
+          stream should contain(Right(entity1))
+          stream should contain(Right(entity2))
+          stream should not contain entity3
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
+    scenario("Sequence all entities with a certain property value") {
+      val (entity1, entity2, entity3) = (randomEntityWithId("Entity1").copy(possibleInt = Option(-20)), randomEntityWithId("Entity2").copy(possibleInt = Option(-20)), randomEntityWithId("Entity3"))
+      val result = run(for {
+        _ <- put(entity1)
+        _ <- put(entity2)
+        _ <- put(entity3.copy(possibleInt = None))
+        sequence <- list[SomeEntityType].withPropertyEq("possibleInt", Option(-20)).sequenced()
+      } yield sequence)
+      result match {
+        case Right(seq) =>
+          seq should contain(entity1)
+          seq should contain(entity2)
+          seq should not contain entity3
         case Left(error) => fail(s"There was an error: $error")
       }
     }
@@ -141,14 +210,15 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with TestDatastor
     }
   }
 
-  // TODO queries. Property and ancestor
+  private val random = ThreadLocalRandom.current()
 
-  private def randomEntityWithId(id: String) = {
-    val random = ThreadLocalRandom.current()
+  private def randomEntityWithId(id: String) = randomEntityWithKey(ComplexKey(id, EntityParent(random.nextLong())))
+
+  private def randomEntityWithKey(complexKey: ComplexKey) = {
     val doubles = random.doubles().limit(random.nextInt(10)).toArray.toSeq
     SomeEntityType(
-      id,
-      EntityParent(random.nextLong()),
+      complexKey.id,
+      complexKey.parent,
       if (random.nextBoolean()) Some(random.nextInt()) else None,
       CompositeField(doubles, random.nextBoolean())
     )

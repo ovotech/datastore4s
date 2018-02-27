@@ -33,7 +33,7 @@ jobs:
   unit-test:
     <<: *defaults
     steps:
-      - checkout #TODO Do I need checkout??
+      - checkout
       - attach_workspace:
           at: .
       - restore_cache:
@@ -66,7 +66,7 @@ jobs:
       - DATASTORE_EMULATOR_HOST_PATH: localhost:8380/datastore
       - DATASTORE_DATASET: datastore4s
     steps:
-      - checkout #TODO Do I need checkout??
+      - checkout
       - attach_workspace:
           at: .
       - restore_cache:

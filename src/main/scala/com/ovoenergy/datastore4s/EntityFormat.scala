@@ -3,7 +3,7 @@ package com.ovoenergy.datastore4s
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
-trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] { // TODO type KeyType??
+trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
   val kind: Kind
 
   def key(record: EntityType): KeyType
@@ -16,7 +16,6 @@ object EntityFormat {
   def apply[EntityType, KeyType](kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] =
     macro applyImpl[EntityType, KeyType]
 
-  // TODO tidy and split out
   def applyImpl[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
     context: Context
   )(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
