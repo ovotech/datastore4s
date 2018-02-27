@@ -1,4 +1,5 @@
 package com.ovoenergy.datastore4s
+import java.io.{PrintStream, PrintWriter}
 
 sealed trait DatastoreError
 
@@ -16,7 +17,7 @@ private[datastore4s] class ComposedError(val errors: Seq[DatastoreError]) extend
 
 object DatastoreError {
   def missingField[A](fieldName: String, entity: Entity): Either[DatastoreError, A] =
-    Left(new DeserialisationError(s"Field $fieldName could not be found on entity $entity")) // TODO should this contain the whole entity as a string???
+    Left(new DeserialisationError(s"Field $fieldName could not be found on entity $entity"))
 
   def wrongType[A](expectedType: DsType, datastoreValue: DatastoreValue): Either[DatastoreError, A] =
     Left(new DeserialisationError(s"Expected a $expectedType but got $datastoreValue"))
@@ -41,7 +42,14 @@ object DatastoreError {
     case e: ComposedError        => ComposedException(e.errors.map(asException))
   }
 
-  case class ComposedException(throwables: Seq[Throwable]) extends Exception
+  case class ComposedException(throwables: Seq[Throwable]) extends Exception {
+
+    override def getMessage: String = throwables.map(_.getMessage).mkString("\n\n")
+
+    override def printStackTrace(s: PrintWriter): Unit = throwables.foreach(_.printStackTrace(s))
+
+    override def printStackTrace(s: PrintStream): Unit = throwables.foreach(_.printStackTrace(s))
+  }
 
 }
 
