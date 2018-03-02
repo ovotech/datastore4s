@@ -6,11 +6,6 @@ private[datastore4s] class MacroHelper[C <: Context](val context: C) {
 
   import context.universe._
 
-  def requireCaseClass(tpe: context.universe.Type) =
-    if (!isCaseClass(tpe)) {
-      context.abort(context.enclosingPosition, s"Required case class but $tpe is not a case class")
-    }
-
   def caseClassFieldList(tpe: context.universe.Type) =
     tpe.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten
 

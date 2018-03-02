@@ -8,7 +8,7 @@ private[datastore4s] class DatastoreException(val exception: Throwable) extends 
 
   override def equals(obj: scala.Any): Boolean = obj match {
     case other: DatastoreException => exception == other.exception
-    case _ => false
+    case _                         => false
   }
 }
 
@@ -17,7 +17,7 @@ private[datastore4s] class DeserialisationError(val error: String) extends Datas
 
   override def equals(obj: scala.Any): Boolean = obj match {
     case other: DeserialisationError => error == other.error
-    case _ => false
+    case _                           => false
   }
 }
 
@@ -26,7 +26,7 @@ private[datastore4s] class ComposedError(val errors: Seq[DatastoreError]) extend
 
   override def equals(obj: scala.Any): Boolean = obj match {
     case other: ComposedError => errors == other.errors
-    case _ => false
+    case _                    => false
   }
 }
 

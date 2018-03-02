@@ -38,7 +38,7 @@ object Query {
 
 private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilder: StructuredQuery.Builder[D], entityFunction: D => Entity)(
   implicit fromEntity: FromEntity[E],
-  datastore: Datastore
+  datastore: Datastore // TODO can we remove this. It is just for ancestors
 ) extends Query[E] {
 
   override def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]) = {
@@ -69,7 +69,7 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilder:
     new DatastoreQuery(queryBuilder.setFilter(filterBuilder(propertyName, dsValue)), entityFunction)
   }
 
-  override def stream() = DatastoreOperation { () =>
+  override def stream() = DatastoreOperation { datastore =>
     Try(
       datastore
         .run(queryBuilder.build(), Seq.empty[ReadOption]: _*)
@@ -87,11 +87,11 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilder:
 
 }
 
-case class Project[E]()(implicit datastore: Datastore, format: EntityFormat[E, _]) {
+case class Project[E]()(implicit format: EntityFormat[E, _]) {
   def into[A]()(implicit fromEntity: FromEntity[A]) = Projection[E, A]()
 }
 
-case class Projection[E, A]()(implicit datastore: Datastore, format: EntityFormat[E, _], fromEntity: FromEntity[A]) {
+case class Projection[E, A]()(implicit format: EntityFormat[E, _], fromEntity: FromEntity[A]) {
   def mapping(firstMapping: (String, String), remainingMappings: (String, String)*): Query[A] = {
     val kind = format.kind.name
     val queryBuilder = com.google.cloud.datastore.Query
