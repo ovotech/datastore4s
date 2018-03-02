@@ -9,13 +9,13 @@ case class DataStoreConfiguration(projectId: String, namespace: String)
 
 case class Persisted[A](inputObject: A, entity: Entity)
 
-case class DatastoreOperation[A](get: () => Either[DatastoreError, A]) {
+case class DatastoreOperation[A](op: Datastore => Either[DatastoreError, A]) {
 
-  def map[B](f: A => B): DatastoreOperation[B] = DatastoreOperation(() => get().map(f))
+  def map[B](f: A => B): DatastoreOperation[B] = DatastoreOperation(ds => op(ds).map(f))
 
-  def flatMapEither[B](f: A => Either[DatastoreError, B]): DatastoreOperation[B] = DatastoreOperation(() => get().flatMap(f))
+  def flatMapEither[B](f: A => Either[DatastoreError, B]): DatastoreOperation[B] = DatastoreOperation(ds => op(ds).flatMap(f))
 
-  def flatMap[B](f: A => DatastoreOperation[B]): DatastoreOperation[B] = DatastoreOperation(() => get().map(f).flatMap(_.get()))
+  def flatMap[B](f: A => DatastoreOperation[B]): DatastoreOperation[B] = DatastoreOperation(ds => op(ds).map(f).flatMap(_.op(ds)))
 
 }
 
@@ -29,8 +29,8 @@ object DatastoreService {
       .build()
       .getService
 
-  def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Option[E]] =
-    DatastoreOperation { () =>
+  def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Option[E]] =
+    DatastoreOperation { datastore =>
       val keyFactory = KeyFactoryFacade(datastore, format.kind)
       val entityKey = toKey.toKey(key, keyFactory)
       Try(Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*))) match {
@@ -40,25 +40,21 @@ object DatastoreService {
       }
     }
 
-  def put[E, K](
-    entityObject: E
-  )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
-    persistEntity(entityObject, datastore.put)
+  def put[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
+    persistEntity(entityObject, (datastore, entity) => datastore.put(entity))
 
-  def save[E, K](
-    entityObject: E
-  )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
-    persistEntity(entityObject, datastore.add)
+  def save[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
+    persistEntity(entityObject, (datastore, entity) => datastore.add(entity))
 
   type DsEntity = com.google.cloud.datastore.FullEntity[Key]
   private def persistEntity[E, K](
     entityObject: E,
-    persistingFunction: DsEntity => DsEntity
-  )(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[Persisted[E]] =
-    DatastoreOperation { () =>
-      toEntity(entityObject, format) match {
+    persistingFunction: (Datastore, DsEntity) => DsEntity
+  )(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
+    DatastoreOperation { datastore =>
+      toEntity(entityObject, format, datastore) match {
         case wrapped: WrappedEntity =>
-          Try(persistingFunction(wrapped.entity)) match {
+          Try(persistingFunction(datastore, wrapped.entity)) match {
             case Success(entity) => Right(Persisted(entityObject, new WrappedEntity(entity)))
             case Failure(f)      => DatastoreError.error(f.getMessage)
           }
@@ -69,7 +65,7 @@ object DatastoreService {
       }
     }
 
-  private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K])(implicit toKey: ToKey[K], datastore: Datastore) = {
+  private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K], datastore: Datastore)(implicit toKey: ToKey[K]) = {
     val key = toKey.toKey(format.key(entityObject), new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name)))
     val builder = new WrappedBuilder(key)
     format.toEntity(entityObject, builder)
@@ -78,10 +74,10 @@ object DatastoreService {
   private def createKeyFactory[K, E](format: EntityFormat[E, K], datastore: Datastore) =
     new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name))
 
-  def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K], datastore: Datastore): DatastoreOperation[K] =
-    DatastoreOperation { () =>
+  def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
+    DatastoreOperation { datastore =>
       val dsKey = toKey.toKey(key, createKeyFactory(format, datastore))
-      Try(datastore.delete(dsKey)) match {
+      Try(datastore.delete(dsKey)) match { // TODO is there any way to tell if no entity with the key exists?
         case Success(_) => Right(key)
         case Failure(f) => DatastoreError.error(f.getMessage)
       }
@@ -96,19 +92,21 @@ object DatastoreService {
 
   def project[E]()(implicit format: EntityFormat[E, _], datastore: Datastore): Project[E] = Project()
 
-  def run[A](operation: DatastoreOperation[A]): Either[DatastoreError, A] = operation.get()
+  def run[A](operation: DatastoreOperation[A])(implicit datastore: Datastore): Either[DatastoreError, A] = operation.op(datastore)
 
-  def runF[A](operation: DatastoreOperation[A]): Try[A] = run(operation) match {
+  def runF[A](operation: DatastoreOperation[A])(implicit datastore: Datastore): Try[A] = run(operation) match {
     case Right(a)    => Success(a)
-    case Left(error) => Failure(new RuntimeException(error.toString))
+    case Left(error) => Failure(DatastoreError.asException(error))
   }
 
-  def runAsync[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[Either[DatastoreError, A]] =
+  def runAsync[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext,
+                                                    datastore: Datastore): Future[Either[DatastoreError, A]] =
     Future(run(operation))
 
-  def runAsyncF[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[A] = runAsync(operation).flatMap {
-    case Right(a)    => Future.successful(a)
-    case Left(error) => Future.failed(new RuntimeException(error.toString))
-  }
+  def runAsyncF[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext, datastore: Datastore): Future[A] =
+    runAsync(operation).flatMap {
+      case Right(a)    => Future.successful(a)
+      case Left(error) => Future.failed(DatastoreError.asException(error))
+    }
 
 }

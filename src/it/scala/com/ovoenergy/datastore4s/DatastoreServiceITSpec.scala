@@ -23,7 +23,7 @@ case class ComplexKey(id: String, parent: EntityParent)
 
 case class ProjectedRow(entityId: String, boolean: Boolean, parentAsLong: Long)
 
-trait TestDatastoreSupport extends DefaultDatastoreSupport {
+trait TestDatastoreRepository extends DatastoreRepository {
   override def dataStoreConfiguration = DataStoreConfiguration("datastore4s-project", "datastore4s")
 
   implicit val parentToAncestor = toLongAncestor[EntityParent]("parent")(_.id)
@@ -40,7 +40,7 @@ trait TestDatastoreSupport extends DefaultDatastoreSupport {
 
 }
 
-class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with TestDatastoreSupport {
+class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with TestDatastoreRepository {
 
   feature("Datastore support for persistence") {
     scenario("Put single entity") {

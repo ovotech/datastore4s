@@ -40,7 +40,7 @@ class SealedTraitFieldFormatSpec extends FlatSpec with Matchers with GeneratorDr
     val entityFormat = EntityFormat[EntityWithSealedType, String]("nested-test-kind")(_.id)
 
     forAll(entityGen) { entity =>
-      val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat))
+      val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat, datastore))
       roundTripped shouldBe Right(entity)
     }
   }
