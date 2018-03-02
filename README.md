@@ -221,6 +221,10 @@ To use the macro you need to provide:
 - a string of the kind under which you want your entities to be stored
 - a function between the entity and key type which will be used to create the Key for that entity
 
+For example:
+
+`EntityFormat[Person, String]("person-kind")(person => person.name)`
+
 **NOTE: The Key type cannot be primitive currently due to a compilation error**
 
 #### Custom Keys
