@@ -83,14 +83,14 @@ object DatastoreService {
       }
     }
 
-  def list[E](implicit format: EntityFormat[E, _]): Query[E] = {
+  def list[E](implicit format: EntityFormat[E, _], datastore: Datastore): Query[E] = {
     val kind = format.kind.name
     val queryBuilder =
       com.google.cloud.datastore.Query.newEntityQueryBuilder().setKind(kind)
     new DatastoreQuery[E, com.google.cloud.datastore.Entity](queryBuilder, new WrappedEntity(_))
   }
 
-  def project[E]()(implicit format: EntityFormat[E, _]): Project[E] = Project()
+  def project[E]()(implicit format: EntityFormat[E, _], datastore: Datastore): Project[E] = Project()
 
   def run[A](operation: DatastoreOperation[A])(implicit datastore: Datastore): Either[DatastoreError, A] = operation.op(datastore)
 

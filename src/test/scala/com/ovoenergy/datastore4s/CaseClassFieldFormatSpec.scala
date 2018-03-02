@@ -26,7 +26,7 @@ class CaseClassFieldFormatSpec extends FlatSpec with Matchers with GeneratorDriv
     val entityFormat = EntityFormat[EntityWithNestedType, String]("nested-test-kind")(_.id)
 
     forAll(entityGen) { entity =>
-      val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat))
+      val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat, datastore))
       roundTripped shouldBe Right(entity)
     }
   }
