@@ -36,15 +36,16 @@ object Query {
     }
 }
 
-private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilder: StructuredQuery.Builder[D], entityFunction: D => Entity)(
-  implicit fromEntity: FromEntity[E],
-  datastore: Datastore // TODO can we remove this. It is just for ancestors
-) extends Query[E] {
+private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilderSupplier: Datastore => StructuredQuery.Builder[D],
+                                                                   entityFunction: D => Entity)(implicit fromEntity: FromEntity[E])
+    extends Query[E] {
 
   override def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]) = {
-    val key =
-      Query.ancestorToKey(toAncestor.toAncestor(a), datastore.newKeyFactory())
-    new DatastoreQuery(queryBuilder.setFilter(PropertyFilter.hasAncestor(key)), entityFunction)
+    val newSupplier = (datastore: Datastore) => {
+      val ancestorKey = Query.ancestorToKey(toAncestor.toAncestor(a), datastore.newKeyFactory())
+      queryBuilderSupplier(datastore).setFilter(PropertyFilter.hasAncestor(ancestorKey))
+    }
+    new DatastoreQuery(newSupplier, entityFunction)
   }
 
   override def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]) =
@@ -65,21 +66,27 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilder:
   private def withFilter[A](propertyName: String, value: A)(
     filterBuilder: (String, Value[_]) => PropertyFilter
   )(implicit valueFormat: ValueFormat[A]): Query[E] = {
-    val dsValue = valueFormat.toValue(value) match { case WrappedValue(value) => value }
-    new DatastoreQuery(queryBuilder.setFilter(filterBuilder(propertyName, dsValue)), entityFunction)
+    val newSupplier = (datastore: Datastore) => {
+      val dsValue = valueFormat.toValue(value) match {
+        case WrappedValue(value) => value
+      }
+      queryBuilderSupplier(datastore).setFilter(filterBuilder(propertyName, dsValue))
+    }
+    new DatastoreQuery(newSupplier, entityFunction)
   }
 
   override def stream() = DatastoreOperation { datastore =>
-    Try(
-      datastore
-        .run(queryBuilder.build(), Seq.empty[ReadOption]: _*)
-        .asScala
-        .toStream
-        .map(entityFunction)
-        .map(fromEntity.fromEntity)
-    ) match {
-      case Success(stream) => Right(stream)
-      case Failure(f)      => DatastoreError.error(f.getMessage)
+    try {
+      Right(
+        datastore
+          .run(queryBuilderSupplier(datastore).build(), Seq.empty[ReadOption]: _*)
+          .asScala
+          .toStream
+          .map(entityFunction)
+          .map(fromEntity.fromEntity)
+      )
+    } catch {
+      case f: Throwable => DatastoreError.exception(f)
     }
   }
 

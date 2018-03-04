@@ -67,7 +67,7 @@ object DatastoreService {
     }
 
   private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K], datastore: Datastore)(implicit toKey: ToKey[K]) = {
-    val key = toKey.toKey(format.key(entityObject), new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name)))
+    val key = toKey.toKey(format.key(entityObject), createKeyFactory(format, datastore))
     val builder = new WrappedBuilder(key)
     format.toEntity(entityObject, builder)
   }
@@ -78,29 +78,28 @@ object DatastoreService {
   def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
     DatastoreOperation { datastore =>
       val dsKey = toKey.toKey(key, createKeyFactory(format, datastore))
-      Try(datastore.delete(dsKey)) match { // TODO is there any way to tell if no entity with the key exists?
+      Try(datastore.delete(dsKey)) match {
         case Success(_) => Right(key)
         case Failure(f) => DatastoreError.error(f.getMessage)
       }
     }
 
-  def list[E](implicit format: EntityFormat[E, _], datastore: Datastore): Query[E] = {
+  def list[E](implicit format: EntityFormat[E, _]): Query[E] = {
     val kind = format.kind.name
-    val queryBuilder =
-      com.google.cloud.datastore.Query.newEntityQueryBuilder().setKind(kind)
-    new DatastoreQuery[E, com.google.cloud.datastore.Entity](queryBuilder, new WrappedEntity(_))
+    val queryBuilderSupplier = (_: Datastore) => com.google.cloud.datastore.Query.newEntityQueryBuilder().setKind(kind)
+    new DatastoreQuery[E, com.google.cloud.datastore.Entity](queryBuilderSupplier, new WrappedEntity(_))
   }
 
   def projectInto[E, A](firstMapping: (String, String), remainingMappings: (String, String)*)(implicit format: EntityFormat[E, _],
-                                                                                              fromEntity: FromEntity[A],
-                                                                                              datastore: Datastore): Query[A] = {
-    val kind = format.kind.name
-    val queryBuilder = com.google.cloud.datastore.Query
-      .newProjectionEntityQueryBuilder()
-      .setKind(kind)
-      .setProjection(firstMapping._1, remainingMappings.map(_._1): _*)
+                                                                                              fromEntity: FromEntity[A]): Query[A] = {
+    val queryBuilderSupplier = (_: Datastore) =>
+      com.google.cloud.datastore.Query
+        .newProjectionEntityQueryBuilder()
+        .setKind(format.kind.name)
+        .setProjection(firstMapping._1, remainingMappings.map(_._1): _*)
+
     val mappings = (firstMapping.swap +: remainingMappings.map(_.swap)).toMap
-    new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](queryBuilder, new ProjectionEntity(mappings, _))
+    new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](queryBuilderSupplier, new ProjectionEntity(mappings, _))
   }
 
   def run[A](operation: DatastoreOperation[A])(implicit datastore: Datastore): Either[DatastoreError, A] = operation.op(datastore)
