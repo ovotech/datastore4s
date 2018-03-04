@@ -2,7 +2,6 @@ package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore._
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
-import com.ovoenergy.datastore4s.ToAncestor.{LongAncestor, StringAncestor}
 
 sealed trait Query[E] {
 

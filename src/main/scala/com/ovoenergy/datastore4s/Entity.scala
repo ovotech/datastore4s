@@ -2,12 +2,7 @@ package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.{FullEntity, Key}
 
-class Kind private (val name: String) {
-  override def equals(obj: scala.Any): Boolean = obj match {
-    case that: Kind => that.name == name
-    case _          => false
-  }
-}
+case class Kind (name: String)
 
 object Kind {
 

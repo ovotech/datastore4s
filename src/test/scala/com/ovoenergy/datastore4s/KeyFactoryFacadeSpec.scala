@@ -1,7 +1,6 @@
 package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.DatastoreOptions
-import com.ovoenergy.datastore4s.ToAncestor.{LongAncestor, StringAncestor}
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
