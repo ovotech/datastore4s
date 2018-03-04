@@ -9,7 +9,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class CaseClassFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
-  implicit val datastore = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
+  implicit val datastoreService = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
 
   implicit val instantFormat = InstantEpochMillisValueFormat
   val entityGen = for {
@@ -26,7 +26,7 @@ class CaseClassFieldFormatSpec extends FlatSpec with Matchers with GeneratorDriv
     val entityFormat = EntityFormat[EntityWithNestedType, String]("nested-test-kind")(_.id)
 
     forAll(entityGen) { entity =>
-      val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat, datastore))
+      val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat, datastoreService))
       roundTripped shouldBe Right(entity)
     }
   }

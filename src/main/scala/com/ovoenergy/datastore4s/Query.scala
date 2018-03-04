@@ -4,9 +4,6 @@ import com.google.cloud.datastore._
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.ovoenergy.datastore4s.ToAncestor.{LongAncestor, StringAncestor}
 
-import scala.collection.JavaConverters._
-import scala.util.{Failure, Success, Try}
-
 trait Query[E] {
 
   def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]): Query[E]
@@ -28,22 +25,22 @@ trait Query[E] {
 }
 
 object Query {
-  def ancestorToKey(ancestor: Ancestor, keyFactory: com.google.cloud.datastore.KeyFactory): Key =
+  def ancestorToKey(ancestor: Ancestor, datastoreService: DatastoreService): Key =
     ancestor match {
       case StringAncestor(kind, name) =>
-        keyFactory.setKind(kind.name).newKey(name)
-      case LongAncestor(kind, id) => keyFactory.setKind(kind.name).newKey(id)
+        datastoreService.createKey(name, kind)
+      case LongAncestor(kind, id) => datastoreService.createKey(Long.box(id), kind)
     }
 }
 
-private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilderSupplier: Datastore => StructuredQuery.Builder[D],
+private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilderSupplier: DatastoreService => StructuredQuery.Builder[D],
                                                                    entityFunction: D => Entity)(implicit fromEntity: FromEntity[E])
     extends Query[E] {
 
   override def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]) = {
-    val newSupplier = (datastore: Datastore) => {
-      val ancestorKey = Query.ancestorToKey(toAncestor.toAncestor(a), datastore.newKeyFactory())
-      queryBuilderSupplier(datastore).setFilter(PropertyFilter.hasAncestor(ancestorKey))
+    val newSupplier = (datastoreService: DatastoreService) => {
+      val ancestorKey = Query.ancestorToKey(toAncestor.toAncestor(a), datastoreService)
+      queryBuilderSupplier(datastoreService).setFilter(PropertyFilter.hasAncestor(ancestorKey))
     }
     new DatastoreQuery(newSupplier, entityFunction)
   }
@@ -66,22 +63,20 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilderS
   private def withFilter[A](propertyName: String, value: A)(
     filterBuilder: (String, Value[_]) => PropertyFilter
   )(implicit valueFormat: ValueFormat[A]): Query[E] = {
-    val newSupplier = (datastore: Datastore) => {
+    val newSupplier = (datastoreService: DatastoreService) => {
       val dsValue = valueFormat.toValue(value) match {
         case WrappedValue(value) => value
       }
-      queryBuilderSupplier(datastore).setFilter(filterBuilder(propertyName, dsValue))
+      queryBuilderSupplier(datastoreService).setFilter(filterBuilder(propertyName, dsValue))
     }
     new DatastoreQuery(newSupplier, entityFunction)
   }
 
-  override def stream() = DatastoreOperation { datastore =>
+  override def stream() = DatastoreOperation { datastoreService =>
     try {
       Right(
-        datastore
-          .run(queryBuilderSupplier(datastore).build(), Seq.empty[ReadOption]: _*)
-          .asScala
-          .toStream
+        datastoreService
+          .runQuery(queryBuilderSupplier(datastoreService).build())
           .map(entityFunction)
           .map(fromEntity.fromEntity)
       )

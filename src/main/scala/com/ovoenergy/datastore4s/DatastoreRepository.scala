@@ -7,8 +7,8 @@ trait DatastoreRepository {
 
   def dataStoreConfiguration: DataStoreConfiguration
 
-  private implicit val datastore =
-    DatastoreService.createDatastore(dataStoreConfiguration) // TODO wrap datastore aswell?
+  private implicit val datastoreService =
+    DatastoreService.createDatastore(dataStoreConfiguration)
 
   def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: ValueFormat[B]): ValueFormat[A] =
     ValueFormat.formatFromFunctions(constructor)(extractor)

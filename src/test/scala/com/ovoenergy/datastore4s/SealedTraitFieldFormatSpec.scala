@@ -6,7 +6,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class SealedTraitFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
-  implicit val datastore = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
+  implicit val datastoreService = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
 
   val entityGen = for {
     id <- Gen.alphaNumStr.filter(!_.isEmpty)
@@ -40,7 +40,7 @@ class SealedTraitFieldFormatSpec extends FlatSpec with Matchers with GeneratorDr
     val entityFormat = EntityFormat[EntityWithSealedType, String]("nested-test-kind")(_.id)
 
     forAll(entityGen) { entity =>
-      val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat, datastore))
+      val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat, datastoreService))
       roundTripped shouldBe Right(entity)
     }
   }
