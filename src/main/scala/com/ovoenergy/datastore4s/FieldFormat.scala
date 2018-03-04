@@ -118,7 +118,7 @@ object FieldFormat {
 
           new FieldFormat[$fieldType] {
             override def toEntityField(fieldName: String, value: $fieldType): Field = {
-              ${fieldExpressions.reduce(addFieldExpressions(context)(_, _))}
+              ${fieldExpressions.reduce(concatFieldExpressionsWithAdd(context)(_, _))}
             }
 
             override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, $fieldType] = {
@@ -130,7 +130,7 @@ object FieldFormat {
         """)
   }
 
-  private def addFieldExpressions(context: Context)(fieldExpression1: context.universe.Tree,
+  private def concatFieldExpressionsWithAdd(context: Context)(fieldExpression1: context.universe.Tree,
                                                     fieldExpression2: context.universe.Tree): context.universe.Tree = {
     import context.universe._
     q"$fieldExpression1 + $fieldExpression2"

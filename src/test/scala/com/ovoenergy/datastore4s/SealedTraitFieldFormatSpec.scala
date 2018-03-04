@@ -6,7 +6,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class SealedTraitFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
-  implicit val datastoreService = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
+  implicit val datastoreService = DatastoreService.createDatastoreService(DataStoreConfiguration("test-project", "test-namespace"))
 
   val entityGen = for {
     id <- Gen.alphaNumStr.filter(!_.isEmpty)

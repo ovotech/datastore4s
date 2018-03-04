@@ -9,7 +9,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class CaseClassFieldFormatSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
-  implicit val datastoreService = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
+  implicit val datastoreService = DatastoreService.createDatastoreService(DataStoreConfiguration("test-project", "test-namespace"))
 
   implicit val instantFormat = InstantEpochMillisValueFormat
   val entityGen = for {

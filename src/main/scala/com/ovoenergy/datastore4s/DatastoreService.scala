@@ -9,7 +9,7 @@ case class DataStoreConfiguration(projectId: String, namespace: String)
 
 case class Persisted[A](inputObject: A, entity: Entity)
 
-case class DatastoreOperation[A](op: DatastoreService => Either[DatastoreError, A]) {
+case class DatastoreOperation[+A](op: DatastoreService => Either[DatastoreError, A]) {
 
   def map[B](f: A => B): DatastoreOperation[B] = DatastoreOperation(ds => op(ds).map(f))
 
@@ -21,7 +21,7 @@ case class DatastoreOperation[A](op: DatastoreService => Either[DatastoreError, 
 
 object DatastoreService {
 
-  def createDatastore(dataStoreConfiguration: DataStoreConfiguration): DatastoreService =
+  def createDatastoreService(dataStoreConfiguration: DataStoreConfiguration): DatastoreService =
     new WrappedDatastore(
       DatastoreOptions
         .newBuilder()

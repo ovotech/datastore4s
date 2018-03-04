@@ -4,7 +4,7 @@ import com.google.cloud.datastore._
 import com.google.cloud.datastore.StructuredQuery.PropertyFilter
 import com.ovoenergy.datastore4s.ToAncestor.{LongAncestor, StringAncestor}
 
-trait Query[E] {
+sealed trait Query[E] {
 
   def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]): Query[E]
 
