@@ -57,7 +57,7 @@ object DatastoreService {
 
   private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K], datastoreService: DatastoreService)(
     implicit toKey: ToKey[K]
-  ) = { // TODO find better way for tests.
+  ) = {
     val key = datastoreService.createKey(format.key(entityObject), format.kind)
     format.toEntity(entityObject, new WrappedBuilder(key))
   }
@@ -107,7 +107,7 @@ object DatastoreService {
 }
 
 sealed trait DatastoreService {
-  def delete(key: Key): Either[DatastoreError, Unit] // TODO can we gleam any more info from datastore???
+  def delete(key: Key): Either[DatastoreError, Unit] // TODO is it possible to replace this Unit?
 
   def find(entityKey: Key): Either[DatastoreError, Option[Entity]]
 
@@ -157,6 +157,5 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
   }
 
   import scala.collection.JavaConverters._
-
   override def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]) = datastore.run(query, noOptions: _*).asScala.toStream
 }

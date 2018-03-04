@@ -10,7 +10,7 @@ trait FieldFormat[A] {
 
 }
 
-class Field private (val values: Seq[(String, DatastoreValue)]) { // TODO remove primitive obsession. Does the whole builder process cause performance overhead?
+class Field private (val values: Seq[(String, DatastoreValue)]) {
   def +(name: String, value: DatastoreValue) = new Field((name -> value) +: values)
 
   def +(other: Field) = new Field(other.values ++ values) // Composite field
@@ -101,7 +101,6 @@ object FieldFormat {
 
     val fields = helper.caseClassFieldList(fieldType)
 
-    // TODO Two more abstractables here
     val fieldExpressions = fields.map { field =>
       val fieldName = field.asTerm.name
       q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(fieldName + "." + ${fieldName.toString}, value.${fieldName})"""

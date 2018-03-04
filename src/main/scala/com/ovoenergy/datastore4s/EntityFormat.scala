@@ -73,7 +73,6 @@ object EntityFormat {
     val entityType = weakTypeTag[EntityType].tpe
     val keyType = weakTypeTag[KeyType].tpe
 
-    // TODO One more abstractable here
     val fieldExpressions = helper.caseClassFieldList(entityType).map { field =>
       val fieldName = field.asTerm.name
       q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(${fieldName.toString}, value.${fieldName})"""
@@ -141,7 +140,6 @@ object FromEntity {
   private def caseClassFormat[A: context.WeakTypeTag](context: Context)(helper: MacroHelper[context.type]): context.Expr[FromEntity[A]] = {
     import context.universe._
     val entityType = weakTypeTag[A].tpe
-    // TODO One more abstractable here
     val companion = entityType.typeSymbol.companion
     val fields = helper.caseClassFieldList(entityType)
     val companionNamedArguments = fields.map(field => AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))

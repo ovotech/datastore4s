@@ -8,7 +8,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class KeyFactoryFacadeSpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matchers {
 
-  private val datastore =  DatastoreOptions // TODO try to tidy up tests
+  private val datastore =  DatastoreOptions
     .newBuilder()
     .setProjectId("test-project")
     .setNamespace("test-namespace")
