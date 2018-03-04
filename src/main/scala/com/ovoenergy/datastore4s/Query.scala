@@ -86,19 +86,3 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilder:
   override def sequenced() = stream().flatMapEither(DatastoreError.sequence(_))
 
 }
-
-case class Project[E]()(implicit format: EntityFormat[E, _], datastore: Datastore) {
-  def into[A]()(implicit fromEntity: FromEntity[A]) = Projection[E, A]()
-}
-
-case class Projection[E, A]()(implicit format: EntityFormat[E, _], fromEntity: FromEntity[A], datastore: Datastore) {
-  def mapping(firstMapping: (String, String), remainingMappings: (String, String)*): Query[A] = {
-    val kind = format.kind.name
-    val queryBuilder = com.google.cloud.datastore.Query
-      .newProjectionEntityQueryBuilder()
-      .setKind(kind)
-      .setProjection(firstMapping._1, remainingMappings.map(_._1): _*)
-    val mappings = (firstMapping.swap +: remainingMappings.map(_.swap)).toMap
-    new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](queryBuilder, new ProjectionEntity(mappings, _))
-  }
-}

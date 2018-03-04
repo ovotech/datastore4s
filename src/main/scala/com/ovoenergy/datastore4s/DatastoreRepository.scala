@@ -40,8 +40,9 @@ trait DatastoreRepository {
   def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Option[E]] =
     DatastoreService.findOne(key)
 
-  def project[E]()(implicit format: EntityFormat[E, _]): Project[E] =
-    DatastoreService.project[E]
+  def projectInto[E, A](firstMapping: (String, String), remainingMappings: (String, String)*)(implicit format: EntityFormat[E, _],
+                                                                                              fromEntity: FromEntity[A]): Query[A] =
+    DatastoreService.projectInto(firstMapping, remainingMappings: _*)
 
   def run[A](operation: DatastoreOperation[A]): Either[DatastoreError, A] = DatastoreService.run(operation)
 

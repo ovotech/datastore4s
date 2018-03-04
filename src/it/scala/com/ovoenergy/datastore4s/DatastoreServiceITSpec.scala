@@ -194,13 +194,12 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
 
   feature("Datastore support for projections") {
     scenario("Project a seqence of entities into a row format") {
-      // TODO Note here that the type of parent is different. But the internal datastore type is still long. I don't know if we want to allow this.
+      // TODO Note here that the type of 'parent' is different, but the internal datastore type is still LongValue. I don't know if we want to allow this.
       val entity = randomEntityWithId("ProjectedEntity")
       val expectedProjection = ProjectedRow(entity.id, entity.compositeField.someBoolean, entity.parent.id)
       val result = run(for {
         _ <- put(entity)
-        projections <- project[SomeEntityType].into[ProjectedRow]
-          .mapping("id" -> "entityId", "compositeField.someBoolean" -> "boolean", "parent" -> "parentAsLong").sequenced()
+        projections <- projectInto[SomeEntityType, ProjectedRow]("id" -> "entityId", "compositeField.someBoolean" -> "boolean", "parent" -> "parentAsLong").sequenced()
       } yield projections)
       result match {
         case Right(seq) =>

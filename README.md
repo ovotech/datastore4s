@@ -89,9 +89,9 @@ Datastore operations can be executed using 4 different functions, these are avai
     - Queries can return either:
         - `Stream[Either[DatastoreError, A]]` by calling `stream()` if you need the individual errors for each entity
         - `Seq[A]` by calling `sequenced()` where all entity errors are combined into one
-6. `project[E].into[Projection].mapping(entityField -> projectionField...)` creates a projection query from the given entity type 
+6. `projectInto[E, Projection](entityField -> projectionField...)` creates a projection query from the given entity type 
  into the projection type using the given field mappings. There must be both an `EntityFormat[E, _]` and `FromEntity[Projection]`
- in scope. There is a `FromEntity` macro. This function does not check that the fields or types match up at compile time.
+ in scope. There is a `FromEntity[A]` macro. This function does not check that the field names or types match up at compile time.
 
 Datastore Operations can also be combined in for comprehensions e.g:
 

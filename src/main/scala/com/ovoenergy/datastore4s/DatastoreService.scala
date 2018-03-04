@@ -47,6 +47,7 @@ object DatastoreService {
     persistEntity(entityObject, (datastore, entity) => datastore.add(entity))
 
   type DsEntity = com.google.cloud.datastore.FullEntity[Key]
+
   private def persistEntity[E, K](
     entityObject: E,
     persistingFunction: (Datastore, DsEntity) => DsEntity
@@ -90,7 +91,17 @@ object DatastoreService {
     new DatastoreQuery[E, com.google.cloud.datastore.Entity](queryBuilder, new WrappedEntity(_))
   }
 
-  def project[E]()(implicit format: EntityFormat[E, _], datastore: Datastore): Project[E] = Project()
+  def projectInto[E, A](firstMapping: (String, String), remainingMappings: (String, String)*)(implicit format: EntityFormat[E, _],
+                                                                                              fromEntity: FromEntity[A],
+                                                                                              datastore: Datastore): Query[A] = {
+    val kind = format.kind.name
+    val queryBuilder = com.google.cloud.datastore.Query
+      .newProjectionEntityQueryBuilder()
+      .setKind(kind)
+      .setProjection(firstMapping._1, remainingMappings.map(_._1): _*)
+    val mappings = (firstMapping.swap +: remainingMappings.map(_.swap)).toMap
+    new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](queryBuilder, new ProjectionEntity(mappings, _))
+  }
 
   def run[A](operation: DatastoreOperation[A])(implicit datastore: Datastore): Either[DatastoreError, A] = operation.op(datastore)
 
