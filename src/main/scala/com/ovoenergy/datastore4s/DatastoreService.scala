@@ -2,22 +2,11 @@ package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore._
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-case class DataStoreConfiguration(projectId: String, namespace: String)
+final case class DataStoreConfiguration(projectId: String, namespace: String)
 
-case class Persisted[A](inputObject: A, entity: Entity)
-
-case class DatastoreOperation[+A](op: DatastoreService => Either[DatastoreError, A]) {
-
-  def map[B](f: A => B): DatastoreOperation[B] = DatastoreOperation(ds => op(ds).map(f))
-
-  def flatMapEither[B](f: A => Either[DatastoreError, B]): DatastoreOperation[B] = DatastoreOperation(ds => op(ds).flatMap(f))
-
-  def flatMap[B](f: A => DatastoreOperation[B]): DatastoreOperation[B] = DatastoreOperation(ds => op(ds).map(f).flatMap(_.op(ds)))
-
-}
+final case class Persisted[A](inputObject: A, entity: Entity)
 
 object DatastoreService {
 
@@ -84,25 +73,6 @@ object DatastoreService {
     val mappings = (firstMapping.swap +: remainingMappings.map(_.swap)).toMap
     new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](queryBuilderSupplier, new ProjectionEntity(mappings, _))
   }
-
-  def run[A](operation: DatastoreOperation[A])(implicit datastoreService: DatastoreService): Either[DatastoreError, A] =
-    operation.op(datastoreService)
-
-  def runF[A](operation: DatastoreOperation[A])(implicit datastoreService: DatastoreService): Try[A] = run(operation) match {
-    case Right(a)    => Success(a)
-    case Left(error) => Failure(DatastoreError.asException(error))
-  }
-
-  def runAsync[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext,
-                                                    datastoreService: DatastoreService): Future[Either[DatastoreError, A]] =
-    Future(run(operation))
-
-  def runAsyncF[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext,
-                                                     datastoreService: DatastoreService): Future[A] =
-    runAsync(operation).flatMap {
-      case Right(a)    => Future.successful(a)
-      case Left(error) => Future.failed(DatastoreError.asException(error))
-    }
 
 }
 

@@ -43,14 +43,14 @@ trait DatastoreRepository {
                                                                                               fromEntity: FromEntity[A]): Query[A] =
     DatastoreService.projectInto(firstMapping, remainingMappings: _*)
 
-  def run[A](operation: DatastoreOperation[A]): Either[DatastoreError, A] = DatastoreService.run(operation)
+  def run[A](operation: DatastoreOperation[A]): Either[DatastoreError, A] = DatastoreOperationInterpreter.run(operation)
 
-  def runF[A](operation: DatastoreOperation[A]): Try[A] = DatastoreService.runF(operation)
+  def runF[A](operation: DatastoreOperation[A]): Try[A] = DatastoreOperationInterpreter.runF(operation)
 
   def runAsync[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[Either[DatastoreError, A]] =
-    DatastoreService.runAsync(operation)
+    DatastoreOperationInterpreter.runAsync(operation)
 
   def runAsyncF[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[A] =
-    DatastoreService.runAsyncF(operation)
+    DatastoreOperationInterpreter.runAsyncF(operation)
 
 }

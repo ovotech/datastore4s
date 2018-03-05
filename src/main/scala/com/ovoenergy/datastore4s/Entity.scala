@@ -2,7 +2,7 @@ package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.{FullEntity, Key}
 
-case class Kind (name: String)
+final case class Kind (name: String)
 
 object Kind {
 
@@ -30,7 +30,7 @@ private[datastore4s] class WrappedEntity(val entity: FullEntity[Key]) extends En
     else None
 }
 
-private[datastore4s] class ProjectionEntity(mappings: Map[String, String], actualEntity: com.google.cloud.datastore.ProjectionEntity)
+private[datastore4s] class ProjectionEntity(mappings: Map[String, String], actualEntity: com.google.cloud.datastore.BaseEntity[Key])
     extends Entity {
   override def field(name: String) = {
     val fieldName = mappings.getOrElse(name, name)
