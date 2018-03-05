@@ -91,7 +91,7 @@ sealed trait DatastoreService {
 
 }
 
-private[datastore4s] class WrappedDatastore(private val datastore: Datastore) extends DatastoreService {
+private[datastore4s] class WrappedDatastore(private val datastore: Datastore) extends DatastoreService with DatastoreErrors {
 
   private val noOptions = Seq.empty[ReadOption]
   private type DsEntity = com.google.cloud.datastore.FullEntity[Key]
@@ -108,22 +108,20 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
     case wrapped: WrappedEntity =>
       Try(persistingFunction(datastore, wrapped.entity)) match {
         case Success(persistedEntity) => Right(new WrappedEntity(persistedEntity))
-        case Failure(f)               => DatastoreError.exception(f)
+        case Failure(f)               => exception(f)
       }
     case projection: ProjectionEntity =>
-      DatastoreError.error(
-        s"Projection entity was returned from a mapping instead of WrappedEntity. This should never happen. Projection; $projection"
-      )
+      error(s"Projection entity was returned from a mapping instead of WrappedEntity. This should never happen. Projection; $projection")
   }
 
   override def find(entityKey: Key): Either[DatastoreError, Option[Entity]] = Try(Option(datastore.get(entityKey, noOptions: _*))) match {
     case Success(result) => Right(result.map(new WrappedEntity(_)))
-    case Failure(f)      => DatastoreError.exception(f)
+    case Failure(f)      => exception(f)
   }
 
   override def delete(key: Key): Either[DatastoreError, Unit] = Try(datastore.delete(key)) match {
     case Success(unit) => Right(unit)
-    case Failure(f)    => DatastoreError.exception(f)
+    case Failure(f)    => exception(f)
   }
 
   import scala.collection.JavaConverters._
