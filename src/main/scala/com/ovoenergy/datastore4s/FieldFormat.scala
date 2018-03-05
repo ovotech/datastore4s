@@ -43,12 +43,13 @@ object FieldFormat {
         case Right(r) => rightFormat.toEntityField(fieldName, r) + (s"$fieldName.$eitherField", StringValue("Right"))
       }
 
-      override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, Either[L, R]] = entity.field(s"$fieldName.$eitherField") match {
-        case Some(StringValue("Left"))  => leftFormat.fromEntityField(fieldName, entity).map(Left(_))
-        case Some(StringValue("Right")) => rightFormat.fromEntityField(fieldName, entity).map(Right(_))
-        case Some(other)                => DatastoreError.error(s"Either field should be either 'Left' or 'Right' but was $other.")
-        case None                       => DatastoreError.missingField(eitherField, entity)
-      }
+      override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, Either[L, R]] =
+        entity.field(s"$fieldName.$eitherField") match {
+          case Some(StringValue("Left"))  => leftFormat.fromEntityField(fieldName, entity).map(Left(_))
+          case Some(StringValue("Right")) => rightFormat.fromEntityField(fieldName, entity).map(Right(_))
+          case Some(other)                => DatastoreError.error(s"Either field should be either 'Left' or 'Right' but was $other.")
+          case None                       => DatastoreError.missingField(eitherField, entity)
+        }
     }
 
   import scala.language.experimental.macros
@@ -94,7 +95,9 @@ object FieldFormat {
         """)
   }
 
-  private def caseClassFormat[A: context.WeakTypeTag](context: blackbox.Context)(helper: MacroHelper[context.type]): context.Expr[FieldFormat[A]] = {
+  private def caseClassFormat[A: context.WeakTypeTag](
+    context: blackbox.Context
+  )(helper: MacroHelper[context.type]): context.Expr[FieldFormat[A]] = {
     import context.universe._
 
     val fieldType = weakTypeTag[A].tpe
@@ -131,7 +134,7 @@ object FieldFormat {
   }
 
   private def concatFieldExpressionsWithAdd(context: blackbox.Context)(fieldExpression1: context.universe.Tree,
-                                                    fieldExpression2: context.universe.Tree): context.universe.Tree = {
+                                                                       fieldExpression2: context.universe.Tree): context.universe.Tree = {
     import context.universe._
     q"$fieldExpression1 + $fieldExpression2"
   }

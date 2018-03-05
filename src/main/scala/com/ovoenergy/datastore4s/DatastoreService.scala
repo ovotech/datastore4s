@@ -108,7 +108,7 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
     case wrapped: WrappedEntity =>
       Try(persistingFunction(datastore, wrapped.entity)) match {
         case Success(persistedEntity) => Right(new WrappedEntity(persistedEntity))
-        case Failure(f)      => DatastoreError.exception(f)
+        case Failure(f)               => DatastoreError.exception(f)
       }
     case projection: ProjectionEntity =>
       DatastoreError.error(
@@ -116,7 +116,7 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
       )
   }
 
-  override def find(entityKey: Key): Either[DatastoreError, Option[Entity]]= Try(Option(datastore.get(entityKey, noOptions: _*))) match {
+  override def find(entityKey: Key): Either[DatastoreError, Option[Entity]] = Try(Option(datastore.get(entityKey, noOptions: _*))) match {
     case Success(result) => Right(result.map(new WrappedEntity(_)))
     case Failure(f)      => DatastoreError.exception(f)
   }

@@ -19,18 +19,18 @@ object DatastoreOperationInterpreter {
     operation.op(datastoreService)
 
   def runF[A](operation: DatastoreOperation[A])(implicit datastoreService: DatastoreService): Try[A] = run(operation) match {
-    case Right(a) => Success(a)
+    case Right(a)    => Success(a)
     case Left(error) => Failure(DatastoreError.asException(error))
   }
 
   def runAsync[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext,
-    datastoreService: DatastoreService): Future[Either[DatastoreError, A]] =
+                                                    datastoreService: DatastoreService): Future[Either[DatastoreError, A]] =
     Future(run(operation))
 
   def runAsyncF[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext,
-    datastoreService: DatastoreService): Future[A] =
+                                                     datastoreService: DatastoreService): Future[A] =
     runAsync(operation).flatMap {
-      case Right(a) => Future.successful(a)
+      case Right(a)    => Future.successful(a)
       case Left(error) => Future.failed(DatastoreError.asException(error))
     }
 }

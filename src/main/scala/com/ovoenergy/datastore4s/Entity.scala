@@ -2,7 +2,7 @@ package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.{FullEntity, Key}
 
-final case class Kind (name: String)
+final case class Kind(name: String)
 
 object Kind {
 

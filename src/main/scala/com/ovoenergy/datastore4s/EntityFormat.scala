@@ -137,7 +137,9 @@ object FromEntity {
           }""")
   }
 
-  private def caseClassFormat[A: context.WeakTypeTag](context: blackbox.Context)(helper: MacroHelper[context.type]): context.Expr[FromEntity[A]] = {
+  private def caseClassFormat[A: context.WeakTypeTag](
+    context: blackbox.Context
+  )(helper: MacroHelper[context.type]): context.Expr[FromEntity[A]] = {
     import context.universe._
     val entityType = weakTypeTag[A].tpe
     val companion = entityType.typeSymbol.companion
