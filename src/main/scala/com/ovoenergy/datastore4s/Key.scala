@@ -34,9 +34,9 @@ sealed trait KeyFactory {
 
 class KeyFactoryFacade(val factory: com.google.cloud.datastore.KeyFactory) extends KeyFactory {
 
-  override def buildWithName(name: String) = factory.newKey(name)
+  override def buildWithName(name: String): Key = factory.newKey(name)
 
-  override def buildWithId(id: Long) = factory.newKey(id)
+  override def buildWithId(id: Long): Key = factory.newKey(id)
 
   override def addAncestor[A](value: A)(implicit toAncestor: ToAncestor[A]): KeyFactory =
     toAncestor.toAncestor(value) match {

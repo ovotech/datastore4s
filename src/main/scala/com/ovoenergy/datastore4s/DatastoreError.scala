@@ -78,5 +78,5 @@ trait DatastoreErrors {
   def error[A](error: String): Either[DatastoreError, A] =
     DatastoreError.error(error)
 
-  def exception(exception: Throwable) = DatastoreError.exception(exception)
+  def exception[A](exception: Throwable): Either[DatastoreError, A] = DatastoreError.exception(exception)
 }

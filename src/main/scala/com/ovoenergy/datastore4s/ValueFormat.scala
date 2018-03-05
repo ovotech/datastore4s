@@ -181,9 +181,9 @@ object ValueFormat {
   private def formatFromFunctionsWithError[A, B](
     constructor: B => Either[DatastoreError, A]
   )(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] = new ValueFormat[A] {
-    override def toValue(scalaValue: A) = format.toValue(extractor(scalaValue))
+    override def toValue(scalaValue: A): DatastoreValue = format.toValue(extractor(scalaValue))
 
-    override def fromValue(datastoreValue: DatastoreValue) =
+    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, A] =
       format.fromValue(datastoreValue).flatMap(constructor)
   }
 

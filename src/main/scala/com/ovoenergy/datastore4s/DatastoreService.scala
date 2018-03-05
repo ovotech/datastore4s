@@ -96,18 +96,18 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
   private val noOptions = Seq.empty[ReadOption]
   private type DsEntity = com.google.cloud.datastore.FullEntity[Key]
 
-  override def createKey[K](key: K, kind: Kind)(implicit toKey: ToKey[K]) = toKey.toKey(key, newKeyFactory(kind))
+  override def createKey[K](key: K, kind: Kind)(implicit toKey: ToKey[K]): Key = toKey.toKey(key, newKeyFactory(kind))
 
   private def newKeyFactory(kind: Kind): KeyFactory = new KeyFactoryFacade(datastore.newKeyFactory().setKind(kind.name))
 
-  override def put(entity: Entity) = persist(entity, (ds, e) => ds.put(e))
+  override def put(entity: Entity): Either[DatastoreError, Entity] = persist(entity, (ds, e) => ds.put(e))
 
-  override def save(entity: Entity) = persist(entity, (ds, e) => ds.add(e))
+  override def save(entity: Entity): Either[DatastoreError, Entity] = persist(entity, (ds, e) => ds.add(e))
 
   private def persist(entity: Entity, persistingFunction: (Datastore, DsEntity) => DsEntity) = entity match {
     case wrapped: WrappedEntity =>
       Try(persistingFunction(datastore, wrapped.entity)) match {
-        case Success(entity) => Right(new WrappedEntity(entity))
+        case Success(persistedEntity) => Right(new WrappedEntity(persistedEntity))
         case Failure(f)      => DatastoreError.exception(f)
       }
     case projection: ProjectionEntity =>
@@ -116,16 +116,16 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
       )
   }
 
-  override def find(entityKey: Key) = Try(Option(datastore.get(entityKey, noOptions: _*))) match {
-    case Success(result) => Right(result.map(new WrappedEntity((_))))
+  override def find(entityKey: Key): Either[DatastoreError, Option[Entity]]= Try(Option(datastore.get(entityKey, noOptions: _*))) match {
+    case Success(result) => Right(result.map(new WrappedEntity(_)))
     case Failure(f)      => DatastoreError.exception(f)
   }
 
-  override def delete(key: Key) = Try(datastore.delete(key)) match {
+  override def delete(key: Key): Either[DatastoreError, Unit] = Try(datastore.delete(key)) match {
     case Success(unit) => Right(unit)
     case Failure(f)    => DatastoreError.exception(f)
   }
 
   import scala.collection.JavaConverters._
-  override def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]) = datastore.run(query, noOptions: _*).asScala.toStream
+  override def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D] = datastore.run(query, noOptions: _*).asScala.toStream
 }
