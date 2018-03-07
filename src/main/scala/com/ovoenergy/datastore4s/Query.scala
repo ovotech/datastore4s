@@ -32,8 +32,8 @@ object Query {
     }
 }
 
-private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](queryBuilderSupplier: DatastoreService => StructuredQuery.Builder[D],
-                                                                   entityFunction: D => Entity)(implicit fromEntity: FromEntity[E])
+private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](val queryBuilderSupplier: DatastoreService => StructuredQuery.Builder[D],
+  val entityFunction: D => Entity)(implicit fromEntity: FromEntity[E])
     extends Query[E] {
 
   override def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]): Query[E] = {

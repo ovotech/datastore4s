@@ -1,9 +1,8 @@
 package com.ovoenergy.datastore4s
 
-import org.scalamock.scalatest.MockFactory
-import org.scalatest.FlatSpec
+import org.scalatest.{FlatSpec, Matchers}
 
-class QuerySpec extends FlatSpec with MockFactory {
+class QuerySpec extends FlatSpec with Matchers {
 
   "The datastore query" should "be able to add a string ancestor to the query" in {
     pending

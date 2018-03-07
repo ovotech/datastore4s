@@ -76,7 +76,7 @@ object DatastoreService {
 
 }
 
-sealed trait DatastoreService {
+trait DatastoreService {
   def delete(key: Key): Either[DatastoreError, Unit] // TODO is it possible to replace this Unit?
 
   def find(entityKey: Key): Either[DatastoreError, Option[Entity]]

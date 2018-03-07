@@ -1,5 +1,7 @@
 package com.ovoenergy.datastore4s
 
+import com.google.cloud.datastore.Key
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -23,6 +25,8 @@ trait DatastoreRepository {
 
   def toLongAncestor[A](kind: String)(f: A => Long): ToAncestor[A] =
     ToAncestor.toLongAncestor(kind)(f)
+
+  def toKey[A](toKey: (A, KeyFactory) => Key): ToKey[A] = (a, k) => toKey(a, k)
 
   def put[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
     DatastoreService.put(entity)

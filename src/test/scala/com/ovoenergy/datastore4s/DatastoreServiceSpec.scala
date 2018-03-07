@@ -1,9 +1,8 @@
 package com.ovoenergy.datastore4s
 
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.FlatSpec
 
-class DatastoreServiceSpec extends FlatSpec with MockFactory {
+class DatastoreServiceSpec extends FlatSpec {
 
   "The wrapped datastore service" should "return an error from find if an exception is thrown" in {
     pending
