@@ -190,6 +190,29 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         case Left(error) => fail(s"There was an error: $error")
       }
     }
+    scenario("Sequence all entities with multiple properties") {
+      val ancestor = EntityParent(40000)
+      val (entity1, entity2, entity3, entity4) = (randomEntityWithKey(ComplexKey("MultiFilterEntity1", ancestor)).copy(possibleInt = Option(20)),
+        randomEntityWithKey(ComplexKey("MultiFilterEntity2", ancestor)).copy(possibleInt = Option(100)),
+        randomEntityWithKey(ComplexKey("MultiFilterEntity3", ancestor)).copy(possibleInt = None),
+        randomEntityWithKey(ComplexKey("MultiFilterEntity3", EntityParent(0))).copy(possibleInt = Option(30)))
+      val result = run(for {
+        _ <- put(entity1)
+        _ <- put(entity2)
+        _ <- put(entity3)
+        _ <- put(entity4)
+        sequence <- list[SomeEntityType]
+          .withAncestor(ancestor)
+          .withPropertyGreaterThanEq("possibleInt", Option(30))
+          .withPropertyLessThan("possibleInt", Option(100))
+          .sequenced()
+      } yield sequence)
+      result match {
+        case Right(seq) =>
+          seq shouldBe Seq(entity1)
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
   }
 
   feature("Datastore support for projections") {
