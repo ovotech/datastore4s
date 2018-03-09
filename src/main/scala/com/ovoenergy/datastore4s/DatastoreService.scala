@@ -58,20 +58,20 @@ object DatastoreService {
     }
 
   def list[E](implicit format: EntityFormat[E, _]): Query[E] = {
-    val queryBuilderSupplier = (_: DatastoreService) => com.google.cloud.datastore.Query.newEntityQueryBuilder().setKind(format.kind.name)
-    new DatastoreQuery[E, com.google.cloud.datastore.Entity](queryBuilderSupplier, new WrappedEntity(_))
+    val queryBuilderSupplier = () => com.google.cloud.datastore.Query.newEntityQueryBuilder().setKind(format.kind.name)
+    new DatastoreQuery[E, com.google.cloud.datastore.Entity](queryBuilderSupplier, entityFunction = new WrappedEntity(_))
   }
 
   def projectInto[E, A](firstMapping: (String, String), remainingMappings: (String, String)*)(implicit format: EntityFormat[E, _],
                                                                                               fromEntity: FromEntity[A]): Query[A] = {
-    val queryBuilderSupplier = (_: DatastoreService) =>
+    val queryBuilderSupplier = () =>
       com.google.cloud.datastore.Query
         .newProjectionEntityQueryBuilder()
         .setKind(format.kind.name)
         .setProjection(firstMapping._1, remainingMappings.map(_._1): _*)
 
     val mappings = (firstMapping.swap +: remainingMappings.map(_.swap)).toMap
-    new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](queryBuilderSupplier, new ProjectionEntity(mappings, _))
+    new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](queryBuilderSupplier, entityFunction = new ProjectionEntity(mappings, _))
   }
 
 }
