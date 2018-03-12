@@ -35,10 +35,12 @@ object Query {
   type FilterSupplier = DatastoreService => PropertyFilter
 }
 
-private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](val queryBuilderSupplier: () => StructuredQuery.Builder[D],
+private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](
+  val queryBuilderSupplier: () => StructuredQuery.Builder[D],
   val filters: Seq[FilterSupplier] = Seq.empty,
-  val entityFunction: D => Entity)(implicit fromEntity: FromEntity[E]) // TODO multiple filters Seq[ds => filt]
-  extends Query[E] {
+  val entityFunction: D => Entity
+)(implicit fromEntity: FromEntity[E]) // TODO multiple filters Seq[ds => filt]
+    extends Query[E] {
 
   override def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]): Query[E] = {
     val newFilter = (datastoreService: DatastoreService) => {
@@ -89,8 +91,8 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](val queryBuil
   }
 
   private def buildQuery(datastoreService: DatastoreService) = filters.map(_.apply(datastoreService)) match {
-    case Nil => queryBuilderSupplier().build()
-    case onlyFilter :: Nil => queryBuilderSupplier().setFilter(onlyFilter).build()
+    case Nil                        => queryBuilderSupplier().build()
+    case onlyFilter :: Nil          => queryBuilderSupplier().setFilter(onlyFilter).build()
     case firstFilter :: moreFilters => queryBuilderSupplier().setFilter(CompositeFilter.and(firstFilter, moreFilters: _*)).build()
   }
 

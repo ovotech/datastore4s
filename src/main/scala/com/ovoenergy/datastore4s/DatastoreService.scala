@@ -71,7 +71,10 @@ object DatastoreService {
         .setProjection(firstMapping._1, remainingMappings.map(_._1): _*)
 
     val mappings = (firstMapping.swap +: remainingMappings.map(_.swap)).toMap
-    new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](queryBuilderSupplier, entityFunction = new ProjectionEntity(mappings, _))
+    new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](
+      queryBuilderSupplier,
+      entityFunction = new ProjectionEntity(mappings, _)
+    )
   }
 
 }

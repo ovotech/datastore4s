@@ -195,7 +195,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       val (entity1, entity2, entity3, entity4) = (randomEntityWithKey(ComplexKey("MultiFilterEntity1", ancestor)).copy(possibleInt = Option(20)),
         randomEntityWithKey(ComplexKey("MultiFilterEntity2", ancestor)).copy(possibleInt = Option(100)),
         randomEntityWithKey(ComplexKey("MultiFilterEntity3", ancestor)).copy(possibleInt = None),
-        randomEntityWithKey(ComplexKey("MultiFilterEntity3", EntityParent(0))).copy(possibleInt = Option(30)))
+        randomEntityWithKey(ComplexKey("MultiFilterEntity3", EntityParent(1))).copy(possibleInt = Option(30)))
       val result = run(for {
         _ <- put(entity1)
         _ <- put(entity2)
@@ -234,7 +234,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
 
   private val random = ThreadLocalRandom.current()
 
-  private def randomEntityWithId(id: String) = randomEntityWithKey(ComplexKey(id, EntityParent(random.nextLong())))
+  private def randomEntityWithId(id: String) = randomEntityWithKey(ComplexKey(id, EntityParent(random.nextLong(1, Long.MaxValue))))
 
   private def randomEntityWithKey(complexKey: ComplexKey) = {
     val doubles = random.doubles().limit(random.nextInt(10)).toArray.toSeq
