@@ -203,7 +203,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         _ <- put(entity4)
         sequence <- list[SomeEntityType]
           .withAncestor(ancestor)
-          .withPropertyGreaterThanEq("possibleInt", Option(30))
+          .withPropertyGreaterThanEq("possibleInt", Option(20))
           .withPropertyLessThan("possibleInt", Option(100))
           .sequenced()
       } yield sequence)
