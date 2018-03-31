@@ -1,6 +1,7 @@
 # Datastore4s Roadmap
 
 - [ ] Complete initial draft for version 0.1
+- [ ] Move to github wiki
 - [ ] Improvement of implicit not found error messages
 - [ ] Add option to automatically generate formats where possible by importing auto._
 - [ ] Support for default values of fields
