@@ -107,7 +107,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
     scenario("Entity with key does not exist") {
       val key = ComplexKey("Non Existant Entity", EntityParent(10))
       val result = run(delete[SomeEntityType, ComplexKey](key))
-      result shouldBe Right(key) // TODO should this be Right?? This gives the impression something was deleted. Can datastore actually help here??
+      result shouldBe Right(key)
     }
     scenario("Entity with a key that exists") {
       val entity = randomEntityWithId("Entity That Exists")

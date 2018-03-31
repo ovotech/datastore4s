@@ -70,7 +70,8 @@ Datastore operations can be executed using 4 different functions, these are avai
 
 1. `put[A](entity: A)` will persist an entity using its entity format, replacing any entity with the same key 
 2. `add[A](entity: A)` will persist an entity using its entity format, it will return an error if an entity already exists with the same key
-3. `delete[E, K](key: K)` will delete the entity with the given key
+3. `delete[E, K](key: K)` will delete the entity with the given key. Please note if no entity exists with the given key 
+a success will still be returned.
 4. `findOne[E, K](key: K)` returns a `Option` of the entity with the given key
 5. `list[E]` creates a query for the given entity type as long as an entity format is implicitly in scope 
     - You can add filters to the query
