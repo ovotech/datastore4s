@@ -68,7 +68,7 @@ object FieldFormat {
   )(helper: MacroHelper[context.type]): context.Expr[FieldFormat[A]] = {
     import context.universe._
     val fieldType = weakTypeTag[A].tpe
-    val subTypes = helper.subTypes(fieldType)
+    val subTypes = helper.subTypes(fieldType) // TODO should the sealed hierarchies accept objects in the hierarchy? Try test
 
     val toCases = subTypes.map { subType =>
       cq"""f: ${subType.asClass} => FieldFormat[$subType].toEntityField(fieldName, f) + stringFormat.toEntityField(fieldName + ".type", ${subType.name.toString})"""

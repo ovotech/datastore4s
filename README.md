@@ -319,33 +319,9 @@ object NonMacroExample {
 }
 ```
 
-## Further Work
-
-- Default Values?
-- Migration?
-- Batch operations, transactions and other datastore features.
-
 ## Feedback And Contribution
 
 ## Disclaimer
 
 This API is in its early stages and breaking changes may occur. It should not be considered production-ready.
 
-
-
-
-
---------------------------------------------------
-
-TODO
-// TODO Remove ValueFormat, not needed, just have Fields. Can we do the same for Entity? Just store it is root level FieldFormat?
-CREATE AN ISSUE FOR THE TOKEY[LONG] - I believe it is due to the fact the compiled function is Function1[A, java.lang.Long] since the primitive cannot be a type parameter. Is it all primitives??
-// TODO split out into WIKI and README? Or just separate README, CONTRIBUTING, ROADMAP and EXAMPLES files?
-// TODO better error messages. Try to use @implicitNotFound and magnolia as an example. Write some code that doesn't compile and see what happens.
-// TODO custom flatmapping that will concat all errors together. Possibly a DatastoreResult? Kind of like Validation[A]
-// TODO implicit def for ValueFormat[A] (implicit format: EntityFormat[A, _])? So that we can have nested entities? Or should that go in field format so we can pass in key factory????
-// TODO It would be nice to be able to roll in a migration package as a separate build. This could have versioning using sealed traits. Slowly migrate each object and deserialise according to version e.g. (type1 extends type, type2 extends type. Have an f: type1 => type2. If deser type1 then apply f. )
-// TODO compile time query (& Projection) validation. Check the stringly typeness? Check that ancestors are part of the key?? Underlying DsType needs to match
-// TODO should the sealed hierarchies accept objects in the hierarchy?
-// TODO batch operations, transactions and other features.
-// TODO auto FieldFormat

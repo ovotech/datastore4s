@@ -8,6 +8,7 @@ import com.google.cloud.datastore.{Blob, LatLng}
 import scala.util.{Failure, Success, Try}
 
 trait ValueFormat[A] {
+  // TODO Remove ValueFormat, not needed, just have Fields. Can we do the same for Entity? Just store it is root level FieldFormat? Have field as a trait and combine them with dotting?
 
   def toValue(scalaValue: A): DatastoreValue
 
