@@ -19,7 +19,7 @@ libraryDependencies ++= Seq(
 
 // Explicitly import conflicting dependencies
 libraryDependencies ++= Seq(
-  "com.google.protobuf" % "protobuf-java" % "3.4.0",
+  "com.google.protobuf" % "protobuf-java" % "3.0.0",
   "com.google.guava" % "guava" % "20.0",
   "com.google.code.findbugs" % "jsr305" % "3.0.0"
 )
