@@ -207,7 +207,7 @@ Using the nested format above an Employee entity would be serialised to have pro
 
 #### Sealed Trait Hierarchies
 
-Similarly to create a field format for a sealed trait hierarchy composed of only case classes simply use the same macro,
+Similarly to create a field format for a sealed trait hierarchy composed of only case classes and/or objects simply use the same macro,
 this will store a nested `fieldname.type` field on the entity to determine what subtype the field is.
 
 ### Entity Formats

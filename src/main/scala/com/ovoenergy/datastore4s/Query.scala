@@ -35,11 +35,9 @@ object Query {
   type FilterSupplier = DatastoreService => PropertyFilter
 }
 
-private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](
-  val queryBuilderSupplier: () => StructuredQuery.Builder[D],
-  val filters: Seq[FilterSupplier] = Seq.empty,
-  val entityFunction: D => Entity
-)(implicit fromEntity: FromEntity[E])
+private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](val queryBuilderSupplier: () => StructuredQuery.Builder[D],
+                                                                   val filters: Seq[FilterSupplier] = Seq.empty,
+                                                                   val entityFunction: D => Entity)(implicit fromEntity: FromEntity[E])
     extends Query[E] {
 
   override def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]): Query[E] = {

@@ -6,8 +6,15 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
 
   import context.universe._
 
-  def caseClassFieldList(tpe: context.universe.Type): List[context.universe.Symbol] =
-    tpe.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten
+  def caseClassFieldList(tpe: context.universe.Type): List[context.universe.Symbol] = {
+    val fields = tpe.typeSymbol.asClass.primaryConstructor.typeSignature.paramLists.flatten
+    if (fields.isEmpty) {
+      abort(s"Case class must have at least one field but $tpe did not contain any")
+    }
+    fields
+  }
+
+  def isObject(typeSymbol: context.universe.Symbol): Boolean = typeSymbol.asClass.selfType.termSymbol.isModule
 
   def isCaseClass(tpe: context.universe.Type): Boolean = tpe.typeSymbol.asClass.isCaseClass
 
@@ -23,6 +30,8 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
     case Literal(Constant(_)) => ()
     case _                    => abort(s"$parameter must be a literal")
   }
+
+  def singletonObject(typeSymbol: context.universe.Symbol) = typeSymbol.asClass.selfType.termSymbol.asModule
 
   def abort[A](error: String): A = context.abort(context.enclosingPosition, error)
 

@@ -122,7 +122,7 @@ object FromEntity {
     import context.universe._
     val entityType = weakTypeTag[A].tpe
     val subTypes = helper.subTypes(entityType)
-    val cases = subTypes.map { subType =>
+    val cases = subTypes.map { subType => // TODO should we allow objects here too one day?
       cq"""Right(${subType.name.toString}) => FromEntity[$subType].fromEntity(entity)"""
     }
     context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._

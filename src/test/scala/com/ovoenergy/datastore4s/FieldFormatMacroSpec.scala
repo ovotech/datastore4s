@@ -45,7 +45,7 @@ class FieldFormatMacroSpec extends FlatSpec with Matchers with GeneratorDrivenPr
   val objGen = Gen.const(ObjectType)
   val sealedTraitEntityGen = for {
     id <- Gen.alphaNumStr.filter(!_.isEmpty)
-    sealedValue <- Gen.oneOf(longGen, stringGen)
+    sealedValue <- Gen.oneOf(longGen, stringGen, objGen)
   } yield EntityWithSealedType(id, sealedValue)
 
   sealed trait ValidSealedTrait
@@ -54,13 +54,13 @@ class FieldFormatMacroSpec extends FlatSpec with Matchers with GeneratorDrivenPr
 
   case class StringType(string: String) extends ValidSealedTrait
 
-  case object ObjectType
+  case object ObjectType extends ValidSealedTrait
 
   case class EntityWithSealedType(id: String, sealedValue: ValidSealedTrait)
 
-  "The apply method of SealedFieldFormat" should "create a field format that will serialise to any case class or object in the hierarchy" in {
+  it should "create a field format that will serialise to any case class or object in the hierarchy" in {
     implicit val format = FieldFormat[ValidSealedTrait]
-    val entityFormat = EntityFormat[EntityWithSealedType, String]("nested-test-kind")(_.id)
+    val entityFormat = EntityFormat[EntityWithSealedType, String]("sealed-nested-test-kind")(_.id)
 
     forAll(sealedTraitEntityGen) { entity =>
       val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat, datastoreService))
@@ -69,8 +69,8 @@ class FieldFormatMacroSpec extends FlatSpec with Matchers with GeneratorDrivenPr
   }
 
   case class MissingFieldFormatType()
-  case class MissingFieldFormatContainer(field: MissingFieldFormatType)
 
+  case class MissingFieldFormatContainer(field: MissingFieldFormatType)
 
   it should "Not compile when passed a case class that has a field for which no FieldFormat is implicitly available" in {
     "FieldFormat[MissingFieldFormatContainer]" shouldNot compile
@@ -88,16 +88,18 @@ class FieldFormatMacroSpec extends FlatSpec with Matchers with GeneratorDrivenPr
     "FieldFormat[NonSealedTraitClass]" shouldNot compile
   }
 
-  sealed trait TraitWithObject
-  object Object extends TraitWithObject
-
-
   sealed trait TraitWithNonCaseClass
+
   class Class(val something: String) extends TraitWithNonCaseClass
 
   it should "Only accept sealed traits with case class extensions" in {
-    "FieldFormat[TraitWithObject]" shouldNot compile
     "FieldFormat[TraitWithNonCaseClass]" shouldNot compile
+  }
+
+  case class EmptyCaseClass()
+
+  it should "Not compile for case classes with no fields" in {
+    "FieldFormat[EmptyCaseClass]" shouldNot compile
   }
 
 }

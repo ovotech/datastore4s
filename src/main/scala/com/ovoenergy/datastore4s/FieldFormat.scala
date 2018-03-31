@@ -68,14 +68,22 @@ object FieldFormat {
   )(helper: MacroHelper[context.type]): context.Expr[FieldFormat[A]] = {
     import context.universe._
     val fieldType = weakTypeTag[A].tpe
-    val subTypes = helper.subTypes(fieldType) // TODO should the sealed hierarchies accept objects in the hierarchy? Try test
+    val subTypes = helper.subTypes(fieldType)
 
     val toCases = subTypes.map { subType =>
-      cq"""f: ${subType.asClass} => FieldFormat[$subType].toEntityField(fieldName, f) + stringFormat.toEntityField(fieldName + ".type", ${subType.name.toString})"""
+      if (helper.isObject(subType)) {
+        cq"""f: ${subType.asClass} => stringFormat.toEntityField(fieldName + ".type", ${subType.name.toString})"""
+      } else {
+        cq"""f: ${subType.asClass} => FieldFormat[$subType].toEntityField(fieldName, f) + stringFormat.toEntityField(fieldName + ".type", ${subType.name.toString})"""
+      }
     }
 
     val fromCases = subTypes.map { subType =>
-      cq"""Right(${subType.name.toString}) => FieldFormat[$subType].fromEntityField(fieldName, entity)"""
+      if (helper.isObject(subType)) {
+        cq"""Right(${subType.name.toString}) => Right(${helper.singletonObject(subType)})"""
+      } else {
+        cq"""Right(${subType.name.toString}) => FieldFormat[$subType].fromEntityField(fieldName, entity)"""
+      }
     }
 
     context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._

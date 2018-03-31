@@ -35,6 +35,7 @@ case class Parent(name: String)
 
 object IdToKey extends ToKey[Id] {
   implicit val parentToAncestor = ToAncestor.toStringAncestor[Parent]("test-ancestor")(_.name)
+
   override def toKey(value: Id, keyFactory: KeyFactory) = keyFactory.addAncestor(value.parent).buildWithName(value.id)
 }
 
@@ -43,6 +44,8 @@ class NonCaseClass(val key: String)
 case class MissingFieldFormatEntity(missingTypeField: MissingFieldFormatType, stringField: String)
 
 case class MissingFieldFormatType()
+
+case class EmptyCaseClass()
 
 class EntityFormatSpec extends FeatureSpec with Matchers {
 
@@ -58,6 +61,10 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
   feature("The EntityFormat macro") {
     scenario("Attempt to make an EntityFormat of a type that is not a case class or sealed trait") {
       """EntityFormat[NonCaseClass, String]("non-case-class")(_.key)""" shouldNot compile
+    }
+
+    scenario("Attempt to make an EntityFormat of a type that is a case class with no fields") {
+      """EntityFormat[EmptyCaseClass, String]("no-field-case-class")(_ => "Hello")""" shouldNot compile
     }
 
     scenario("Attempt to make an EntityFormat when an implicit field format is not available") {
@@ -92,7 +99,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       stringEntityFormat.kind.name shouldBe "string-type"
       stringEntityFormat.key(record) shouldBe "key"
       entity.fieldOfType[String]("someProperty") shouldBe Right("propertyValue")
-      entity.fieldOfType[String]("someKey") shouldBe  Right("key")
+      entity.fieldOfType[String]("someKey") shouldBe Right("key")
 
       val roundTripped = stringEntityFormat.fromEntity(entity)
       roundTripped shouldBe Right(record)
