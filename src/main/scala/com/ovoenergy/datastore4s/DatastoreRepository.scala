@@ -1,5 +1,7 @@
 package com.ovoenergy.datastore4s
 
+import com.google.cloud.datastore.Key
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -7,9 +9,8 @@ trait DatastoreRepository {
 
   def dataStoreConfiguration: DataStoreConfiguration
 
-  private implicit val datastore =
-    DatastoreService.createDatastore(dataStoreConfiguration) // TODO wrap datastore aswell?
-  // TODO move implicit use to operation which should take a datastore and return an A
+  private implicit val datastoreService: DatastoreService =
+    DatastoreService.createDatastoreService(dataStoreConfiguration)
 
   def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: ValueFormat[B]): ValueFormat[A] =
     ValueFormat.formatFromFunctions(constructor)(extractor)
@@ -24,6 +25,8 @@ trait DatastoreRepository {
 
   def toLongAncestor[A](kind: String)(f: A => Long): ToAncestor[A] =
     ToAncestor.toLongAncestor(kind)(f)
+
+  def toKey[A](toKey: (A, KeyFactory) => Key): ToKey[A] = (a, k) => toKey(a, k)
 
   def put[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
     DatastoreService.put(entity)
@@ -40,17 +43,18 @@ trait DatastoreRepository {
   def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Option[E]] =
     DatastoreService.findOne(key)
 
-  def project[E]()(implicit format: EntityFormat[E, _]): Project[E] =
-    DatastoreService.project[E]
+  def projectInto[E, A](firstMapping: (String, String), remainingMappings: (String, String)*)(implicit format: EntityFormat[E, _],
+                                                                                              fromEntity: FromEntity[A]): Query[A] =
+    DatastoreService.projectInto(firstMapping, remainingMappings: _*)
 
-  def run[A](operation: DatastoreOperation[A]): Either[DatastoreError, A] = DatastoreService.run(operation)
+  def run[A](operation: DatastoreOperation[A]): Either[DatastoreError, A] = DatastoreOperationInterpreter.run(operation)
 
-  def runF[A](operation: DatastoreOperation[A]): Try[A] = DatastoreService.runF(operation)
+  def runF[A](operation: DatastoreOperation[A]): Try[A] = DatastoreOperationInterpreter.runF(operation)
 
   def runAsync[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[Either[DatastoreError, A]] =
-    DatastoreService.runAsync(operation)
+    DatastoreOperationInterpreter.runAsync(operation)
 
   def runAsyncF[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext): Future[A] =
-    DatastoreService.runAsyncF(operation)
+    DatastoreOperationInterpreter.runAsyncF(operation)
 
 }

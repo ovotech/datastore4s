@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import scala.reflect.macros.blackbox.Context
+import scala.reflect.macros.blackbox
 
 trait FieldFormat[A] {
 
@@ -10,7 +10,7 @@ trait FieldFormat[A] {
 
 }
 
-class Field private (val values: Seq[(String, DatastoreValue)]) { // TODO remove primitive obsession. Does the whole builder process cause performance overhead?
+class Field private (val values: Seq[(String, DatastoreValue)]) {
   def +(name: String, value: DatastoreValue) = new Field((name -> value) +: values)
 
   def +(other: Field) = new Field(other.values ++ values) // Composite field
@@ -38,24 +38,25 @@ object FieldFormat {
 
   implicit def fieldFormatFromEither[L, R](implicit leftFormat: FieldFormat[L], rightFormat: FieldFormat[R]): FieldFormat[Either[L, R]] =
     new FieldFormat[Either[L, R]] {
-      override def toEntityField(fieldName: String, value: Either[L, R]) = value match {
+      override def toEntityField(fieldName: String, value: Either[L, R]): Field = value match {
         case Left(l)  => leftFormat.toEntityField(fieldName, l) + (s"$fieldName.$eitherField", StringValue("Left"))
         case Right(r) => rightFormat.toEntityField(fieldName, r) + (s"$fieldName.$eitherField", StringValue("Right"))
       }
 
-      override def fromEntityField(fieldName: String, entity: Entity) = entity.field(s"$fieldName.$eitherField") match {
-        case Some(StringValue("Left"))  => leftFormat.fromEntityField(fieldName, entity).map(Left(_))
-        case Some(StringValue("Right")) => rightFormat.fromEntityField(fieldName, entity).map(Right(_))
-        case Some(other)                => DatastoreError.error(s"Either field should be either 'Left' or 'Right' but was $other.")
-        case None                       => DatastoreError.missingField(eitherField, entity)
-      }
+      override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, Either[L, R]] =
+        entity.field(s"$fieldName.$eitherField") match {
+          case Some(StringValue("Left"))  => leftFormat.fromEntityField(fieldName, entity).map(Left(_))
+          case Some(StringValue("Right")) => rightFormat.fromEntityField(fieldName, entity).map(Right(_))
+          case Some(other)                => DatastoreError.error(s"Either field should be either 'Left' or 'Right' but was $other.")
+          case None                       => DatastoreError.missingField(eitherField, entity)
+        }
     }
 
   import scala.language.experimental.macros
 
   def apply[A](): FieldFormat[A] = macro applyImpl[A]
 
-  def applyImpl[A: context.WeakTypeTag](context: Context)(): context.Expr[FieldFormat[A]] = {
+  def applyImpl[A: context.WeakTypeTag](context: blackbox.Context)(): context.Expr[FieldFormat[A]] = {
     val helper = MacroHelper(context)
     import context.universe._
     val fieldType = weakTypeTag[A].tpe
@@ -63,18 +64,26 @@ object FieldFormat {
   }
 
   private def sealedTraitFormat[A: context.WeakTypeTag](
-    context: Context
+    context: blackbox.Context
   )(helper: MacroHelper[context.type]): context.Expr[FieldFormat[A]] = {
     import context.universe._
     val fieldType = weakTypeTag[A].tpe
     val subTypes = helper.subTypes(fieldType)
 
     val toCases = subTypes.map { subType =>
-      cq"""f: ${subType.asClass} => FieldFormat[$subType].toEntityField(fieldName, f) + stringFormat.toEntityField(fieldName + ".type", ${subType.name.toString})"""
+      if (helper.isObject(subType)) {
+        cq"""f: ${subType.asClass} => stringFormat.toEntityField(fieldName + ".type", ${subType.name.toString})"""
+      } else {
+        cq"""f: ${subType.asClass} => FieldFormat[$subType].toEntityField(fieldName, f) + stringFormat.toEntityField(fieldName + ".type", ${subType.name.toString})"""
+      }
     }
 
     val fromCases = subTypes.map { subType =>
-      cq"""Right(${subType.name.toString}) => FieldFormat[$subType].fromEntityField(fieldName, entity)"""
+      if (helper.isObject(subType)) {
+        cq"""Right(${subType.name.toString}) => Right(${helper.singletonObject(subType)})"""
+      } else {
+        cq"""Right(${subType.name.toString}) => FieldFormat[$subType].fromEntityField(fieldName, entity)"""
+      }
     }
 
     context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
@@ -94,17 +103,18 @@ object FieldFormat {
         """)
   }
 
-  private def caseClassFormat[A: context.WeakTypeTag](context: Context)(helper: MacroHelper[context.type]): context.Expr[FieldFormat[A]] = {
+  private def caseClassFormat[A: context.WeakTypeTag](
+    context: blackbox.Context
+  )(helper: MacroHelper[context.type]): context.Expr[FieldFormat[A]] = {
     import context.universe._
 
     val fieldType = weakTypeTag[A].tpe
 
     val fields = helper.caseClassFieldList(fieldType)
 
-    // TODO Two more abstractables here
     val fieldExpressions = fields.map { field =>
       val fieldName = field.asTerm.name
-      q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(fieldName + "." + ${fieldName.toString}, value.${fieldName})"""
+      q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(fieldName + "." + ${fieldName.toString}, value.$fieldName)"""
     }
 
     val companion = fieldType.typeSymbol.companion
@@ -119,7 +129,7 @@ object FieldFormat {
 
           new FieldFormat[$fieldType] {
             override def toEntityField(fieldName: String, value: $fieldType): Field = {
-              ${fieldExpressions.reduce(addFieldExpressions(context)(_, _))}
+              ${fieldExpressions.reduce(concatFieldExpressionsWithAdd(context)(_, _))}
             }
 
             override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, $fieldType] = {
@@ -131,8 +141,8 @@ object FieldFormat {
         """)
   }
 
-  private def addFieldExpressions(context: Context)(fieldExpression1: context.universe.Tree,
-                                                    fieldExpression2: context.universe.Tree): context.universe.Tree = {
+  private def concatFieldExpressionsWithAdd(context: blackbox.Context)(fieldExpression1: context.universe.Tree,
+                                                                       fieldExpression2: context.universe.Tree): context.universe.Tree = {
     import context.universe._
     q"$fieldExpression1 + $fieldExpression2"
   }

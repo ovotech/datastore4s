@@ -1,112 +1,132 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{Datastore, DatastoreOptions, Key, ReadOption}
+import com.google.cloud.datastore._
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-case class DataStoreConfiguration(projectId: String, namespace: String)
+final case class DataStoreConfiguration(projectId: String, namespace: String)
 
-case class Persisted[A](inputObject: A, entity: Entity)
-
-case class DatastoreOperation[A](op: Datastore => Either[DatastoreError, A]) {
-
-  def map[B](f: A => B): DatastoreOperation[B] = DatastoreOperation(ds => op(ds).map(f))
-
-  def flatMapEither[B](f: A => Either[DatastoreError, B]): DatastoreOperation[B] = DatastoreOperation(ds => op(ds).flatMap(f))
-
-  def flatMap[B](f: A => DatastoreOperation[B]): DatastoreOperation[B] = DatastoreOperation(ds => op(ds).map(f).flatMap(_.op(ds)))
-
-}
+final case class Persisted[A](inputObject: A, entity: Entity)
 
 object DatastoreService {
 
-  def createDatastore(dataStoreConfiguration: DataStoreConfiguration): Datastore =
-    DatastoreOptions
-      .newBuilder()
-      .setProjectId(dataStoreConfiguration.projectId)
-      .setNamespace(dataStoreConfiguration.namespace)
-      .build()
-      .getService
+  def createDatastoreService(dataStoreConfiguration: DataStoreConfiguration): DatastoreService =
+    new WrappedDatastore(
+      DatastoreOptions
+        .newBuilder()
+        .setProjectId(dataStoreConfiguration.projectId)
+        .setNamespace(dataStoreConfiguration.namespace)
+        .build()
+        .getService
+    )
 
   def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Option[E]] =
-    DatastoreOperation { datastore =>
-      val keyFactory = KeyFactoryFacade(datastore, format.kind)
-      val entityKey = toKey.toKey(key, keyFactory)
-      Try(Option(datastore.get(entityKey, Seq.empty[ReadOption]: _*))) match {
-        case Success(None)         => Right(None)
-        case Success(Some(entity)) => format.fromEntity(new WrappedEntity(entity)).map(Some(_))
-        case Failure(f)            => DatastoreError.error(f.getMessage)
+    DatastoreOperation { datastoreService =>
+      val entityKey = datastoreService.createKey(key, format.kind)
+      datastoreService.find(entityKey).flatMap {
+        case None         => Right(None)
+        case Some(entity) => format.fromEntity(entity).map(Some(_))
       }
     }
 
   def put[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
-    persistEntity(entityObject, (datastore, entity) => datastore.put(entity))
+    persistEntity(entityObject, (datastoreService, entity) => datastoreService.put(entity))
 
   def save[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
-    persistEntity(entityObject, (datastore, entity) => datastore.add(entity))
+    persistEntity(entityObject, (datastoreService, entity) => datastoreService.save(entity))
 
-  type DsEntity = com.google.cloud.datastore.FullEntity[Key]
   private def persistEntity[E, K](
     entityObject: E,
-    persistingFunction: (Datastore, DsEntity) => DsEntity
+    persistingFunction: (DatastoreService, Entity) => Either[DatastoreError, Entity]
   )(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
-    DatastoreOperation { datastore =>
-      toEntity(entityObject, format, datastore) match {
-        case wrapped: WrappedEntity =>
-          Try(persistingFunction(datastore, wrapped.entity)) match {
-            case Success(entity) => Right(Persisted(entityObject, new WrappedEntity(entity)))
-            case Failure(f)      => DatastoreError.error(f.getMessage)
-          }
-        case projection: ProjectionEntity =>
-          DatastoreError.error(
-            s"Projection entity was returned from a mapping instead of WrappedEntity. This should never happen. Projection; $projection"
-          )
-      }
+    DatastoreOperation { datastoreService =>
+      val entity = toEntity(entityObject, format, datastoreService)
+      persistingFunction(datastoreService, entity).map(persisted => Persisted(entityObject, persisted))
     }
 
-  private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K], datastore: Datastore)(implicit toKey: ToKey[K]) = {
-    val key = toKey.toKey(format.key(entityObject), new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name)))
-    val builder = new WrappedBuilder(key)
-    format.toEntity(entityObject, builder)
+  private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K], datastoreService: DatastoreService)(
+    implicit toKey: ToKey[K]
+  ) = {
+    val key = datastoreService.createKey(format.key(entityObject), format.kind)
+    format.toEntity(entityObject, new WrappedBuilder(key))
   }
-
-  private def createKeyFactory[K, E](format: EntityFormat[E, K], datastore: Datastore) =
-    new KeyFactoryFacade(datastore.newKeyFactory().setKind(format.kind.name))
 
   def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
-    DatastoreOperation { datastore =>
-      val dsKey = toKey.toKey(key, createKeyFactory(format, datastore))
-      Try(datastore.delete(dsKey)) match { // TODO is there any way to tell if no entity with the key exists?
-        case Success(_) => Right(key)
-        case Failure(f) => DatastoreError.error(f.getMessage)
+    DatastoreOperation { datastoreService =>
+      val dsKey = datastoreService.createKey(key, format.kind)
+      datastoreService.delete(dsKey).map(_ => key)
+    }
+
+  def list[E](implicit format: EntityFormat[E, _]): Query[E] = {
+    val queryBuilderSupplier = () => com.google.cloud.datastore.Query.newEntityQueryBuilder().setKind(format.kind.name)
+    new DatastoreQuery[E, com.google.cloud.datastore.Entity](queryBuilderSupplier, entityFunction = new WrappedEntity(_))
+  }
+
+  def projectInto[E, A](firstMapping: (String, String), remainingMappings: (String, String)*)(implicit format: EntityFormat[E, _],
+                                                                                              fromEntity: FromEntity[A]): Query[A] = {
+    val queryBuilderSupplier = () =>
+      com.google.cloud.datastore.Query
+        .newProjectionEntityQueryBuilder()
+        .setKind(format.kind.name)
+        .setProjection(firstMapping._1, remainingMappings.map(_._1): _*)
+
+    val mappings = (firstMapping.swap +: remainingMappings.map(_.swap)).toMap
+    new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](
+      queryBuilderSupplier,
+      entityFunction = new ProjectionEntity(mappings, _)
+    )
+  }
+
+}
+
+trait DatastoreService {
+  def delete(key: Key): Either[DatastoreError, Unit]
+
+  def find(entityKey: Key): Either[DatastoreError, Option[Entity]]
+
+  def put(entity: Entity): Either[DatastoreError, Entity]
+
+  def save(entity: Entity): Either[DatastoreError, Entity]
+
+  def createKey[K](key: K, kind: Kind)(implicit toKey: ToKey[K]): Key
+
+  def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D]
+
+}
+
+private[datastore4s] class WrappedDatastore(private val datastore: Datastore) extends DatastoreService with DatastoreErrors {
+
+  private val noOptions = Seq.empty[ReadOption]
+  private type DsEntity = com.google.cloud.datastore.FullEntity[Key]
+
+  override def createKey[K](key: K, kind: Kind)(implicit toKey: ToKey[K]): Key = toKey.toKey(key, newKeyFactory(kind))
+
+  private def newKeyFactory(kind: Kind): KeyFactory = new KeyFactoryFacade(datastore.newKeyFactory().setKind(kind.name))
+
+  override def put(entity: Entity): Either[DatastoreError, Entity] = persist(entity, (ds, e) => ds.put(e))
+
+  override def save(entity: Entity): Either[DatastoreError, Entity] = persist(entity, (ds, e) => ds.add(e))
+
+  private def persist(entity: Entity, persistingFunction: (Datastore, DsEntity) => DsEntity) = entity match {
+    case wrapped: WrappedEntity =>
+      Try(persistingFunction(datastore, wrapped.entity)) match {
+        case Success(persistedEntity) => Right(new WrappedEntity(persistedEntity))
+        case Failure(f)               => exception(f)
       }
-    }
-
-  def list[E](implicit format: EntityFormat[E, _], datastore: Datastore): Query[E] = {
-    val kind = format.kind.name
-    val queryBuilder =
-      com.google.cloud.datastore.Query.newEntityQueryBuilder().setKind(kind)
-    new DatastoreQuery[E, com.google.cloud.datastore.Entity](queryBuilder, new WrappedEntity(_))
+    case projection: ProjectionEntity =>
+      error(s"Projection entity was returned from a mapping instead of WrappedEntity. This should never happen. Projection; $projection")
   }
 
-  def project[E]()(implicit format: EntityFormat[E, _], datastore: Datastore): Project[E] = Project()
-
-  def run[A](operation: DatastoreOperation[A])(implicit datastore: Datastore): Either[DatastoreError, A] = operation.op(datastore)
-
-  def runF[A](operation: DatastoreOperation[A])(implicit datastore: Datastore): Try[A] = run(operation) match {
-    case Right(a)    => Success(a)
-    case Left(error) => Failure(DatastoreError.asException(error))
+  override def find(entityKey: Key): Either[DatastoreError, Option[Entity]] = Try(Option(datastore.get(entityKey, noOptions: _*))) match {
+    case Success(result) => Right(result.map(new WrappedEntity(_)))
+    case Failure(f)      => exception(f)
   }
 
-  def runAsync[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext,
-                                                    datastore: Datastore): Future[Either[DatastoreError, A]] =
-    Future(run(operation))
+  override def delete(key: Key): Either[DatastoreError, Unit] = Try(datastore.delete(key)) match {
+    case Success(unit) => Right(unit)
+    case Failure(f)    => exception(f)
+  }
 
-  def runAsyncF[A](operation: DatastoreOperation[A])(implicit executionContext: ExecutionContext, datastore: Datastore): Future[A] =
-    runAsync(operation).flatMap {
-      case Right(a)    => Future.successful(a)
-      case Left(error) => Future.failed(DatastoreError.asException(error))
-    }
-
+  import scala.collection.JavaConverters._
+  override def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D] = datastore.run(query, noOptions: _*).asScala.toStream
 }

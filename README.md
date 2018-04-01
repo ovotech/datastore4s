@@ -70,7 +70,8 @@ Datastore operations can be executed using 4 different functions, these are avai
 
 1. `put[A](entity: A)` will persist an entity using its entity format, replacing any entity with the same key 
 2. `add[A](entity: A)` will persist an entity using its entity format, it will return an error if an entity already exists with the same key
-3. `delete[E, K](key: K)` will delete the entity with the given key
+3. `delete[E, K](key: K)` will delete the entity with the given key. Please note if no entity exists with the given key 
+a success will still be returned.
 4. `findOne[E, K](key: K)` returns a `Option` of the entity with the given key
 5. `list[E]` creates a query for the given entity type as long as an entity format is implicitly in scope 
     - You can add filters to the query
@@ -89,9 +90,9 @@ Datastore operations can be executed using 4 different functions, these are avai
     - Queries can return either:
         - `Stream[Either[DatastoreError, A]]` by calling `stream()` if you need the individual errors for each entity
         - `Seq[A]` by calling `sequenced()` where all entity errors are combined into one
-6. `project[E].into[Projection].mapping(entityField -> projectionField...)` creates a projection query from the given entity type 
+6. `projectInto[E, Projection](entityField -> projectionField...)` creates a projection query from the given entity type 
  into the projection type using the given field mappings. There must be both an `EntityFormat[E, _]` and `FromEntity[Projection]`
- in scope. There is a `FromEntity` macro. This function does not check that the fields or types match up at compile time.
+ in scope. There is a `FromEntity[A]` macro. This function does not check that the field names or types match up at compile time.
 
 Datastore Operations can also be combined in for comprehensions e.g:
 
@@ -207,7 +208,7 @@ Using the nested format above an Employee entity would be serialised to have pro
 
 #### Sealed Trait Hierarchies
 
-Similarly to create a field format for a sealed trait hierarchy composed of only case classes simply use the same macro,
+Similarly to create a field format for a sealed trait hierarchy composed of only case classes and/or objects simply use the same macro,
 this will store a nested `fieldname.type` field on the entity to determine what subtype the field is.
 
 ### Entity Formats
@@ -319,14 +320,9 @@ object NonMacroExample {
 }
 ```
 
-## Further Work
-
-- Default Values?
-- Migration?
-- Batch operations, transactions and other datastore features.
-
 ## Feedback And Contribution
 
 ## Disclaimer
 
 This API is in its early stages and breaking changes may occur. It should not be considered production-ready.
+

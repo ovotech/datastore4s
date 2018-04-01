@@ -30,7 +30,7 @@ private[datastore4s] class ComposedError(val errors: Seq[DatastoreError]) extend
   }
 }
 
-object DatastoreError {
+object DatastoreError { // TODO custom flatmapping that will concat all errors together. Possibly a DatastoreResult? Kind of like Validation[A]. Need to be able to add all errors together or return (A,B)
   def missingField[A](fieldName: String, entity: Entity): Either[DatastoreError, A] =
     Left(new DeserialisationError(s"Field $fieldName could not be found on entity $entity"))
 
@@ -78,5 +78,5 @@ trait DatastoreErrors {
   def error[A](error: String): Either[DatastoreError, A] =
     DatastoreError.error(error)
 
-  def exception(exception: Throwable) = DatastoreError.exception(exception)
+  def exception[A](exception: Throwable): Either[DatastoreError, A] = DatastoreError.exception(exception)
 }

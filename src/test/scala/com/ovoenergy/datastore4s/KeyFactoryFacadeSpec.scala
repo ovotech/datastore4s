@@ -1,13 +1,19 @@
 package com.ovoenergy.datastore4s
 
-import com.ovoenergy.datastore4s.ToAncestor.{LongAncestor, StringAncestor}
+import com.google.cloud.datastore.DatastoreOptions
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
 
 class KeyFactoryFacadeSpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matchers {
 
-  private val datastore = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
+  private val datastore =  DatastoreOptions
+    .newBuilder()
+    .setProjectId("test-project")
+    .setNamespace("test-namespace")
+    .build()
+    .getService
+
   private val nonEmptyString = Gen.alphaNumStr.filter(!_.isEmpty)
 
   "The key factory facade" should "build a key with a kind and name" in {

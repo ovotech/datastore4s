@@ -107,7 +107,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
     scenario("Entity with key does not exist") {
       val key = ComplexKey("Non Existant Entity", EntityParent(10))
       val result = run(delete[SomeEntityType, ComplexKey](key))
-      result shouldBe Right(key) // TODO should this be Right?? This gives the impression something was deleted. Can datastore actually help here??
+      result shouldBe Right(key)
     }
     scenario("Entity with a key that exists") {
       val entity = randomEntityWithId("Entity That Exists")
@@ -190,17 +190,39 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         case Left(error) => fail(s"There was an error: $error")
       }
     }
+    scenario("Sequence all entities with multiple properties") {
+      val ancestor = EntityParent(40000)
+      val (entity1, entity2, entity3, entity4) = (randomEntityWithKey(ComplexKey("MultiFilterEntity1", ancestor)).copy(possibleInt = Option(20)),
+        randomEntityWithKey(ComplexKey("MultiFilterEntity2", ancestor)).copy(possibleInt = Option(100)),
+        randomEntityWithKey(ComplexKey("MultiFilterEntity3", ancestor)).copy(possibleInt = None),
+        randomEntityWithKey(ComplexKey("MultiFilterEntity3", EntityParent(1))).copy(possibleInt = Option(30)))
+      val result = run(for {
+        _ <- put(entity1)
+        _ <- put(entity2)
+        _ <- put(entity3)
+        _ <- put(entity4)
+        sequence <- list[SomeEntityType]
+          .withAncestor(ancestor)
+          .withPropertyGreaterThanEq("possibleInt", Option(20))
+          .withPropertyLessThan("possibleInt", Option(100))
+          .sequenced()
+      } yield sequence)
+      result match {
+        case Right(seq) =>
+          seq shouldBe Seq(entity1)
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
   }
 
   feature("Datastore support for projections") {
     scenario("Project a seqence of entities into a row format") {
-      // TODO Note here that the type of parent is different. But the internal datastore type is still long. I don't know if we want to allow this.
+      // TODO Note here that the type of 'parent' is different, but the internal datastore type is still LongValue. I don't know if we want to allow this.
       val entity = randomEntityWithId("ProjectedEntity")
       val expectedProjection = ProjectedRow(entity.id, entity.compositeField.someBoolean, entity.parent.id)
       val result = run(for {
         _ <- put(entity)
-        projections <- project[SomeEntityType].into[ProjectedRow]
-          .mapping("id" -> "entityId", "compositeField.someBoolean" -> "boolean", "parent" -> "parentAsLong").sequenced()
+        projections <- projectInto[SomeEntityType, ProjectedRow]("id" -> "entityId", "compositeField.someBoolean" -> "boolean", "parent" -> "parentAsLong").sequenced()
       } yield projections)
       result match {
         case Right(seq) =>
@@ -212,7 +234,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
 
   private val random = ThreadLocalRandom.current()
 
-  private def randomEntityWithId(id: String) = randomEntityWithKey(ComplexKey(id, EntityParent(random.nextLong())))
+  private def randomEntityWithId(id: String) = randomEntityWithKey(ComplexKey(id, EntityParent(random.nextLong(1, Long.MaxValue))))
 
   private def randomEntityWithKey(complexKey: ComplexKey) = {
     val doubles = random.doubles().limit(random.nextInt(10)).toArray.toSeq

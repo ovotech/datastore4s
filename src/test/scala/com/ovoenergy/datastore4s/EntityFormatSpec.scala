@@ -35,6 +35,7 @@ case class Parent(name: String)
 
 object IdToKey extends ToKey[Id] {
   implicit val parentToAncestor = ToAncestor.toStringAncestor[Parent]("test-ancestor")(_.name)
+
   override def toKey(value: Id, keyFactory: KeyFactory) = keyFactory.addAncestor(value.parent).buildWithName(value.id)
 }
 
@@ -43,6 +44,8 @@ class NonCaseClass(val key: String)
 case class MissingFieldFormatEntity(missingTypeField: MissingFieldFormatType, stringField: String)
 
 case class MissingFieldFormatType()
+
+case class EmptyCaseClass()
 
 class EntityFormatSpec extends FeatureSpec with Matchers {
 
@@ -53,11 +56,15 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     }
   }
 
-  implicit val datastore = DatastoreService.createDatastore(DataStoreConfiguration("test-project", "test-namespace"))
+  implicit val datastoreService = DatastoreService.createDatastoreService(DataStoreConfiguration("test-project", "test-namespace"))
 
   feature("The EntityFormat macro") {
     scenario("Attempt to make an EntityFormat of a type that is not a case class or sealed trait") {
       """EntityFormat[NonCaseClass, String]("non-case-class")(_.key)""" shouldNot compile
+    }
+
+    scenario("Attempt to make an EntityFormat of a type that is a case class with no fields") {
+      """EntityFormat[EmptyCaseClass, String]("no-field-case-class")(_ => "Hello")""" shouldNot compile
     }
 
     scenario("Attempt to make an EntityFormat when an implicit field format is not available") {
@@ -76,7 +83,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     scenario("A simple case class with only a long key") {
       val longEntityFormat = EntityFormat[LongKeyObject, JavaLong]("long-type")(_.key)
       val record = LongKeyObject(20)
-      val entity = DatastoreService.toEntity(record, longEntityFormat, datastore)
+      val entity = DatastoreService.toEntity(record, longEntityFormat, datastoreService)
       longEntityFormat.kind.name shouldBe "long-type"
       longEntityFormat.key(record) shouldBe 20
       entity.fieldOfType[Long]("key") shouldBe Right(20)
@@ -88,11 +95,11 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     scenario("A case class with a string key and string property") {
       val stringEntityFormat = EntityFormat[StringKeyObject, String]("string-type")(_.someKey)
       val record = StringKeyObject("key", "propertyValue")
-      val entity = DatastoreService.toEntity(record, stringEntityFormat, datastore)
+      val entity = DatastoreService.toEntity(record, stringEntityFormat, datastoreService)
       stringEntityFormat.kind.name shouldBe "string-type"
       stringEntityFormat.key(record) shouldBe "key"
       entity.fieldOfType[String]("someProperty") shouldBe Right("propertyValue")
-      entity.fieldOfType[String]("someKey") shouldBe  Right("key")
+      entity.fieldOfType[String]("someKey") shouldBe Right("key")
 
       val roundTripped = stringEntityFormat.fromEntity(entity)
       roundTripped shouldBe Right(record)
@@ -105,7 +112,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val complexEntityFormat = EntityFormat[ComplexKeyObject, Id]("complex-kind")(_.id)
 
       val record = ComplexKeyObject(Id("key", Parent("parent")))
-      val entity = DatastoreService.toEntity(record, complexEntityFormat, datastore)
+      val entity = DatastoreService.toEntity(record, complexEntityFormat, datastoreService)
       complexEntityFormat.kind.name shouldBe "complex-kind"
       complexEntityFormat.key(record) shouldBe Id("key", Parent("parent"))
 
@@ -119,7 +126,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val sealedEntityFormat = EntityFormat[SealedEntityType, SealedKey]("sealed-type")(SealedEntityType.key(_))
 
       val firstRecord = FirstSubType("first-key", 2036152)
-      val firstEntity = DatastoreService.toEntity(firstRecord, sealedEntityFormat, datastore)
+      val firstEntity = DatastoreService.toEntity(firstRecord, sealedEntityFormat, datastoreService)
       sealedEntityFormat.kind.name shouldBe "sealed-type"
       sealedEntityFormat.key(firstRecord) shouldBe StringKey("first-key")
       firstEntity.fieldOfType[String]("key") shouldBe Right("first-key")
@@ -128,7 +135,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       sealedEntityFormat.fromEntity(firstEntity) shouldBe Right(firstRecord)
 
       val secondRecord = SecondSubType(83746286466723l, true, 1824672.23572)
-      val secondEntity = DatastoreService.toEntity(secondRecord, sealedEntityFormat, datastore)
+      val secondEntity = DatastoreService.toEntity(secondRecord, sealedEntityFormat, datastoreService)
       sealedEntityFormat.key(secondRecord) shouldBe LongKey(83746286466723l)
       secondEntity.fieldOfType[Long]("key") shouldBe Right(83746286466723l)
       secondEntity.fieldOfType[Boolean]("someBoolean") shouldBe Right(true)

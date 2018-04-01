@@ -1,19 +1,59 @@
 package com.ovoenergy.datastore4s
 
-import org.scalacheck.Gen
-import org.scalatest.prop.GeneratorDrivenPropertyChecks
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.FlatSpec
 
-class DatastoreServiceSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
+class DatastoreServiceSpec extends FlatSpec {
 
-  val nonEmptyString = Gen.alphaNumStr.filter(!_.isEmpty).filter(_.length <= 100)
+  "The wrapped datastore service" should "return an error from find if an exception is thrown" in {
+    pending
+  }
 
-  "The datastore service" should "be able to create a datastore from configuration" in {
-    forAll(nonEmptyString, nonEmptyString) { (project, namespace) =>
-      val datastore = DatastoreService.createDatastore(DataStoreConfiguration(project, namespace))
-      datastore.getOptions.getProjectId shouldBe project
-      datastore.getOptions.getNamespace shouldBe namespace
-    }
+  it should "return a None if null is returned from a get" in {
+    pending
+  }
+
+  it should "return a wrapped entity if one is returned from a get" in {
+    pending
+  }
+
+  it should "be able to create a key for a Kind and valid key value" in {
+    pending
+  }
+
+  it should "return and error if an exception is thrown trying to delete an entity" in {
+    pending
+  }
+
+  it should "return a Right[Unit] if a delete call is successful" in {
+    pending
+  }
+
+  it should "return a stream of the results of a query" in {
+    pending
+  }
+
+  it should "return an error if an exception is thrown on an attempt to put an entity" in {
+    pending
+  }
+
+  it should "return an error if a projectionEntity is passed to put" in {
+    pending
+  }
+
+  it should "return a wrapped entity if a put is successful" in {
+    pending
+  }
+
+  it should "return an error if an exception is thrown on an attempt to save an entity" in {
+    pending
+  }
+
+  it should "return an error if a projectionEntity is passed to save" in {
+    pending
+  }
+
+  it should "return a wrapped entity if a save is successful" in {
+    pending
   }
 
 }

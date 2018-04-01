@@ -1,7 +1,7 @@
 package com.ovoenergy.datastore4s
 
 import scala.language.experimental.macros
-import scala.reflect.macros.blackbox.Context
+import scala.reflect.macros.blackbox
 
 trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
   val kind: Kind
@@ -17,7 +17,7 @@ object EntityFormat {
     macro applyImpl[EntityType, KeyType]
 
   def applyImpl[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
-    context: Context
+    context: blackbox.Context
   )(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
     val helper = MacroHelper(context)
@@ -31,7 +31,7 @@ object EntityFormat {
     )
   }
 
-  private def sealedTraitFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: Context)(
+  private def sealedTraitFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: blackbox.Context)(
     helper: MacroHelper[context.type]
   )(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
@@ -66,17 +66,16 @@ object EntityFormat {
         """)
   }
 
-  private def caseClassFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: Context)(
+  private def caseClassFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: blackbox.Context)(
     helper: MacroHelper[context.type]
   )(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
     val entityType = weakTypeTag[EntityType].tpe
     val keyType = weakTypeTag[KeyType].tpe
 
-    // TODO One more abstractable here
     val fieldExpressions = helper.caseClassFieldList(entityType).map { field =>
       val fieldName = field.asTerm.name
-      q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(${fieldName.toString}, value.${fieldName})"""
+      q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(${fieldName.toString}, value.$fieldName)"""
     }
 
     val toEntityExpression =
@@ -109,7 +108,7 @@ object FromEntity {
 
   def apply[A](): FromEntity[A] = macro applyImpl[A]
 
-  def applyImpl[A: context.WeakTypeTag](context: Context)(): context.Expr[FromEntity[A]] = {
+  def applyImpl[A: context.WeakTypeTag](context: blackbox.Context)(): context.Expr[FromEntity[A]] = {
     import context.universe._
     val helper = MacroHelper(context)
 
@@ -118,12 +117,12 @@ object FromEntity {
   }
 
   private def sealedTraitFormat[A: context.WeakTypeTag](
-    context: Context
+    context: blackbox.Context
   )(helper: MacroHelper[context.type]): context.Expr[FromEntity[A]] = {
     import context.universe._
     val entityType = weakTypeTag[A].tpe
     val subTypes = helper.subTypes(entityType)
-    val cases = subTypes.map { subType =>
+    val cases = subTypes.map { subType => // TODO should we allow objects here too one day?
       cq"""Right(${subType.name.toString}) => FromEntity[$subType].fromEntity(entity)"""
     }
     context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._
@@ -138,10 +137,11 @@ object FromEntity {
           }""")
   }
 
-  private def caseClassFormat[A: context.WeakTypeTag](context: Context)(helper: MacroHelper[context.type]): context.Expr[FromEntity[A]] = {
+  private def caseClassFormat[A: context.WeakTypeTag](
+    context: blackbox.Context
+  )(helper: MacroHelper[context.type]): context.Expr[FromEntity[A]] = {
     import context.universe._
     val entityType = weakTypeTag[A].tpe
-    // TODO One more abstractable here
     val companion = entityType.typeSymbol.companion
     val fields = helper.caseClassFieldList(entityType)
     val companionNamedArguments = fields.map(field => AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
