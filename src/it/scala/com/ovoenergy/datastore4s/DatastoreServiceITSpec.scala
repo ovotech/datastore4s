@@ -24,7 +24,7 @@ case class ComplexKey(id: String, parent: EntityParent)
 case class ProjectedRow(entityId: String, boolean: Boolean, parentAsLong: Long)
 
 trait TestDatastoreRepository extends DatastoreRepository {
-  override def dataStoreConfiguration = DataStoreConfiguration("datastore4s-project", "datastore4s")
+  override def dataStoreConfiguration = FromEnvironmentVariables
 
   implicit val parentToAncestor = toLongAncestor[EntityParent]("parent")(_.id)
   implicit val parentFormat = formatFromFunctions(EntityParent.apply)(_.id)
