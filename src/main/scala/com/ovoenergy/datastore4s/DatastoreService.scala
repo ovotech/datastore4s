@@ -9,6 +9,10 @@ sealed trait DataStoreConfiguration
 final case class ManualDataStoreConfiguration(projectId: String, namespace: String) extends DataStoreConfiguration
 case object FromEnvironmentVariables extends DataStoreConfiguration
 
+object DataStoreConfiguration {
+  def apply(projectId: String, namespace: String): DataStoreConfiguration = ManualDataStoreConfiguration(projectId, namespace)
+}
+
 final case class Persisted[A](inputObject: A, entity: Entity)
 
 object DatastoreService {
