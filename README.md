@@ -40,7 +40,7 @@ object PersonRepository extends DatastoreRepository {
     EntityFormat[Person, String]("person-kind")(p => p.firstName + p.lastName)
 
   override def dataStoreConfiguration = 
-    DataStoreConfiguration("my-project", "some-namespace")
+    ManualDataStoreConfiguration("my-project", "some-namespace")
     
   def storePerson(person: Person)(implicit executionContext: ExecutionContext): Future[Persisted[Person]] = 
     runAsyncF(put(person))

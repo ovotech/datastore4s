@@ -4,21 +4,27 @@ import com.google.cloud.datastore._
 
 import scala.util.{Failure, Success, Try}
 
-final case class DataStoreConfiguration(projectId: String, namespace: String)
+sealed trait DataStoreConfiguration
+
+final case class ManualDataStoreConfiguration(projectId: String, namespace: String) extends DataStoreConfiguration
+case object FromEnvironmentVariables extends DataStoreConfiguration
 
 final case class Persisted[A](inputObject: A, entity: Entity)
 
 object DatastoreService {
 
-  def createDatastoreService(dataStoreConfiguration: DataStoreConfiguration): DatastoreService =
-    new WrappedDatastore(
-      DatastoreOptions
-        .newBuilder()
-        .setProjectId(dataStoreConfiguration.projectId)
-        .setNamespace(dataStoreConfiguration.namespace)
-        .build()
-        .getService
-    )
+  def createDatastoreService(dataStoreConfiguration: DataStoreConfiguration): DatastoreService = dataStoreConfiguration match {
+    case ManualDataStoreConfiguration(projectId, namespace) =>
+      new WrappedDatastore(
+        DatastoreOptions
+          .newBuilder()
+          .setProjectId(projectId)
+          .setNamespace(namespace)
+          .build()
+          .getService
+      )
+    case FromEnvironmentVariables => new WrappedDatastore(DatastoreOptions.getDefaultInstance().getService)
+  }
 
   def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Option[E]] =
     DatastoreOperation { datastoreService =>
