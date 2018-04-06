@@ -27,7 +27,12 @@ object DatastoreService {
           .build()
           .getService
       )
-    case FromEnvironmentVariables => new WrappedDatastore(DatastoreOptions.getDefaultInstance().getService)
+    // TODO Document FromEnvironmentVariables
+    case FromEnvironmentVariables =>
+      val defaultOptions = DatastoreOptions.getDefaultInstance()
+      val withNamespace =
+        Option(sys.env("DATASTORE_NAMESPACE")).fold(defaultOptions)(ns => defaultOptions.toBuilder.setNamespace(ns).build())
+      new WrappedDatastore(withNamespace.getService)
   }
 
   def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Option[E]] =

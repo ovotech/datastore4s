@@ -65,6 +65,7 @@ jobs:
       - DATASTORE_EMULATOR_HOST: http://localhost:8380
       - DATASTORE_EMULATOR_HOST_PATH: localhost:8380/datastore
       - DATASTORE_DATASET: datastore4s
+      - DATASTORE_NAMESPACE: datastore4s-namespace
     steps:
       - checkout
       - attach_workspace:
