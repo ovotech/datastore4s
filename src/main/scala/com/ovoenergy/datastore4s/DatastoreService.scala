@@ -31,7 +31,7 @@ object DatastoreService {
     case FromEnvironmentVariables =>
       val defaultOptions = DatastoreOptions.getDefaultInstance()
       val withNamespace =
-        Option(sys.env("DATASTORE_NAMESPACE")).fold(defaultOptions)(ns => defaultOptions.toBuilder.setNamespace(ns).build())
+        sys.env.get("DATASTORE_NAMESPACE").fold(defaultOptions)(ns => defaultOptions.toBuilder.setNamespace(ns).build())
       new WrappedDatastore(withNamespace.getService)
   }
 
