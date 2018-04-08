@@ -135,7 +135,7 @@ There are multiple `ValueFormat[A]`s already implicitly available for:
 - `com.google.cloud.datastore.Blob`
 - `com.google.cloud.datastore.LatLng`
 
-There are also formats available that can be brought into implicit scope for: 
+There are also formats available that can be brought into implicit scope (explicitly or from the `DefaultFormats` trait) for: 
 - `Array[Byte]` in the form of `ByteArrayValueFormat`
 - `BigDecimal` in the form of `BigDecimalStringValueFormat`
 - `java.time.Instant` in the form of `InstantEpochMillisValueFormat`

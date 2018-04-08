@@ -4,6 +4,7 @@ import java.time.Instant
 
 import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Blob, LatLng}
+import com.ovoenergy.datastore4s.ValueFormat.{BigDecimalStringValueFormat, ByteArrayValueFormat, InstantEpochMillisValueFormat}
 
 import scala.util.{Failure, Success, Try}
 
@@ -188,4 +189,10 @@ object ValueFormat {
       format.fromValue(datastoreValue).flatMap(constructor)
   }
 
+}
+
+trait DefaultFormats {
+  implicit val bigDecimalFormat = BigDecimalStringValueFormat
+  implicit val instantFormat = InstantEpochMillisValueFormat
+  implicit val byteArrayFormat = ByteArrayValueFormat
 }

@@ -10,4 +10,5 @@
 - [ ] Support for Entity fields and entity groups
 
 - [ ] Support for automatic Index generation? (OPTIONAL)
+- [ ] Support for field filtering on queries? (OPTIONAL)
 - [ ] Migration package to support reading from and migrating a kind to a new kind (OPTIONAL)
