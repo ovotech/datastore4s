@@ -27,7 +27,6 @@ object DatastoreService {
           .build()
           .getService
       )
-    // TODO Document FromEnvironmentVariables
     case FromEnvironmentVariables =>
       val defaultOptions = DatastoreOptions.getDefaultInstance()
       val withNamespace =
