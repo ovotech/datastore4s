@@ -324,10 +324,9 @@ object NonMacroExample {
 ## Configuration
 
 To configure your `DatastoreRepository` you can either use `FromEnviornmentVariables` which will use the default datastore
-environment variables to configure your connection, along with an optional "DATASTORE_NAMESPACE" variable, or you can create a
+environment variables ([Documented Here](https://github.com/GoogleCloudPlatform/google-cloud-datastore/blob/b760d0e8767d60a3d169b6f9de7cdb81a966a308/java/datastore/src/main/java/com/google/datastore/v1/client/DatastoreHelper.java#L78))
+to configure your connection, along with an optional "DATASTORE_NAMESPACE" variable, or you can create a
 `ManualDatastoreConfiguration`.
-
-TODO Should we list the variables here?
 
 ## Feedback And Contribution
 

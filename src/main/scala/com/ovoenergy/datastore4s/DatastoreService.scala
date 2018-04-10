@@ -17,7 +17,7 @@ final case class Persisted[A](inputObject: A, entity: Entity)
 
 object DatastoreService extends DatastoreErrors {
 
-  def createDatastoreService(dataStoreConfiguration: DataStoreConfiguration): DatastoreService = dataStoreConfiguration match {
+  def apply(dataStoreConfiguration: DataStoreConfiguration): DatastoreService = dataStoreConfiguration match {
     case ManualDataStoreConfiguration(projectId, namespace) =>
       new WrappedDatastore(
         DatastoreOptions
@@ -30,7 +30,7 @@ object DatastoreService extends DatastoreErrors {
     case FromEnvironmentVariables =>
       val defaultOptions = DatastoreOptions.getDefaultInstance()
       val withNamespace =
-        sys.env.get("DATASTORE_NAMESPACE").fold(defaultOptions)(ns => defaultOptions.toBuilder.setNamespace(ns).build())
+        sys.env.get("DATASTORE_NAMESPACE").fold(defaultOptions)(ns => defaultOptions.toBuilder.setNamespace(ns).build()) // Technically side-effecty TODO should this be fixed?
       new WrappedDatastore(withNamespace.getService)
   }
 
@@ -52,16 +52,19 @@ object DatastoreService extends DatastoreErrors {
 
   private def persistEntity[E, K](
     entityObject: E,
-    persistingFunction: (DatastoreService, Entity) => Either[DatastoreError, Entity]
+    persistingFunction: (DatastoreService, Entity) => Try[Entity]
   )(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
     DatastoreOperation { datastoreService =>
       val entity = toEntity(entityObject, format, datastoreService)
-      persistingFunction(datastoreService, entity).map(persisted => Persisted(entityObject, persisted))
+      persistingFunction(datastoreService, entity) match {
+        case Success(persisted)    => Right(Persisted(entityObject, persisted))
+        case Failure(error)        => exception(error)
+      }
     }
 
   private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K], datastoreService: DatastoreService)(
     implicit toKey: ToKey[K]
-  ) = {
+  ) = { // TODO this is only package private for tests. Should it be?
     val key = datastoreService.createKey(format.key(entityObject), format.kind)
     format.toEntity(entityObject, new WrappedBuilder(key))
   }
@@ -69,7 +72,7 @@ object DatastoreService extends DatastoreErrors {
   def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
     DatastoreOperation { datastoreService =>
       val dsKey = datastoreService.createKey(key, format.kind)
-      datastoreService.delete(dsKey).map(_ => key)
+      datastoreService.delete(dsKey).map(exception).getOrElse(Right(key))
     }
 
   def list[E](implicit format: EntityFormat[E, _]): Query[E] = {
@@ -95,17 +98,19 @@ object DatastoreService extends DatastoreErrors {
 }
 
 trait DatastoreService {
-  def delete(key: Key): Either[DatastoreError, Unit]
+  def delete(key: Key): Option[Throwable]
 
   def find(entityKey: Key): Try[Option[Entity]]
 
-  def put(entity: Entity): Either[DatastoreError, Entity]
+  def put(entity: Entity): Try[Entity]
 
-  def save(entity: Entity): Either[DatastoreError, Entity]
+  def save(entity: Entity): Try[Entity]
 
   def createKey[K](key: K, kind: Kind)(implicit toKey: ToKey[K]): Key
 
   def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D]
+
+  def configuration: DataStoreConfiguration
 
 }
 
@@ -113,33 +118,31 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
 
   private val noOptions = Seq.empty[ReadOption]
   private type DsEntity = com.google.cloud.datastore.FullEntity[Key]
-  // TODO there must be a way to unit test this terrible underlying API.
 
   override def createKey[K](key: K, kind: Kind)(implicit toKey: ToKey[K]): Key = toKey.toKey(key, newKeyFactory(kind))
 
   private def newKeyFactory(kind: Kind): KeyFactory = new KeyFactoryFacade(datastore.newKeyFactory().setKind(kind.name))
 
-  override def put(entity: Entity): Either[DatastoreError, Entity] = persist(entity, (ds, e) => ds.put(e))
+  override def put(entity: Entity) = persist(entity, (ds, e) => ds.put(e))
 
-  override def save(entity: Entity): Either[DatastoreError, Entity] = persist(entity, (ds, e) => ds.add(e))
+  override def save(entity: Entity) = persist(entity, (ds, e) => ds.add(e))
 
-  private def persist(entity: Entity, persistingFunction: (Datastore, DsEntity) => DsEntity) = entity match {
+  private def persist(entity: Entity, persistingFunction: (Datastore, DsEntity) => DsEntity): Try[Entity] = entity match {
     case wrapped: WrappedEntity =>
-      Try(persistingFunction(datastore, wrapped.entity)) match {
-        case Success(persistedEntity) => Right(new WrappedEntity(persistedEntity))
-        case Failure(f)               => exception(f)
-      }
-    case projection: ProjectionEntity =>
-      error(s"Projection entity was returned from a mapping instead of WrappedEntity. This should never happen. Projection; $projection")
+      Try{persistingFunction(datastore, wrapped.entity); entity}
+    case projection: ProjectionEntity => // TODO is it possible to ensure this doesn't happen at compile time?
+      Failure(new RuntimeException(s"Attempted to persist a Projection entity. This should never happen, an EntityFormat somehow returned a projection. Projection; $projection"))
   }
 
   override def find(entityKey: Key) = Try(Option(datastore.get(entityKey, noOptions: _*))).map(_.map(new WrappedEntity(_)))
 
-  override def delete(key: Key): Either[DatastoreError, Unit] = Try(datastore.delete(key)) match {
-    case Success(unit) => Right(unit)
-    case Failure(f)    => exception(f)
-  }
+  override def delete(key: Key) = try { datastore.delete(key); None } catch { case e: Throwable => Some(e) } // Cannot return anything useful.
 
   import scala.collection.JavaConverters._
   override def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D] = datastore.run(query, noOptions: _*).asScala.toStream
+
+  override def configuration = {
+    val options = datastore.getOptions
+    DataStoreConfiguration(options.getProjectId, options.getNamespace)
+  }
 }

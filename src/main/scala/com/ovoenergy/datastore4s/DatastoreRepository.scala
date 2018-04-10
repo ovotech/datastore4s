@@ -9,8 +9,7 @@ trait DatastoreRepository {
 
   def dataStoreConfiguration: DataStoreConfiguration
 
-  private lazy implicit val datastoreService: DatastoreService =
-    DatastoreService.createDatastoreService(dataStoreConfiguration)
+  private lazy implicit val datastoreService: DatastoreService = DatastoreService(dataStoreConfiguration)
 
   def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: ValueFormat[B]): ValueFormat[A] =
     ValueFormat.formatFromFunctions(constructor)(extractor)

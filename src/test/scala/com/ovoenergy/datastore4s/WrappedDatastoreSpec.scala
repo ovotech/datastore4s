@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.DatastoreOptions
+import com.google.cloud.datastore.{DatastoreOptions, FullEntity, Key}
 import org.scalatest.{FlatSpec, Matchers}
 
 class WrappedDatastoreSpec extends FlatSpec with Matchers {
@@ -23,5 +23,12 @@ class WrappedDatastoreSpec extends FlatSpec with Matchers {
     key.getNamespace shouldBe namespace
     key.getProjectId shouldBe projectId
     key.getAncestors should be('empty)
+  }
+
+  it should "not allow a projection entity to be 'put' or 'save'd" in {
+    val testKey = Key.newBuilder("test-project", "test-namespace", "test-id").build()
+    val entity = new ProjectionEntity(Map.empty, FullEntity.newBuilder(testKey).build())
+    datastore.put(entity) should be('Failure)
+    datastore.save(entity) should be('Failure)
   }
 }

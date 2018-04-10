@@ -29,6 +29,16 @@ configs(IntegrationTest)
 Defaults.itSettings
 testFrameworks in IntegrationTest := Seq(TestFrameworks.ScalaTest)
 
+val datastoreVariables = Map(
+  "DATASTORE_PROJECT_ID" -> "datastore4s",
+  "DATASTORE_NAMESPACE" ->"datastore4s-namespace"
+)
+
+envVars in Test := datastoreVariables
+fork in Test := true
+envVars in IntegrationTest := datastoreVariables
+fork in IntegrationTest := true
+
 bintrayOrganization := Some("ovotech")
 bintrayRepository := "maven-private"
 bintrayPackage := "datastore4s"

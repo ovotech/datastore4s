@@ -47,11 +47,6 @@ class KeyFactoryFacade(val factory: com.google.cloud.datastore.KeyFactory) exten
     }
 }
 
-object KeyFactoryFacade {
-  def apply(datastore: Datastore, kind: Kind): KeyFactoryFacade =
-    new KeyFactoryFacade(datastore.newKeyFactory().setKind(kind.name))
-}
-
 sealed trait ToAncestor[A] {
   def toAncestor(value: A): Ancestor
 }
