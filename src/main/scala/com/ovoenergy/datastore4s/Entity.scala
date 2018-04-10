@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{FullEntity, Key}
+import com.google.cloud.datastore.{BaseEntity, FullEntity, Key}
 
 final case class Kind(name: String)
 
@@ -30,7 +30,7 @@ private[datastore4s] class WrappedEntity(val entity: FullEntity[Key]) extends En
     else None
 }
 
-private[datastore4s] class ProjectionEntity(mappings: Map[String, String], actualEntity: com.google.cloud.datastore.BaseEntity[Key])
+private[datastore4s] class ProjectionEntity(val mappings: Map[String, String], val actualEntity: BaseEntity[Key])
     extends Entity {
   override def field(name: String): Option[DatastoreValue] = {
     val fieldName = mappings.getOrElse(name, name)

@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.Key
+import com.google.cloud.datastore.{Key, Entity => DsEntity, ProjectionEntity => DsProjectionEntity}
 import com.ovoenergy.datastore4s.DatastoreOperationInterpreter.{run => runOp}
 import org.mockito.ArgumentMatchers.{eq => mockEq}
 import org.mockito.Mockito._
@@ -14,7 +14,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
   private val mockDatastoreService = mock[DatastoreService]("mockDatastoreService")
   private val mockEntityFormat = mock[EntityFormat[Object, String]]("mockEntityFormat")
   private val testKey = Key.newBuilder("test-project", "test-namespace", "test-id").build()
-  private val expectedBuilder =  new WrappedBuilder(testKey)
+  private val expectedBuilder = new WrappedBuilder(testKey)
 
   implicit val format = mockEntityFormat
   implicit val service = mockDatastoreService // TODO name mocks
@@ -124,6 +124,39 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     result shouldBe Right(Persisted(mockEntityObject, mockEntity))
   }
 
-  // TODO list[] and project[] tests
+  it should "create a list query that will use the correct kind" in {
+    val query = DatastoreService.list[Object]
+    val castQuery = query.asInstanceOf[DatastoreQuery[Object, DsEntity]]
+
+    val datastoreQuery = castQuery.queryBuilderSupplier().build()
+    datastoreQuery.getKind shouldBe kind.name
+
+    val datastoreEntity = DsEntity.newBuilder(testKey).build()
+    castQuery.entityFunction(datastoreEntity) match {
+      case wrapped: WrappedEntity =>
+        wrapped.entity shouldBe datastoreEntity
+      case other => fail(s"Expected a wrapped entity but got $other")
+    }
+
+    castQuery.filters should be('empty)
+  }
+
+  it should "create a projection query that will use the correct kind and mappings" in {
+    val query = DatastoreService.projectInto[Object, Object]("entityProperty" -> "projectionProperty")
+    val castQuery = query.asInstanceOf[DatastoreQuery[Object, DsProjectionEntity]]
+
+    val datastoreQuery = castQuery.queryBuilderSupplier().build()
+    datastoreQuery.getKind shouldBe kind.name
+    datastoreQuery.getProjection() should have size 1
+    datastoreQuery.getProjection().get(0) shouldBe "entityProperty"
+
+    castQuery.entityFunction(null) match { // TODO cannot actually test against a projection entity
+      case projection: ProjectionEntity =>
+        projection.mappings shouldBe Map("projectionProperty" -> "entityProperty") // NOTE: Reverses the order so that .get() performs lookup by entity property
+      case other => fail(s"Expected a projection entity but got $other")
+    }
+
+    castQuery.filters should be('empty)
+  }
 
 }
