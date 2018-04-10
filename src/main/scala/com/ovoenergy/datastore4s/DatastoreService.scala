@@ -30,7 +30,9 @@ object DatastoreService extends DatastoreErrors {
     case FromEnvironmentVariables =>
       val defaultOptions = DatastoreOptions.getDefaultInstance()
       val withNamespace =
-        sys.env.get("DATASTORE_NAMESPACE").fold(defaultOptions)(ns => defaultOptions.toBuilder.setNamespace(ns).build()) // Technically side-effecty TODO should this be fixed?
+        sys.env
+          .get("DATASTORE_NAMESPACE")
+          .fold(defaultOptions)(ns => defaultOptions.toBuilder.setNamespace(ns).build()) // Technically side-effecty TODO should this be fixed?
       new WrappedDatastore(withNamespace.getService)
   }
 
@@ -57,8 +59,8 @@ object DatastoreService extends DatastoreErrors {
     DatastoreOperation { datastoreService =>
       val entity = toEntity(entityObject, format, datastoreService)
       persistingFunction(datastoreService, entity) match {
-        case Success(persisted)    => Right(Persisted(entityObject, persisted))
-        case Failure(error)        => exception(error)
+        case Success(persisted) => Right(Persisted(entityObject, persisted))
+        case Failure(error)     => exception(error)
       }
     }
 
@@ -129,9 +131,13 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
 
   private def persist(entity: Entity, persistingFunction: (Datastore, DsEntity) => DsEntity): Try[Entity] = entity match {
     case wrapped: WrappedEntity =>
-      Try{persistingFunction(datastore, wrapped.entity); entity}
+      Try { persistingFunction(datastore, wrapped.entity); entity }
     case projection: ProjectionEntity => // TODO is it possible to ensure this doesn't happen at compile time?
-      Failure(new RuntimeException(s"Attempted to persist a Projection entity. This should never happen, an EntityFormat somehow returned a projection. Projection; $projection"))
+      Failure(
+        new RuntimeException(
+          s"Attempted to persist a Projection entity. This should never happen, an EntityFormat somehow returned a projection. Projection; $projection"
+        )
+      )
   }
 
   override def find(entityKey: Key) = Try(Option(datastore.get(entityKey, noOptions: _*))).map(_.map(new WrappedEntity(_)))

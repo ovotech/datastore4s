@@ -2,6 +2,7 @@ package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.Key
 import com.ovoenergy.datastore4s.DatastoreOperationInterpreter.{run => runOp}
+import org.mockito.ArgumentMatchers.{eq => mockEq}
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfter, FlatSpec, Matchers}
@@ -10,22 +11,36 @@ import scala.util.{Failure, Success}
 
 class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with BeforeAndAfter {
 
-  private val mockDatastoreService = mock[DatastoreService]
-  private val mockEntityFormat = mock[EntityFormat[Object, String]]
+  private val mockDatastoreService = mock[DatastoreService]("mockDatastoreService")
+  private val mockEntityFormat = mock[EntityFormat[Object, String]]("mockEntityFormat")
   private val testKey = Key.newBuilder("test-project", "test-namespace", "test-id").build()
+  private val expectedBuilder =  new WrappedBuilder(testKey)
 
   implicit val format = mockEntityFormat
-  implicit val service = mockDatastoreService
+  implicit val service = mockDatastoreService // TODO name mocks
 
   private val entityKey = "key"
   private val kind = Kind("kind")
 
-  private val mockEntity = mock[Entity]
-  private val mockEntityObject = mock[Object]
+  private val mockEntity = mock[Entity]("mockEntity")
+  private val mockEntityObject = mock[Object]("mockEntityObject")
 
   before {
     when(mockDatastoreService.createKey(entityKey, kind)).thenReturn(testKey)
     when(mockEntityFormat.kind).thenReturn(kind)
+    when(mockEntityFormat.toEntity(mockEq(mockEntityObject), mockEq(expectedBuilder))).thenReturn(mockEntity)
+    when(mockEntityFormat.key(mockEntityObject)).thenReturn(entityKey)
+  }
+
+  it should "create a datastore service with the manually passed options" in {
+    val configuration = DataStoreConfiguration("test-project-id", "test-namespace")
+    val serviceConfiguration = DatastoreService(configuration).configuration
+    serviceConfiguration shouldBe configuration
+  }
+
+  it should "create a datastore service with options taken from the environment" in {
+    val serviceConfiguration = DatastoreService(FromEnvironmentVariables).configuration
+    serviceConfiguration shouldBe DataStoreConfiguration("datastore4s", "datastore4s-namespace") // Set in build.sbt
   }
 
   "The datastore service" should "return an error from find if an exception is thrown by the datastore" in {
@@ -78,35 +93,37 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
   }
 
   it should "return an error if an exception is thrown on an attempt to put an entity" in {
-    runOp(DatastoreService.put(mockEntityObject))
-    pending
+    val error = new Exception("error")
+
+    when(mockDatastoreService.put(mockEntity)).thenReturn(Failure(error))
+
+    val result = runOp(DatastoreService.put(mockEntityObject))
+    result shouldBe Left(new DatastoreException(error))
   }
 
   it should "return a wrapped entity if a put is successful" in {
-    pending
+    when(mockDatastoreService.put(mockEntity)).thenReturn(Success(mockEntity))
+
+    val result = runOp(DatastoreService.put(mockEntityObject))
+    result shouldBe Right(Persisted(mockEntityObject, mockEntity))
   }
 
   it should "return an error if an exception is thrown on an attempt to save an entity" in {
-    pending
+    val error = new Exception("error")
+
+    when(mockDatastoreService.save(mockEntity)).thenReturn(Failure(error))
+
+    val result = runOp(DatastoreService.save(mockEntityObject))
+    result shouldBe Left(new DatastoreException(error))
   }
 
   it should "return a wrapped entity if a save is successful" in {
-    pending
+    when(mockDatastoreService.save(mockEntity)).thenReturn(Success(mockEntity))
+
+    val result = runOp(DatastoreService.save(mockEntityObject))
+    result shouldBe Right(Persisted(mockEntityObject, mockEntity))
   }
 
-  it should "return a stream of the results of a query" in {
-    pending
-  }
-
-  it should "create a datastore service with the manually passed options" in {
-    val configuration = DataStoreConfiguration("test-project-id", "test-namespace")
-    val serviceConfiguration = DatastoreService(configuration).configuration
-    serviceConfiguration shouldBe configuration
-  }
-
-  it should "create a datastore service with options taken from the environment" in {
-    val serviceConfiguration = DatastoreService(FromEnvironmentVariables).configuration
-    serviceConfiguration shouldBe DataStoreConfiguration("datastore4s", "datastore4s-namespace") // Set in build.sbt
-  }
+  // TODO list[] and project[] tests
 
 }

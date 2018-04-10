@@ -48,7 +48,7 @@ sealed trait EntityBuilder {
   def build(): Entity
 }
 
-private[datastore4s] class WrappedBuilder(key: Key, fields: Seq[(String, DatastoreValue)] = Seq.empty) extends EntityBuilder {
+private[datastore4s] class WrappedBuilder(val key: Key, val fields: Seq[(String, DatastoreValue)] = Seq.empty) extends EntityBuilder {
   override def addField(field: Field): EntityBuilder =
     new WrappedBuilder(key, field.values ++ fields)
 
@@ -56,5 +56,10 @@ private[datastore4s] class WrappedBuilder(key: Key, fields: Seq[(String, Datasto
     val builder = com.google.cloud.datastore.Entity.newBuilder(key)
     val entity = fields.foldLeft(builder) { case (b, (name, WrappedValue(value))) => b.set(name, value) }.build()
     new WrappedEntity(entity)
+  }
+
+  override def equals(obj: scala.Any): Boolean = obj match {
+    case other: WrappedBuilder => key == other.key && fields == other.fields
+    case _ => false
   }
 }
