@@ -112,6 +112,7 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
 
   private val noOptions = Seq.empty[ReadOption]
   private type DsEntity = com.google.cloud.datastore.FullEntity[Key]
+  // TODO there must be a way to unit test this terrible underlying API.
 
   override def createKey[K](key: K, kind: Kind)(implicit toKey: ToKey[K]): Key = toKey.toKey(key, newKeyFactory(kind))
 

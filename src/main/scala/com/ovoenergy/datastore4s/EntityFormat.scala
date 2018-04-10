@@ -106,9 +106,9 @@ trait FromEntity[A] {
 
 object FromEntity {
 
-  def apply[A](): FromEntity[A] = macro applyImpl[A]
+  def apply[A]: FromEntity[A] = macro applyImpl[A]
 
-  def applyImpl[A: context.WeakTypeTag](context: blackbox.Context)(): context.Expr[FromEntity[A]] = {
+  def applyImpl[A: context.WeakTypeTag](context: blackbox.Context): context.Expr[FromEntity[A]] = {
     import context.universe._
     val helper = MacroHelper(context)
 

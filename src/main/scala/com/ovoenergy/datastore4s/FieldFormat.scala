@@ -54,9 +54,9 @@ object FieldFormat {
 
   import scala.language.experimental.macros
 
-  def apply[A](): FieldFormat[A] = macro applyImpl[A]
+  def apply[A]: FieldFormat[A] = macro applyImpl[A]
 
-  def applyImpl[A: context.WeakTypeTag](context: blackbox.Context)(): context.Expr[FieldFormat[A]] = {
+  def applyImpl[A: context.WeakTypeTag](context: blackbox.Context): context.Expr[FieldFormat[A]] = {
     val helper = MacroHelper(context)
     import context.universe._
     val fieldType = weakTypeTag[A].tpe
