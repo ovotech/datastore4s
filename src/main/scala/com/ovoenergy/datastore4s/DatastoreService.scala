@@ -15,7 +15,7 @@ object DataStoreConfiguration {
 
 final case class Persisted[A](inputObject: A, entity: Entity)
 
-object DatastoreService {
+object DatastoreService extends DatastoreErrors {
 
   def createDatastoreService(dataStoreConfiguration: DataStoreConfiguration): DatastoreService = dataStoreConfiguration match {
     case ManualDataStoreConfiguration(projectId, namespace) =>
@@ -37,9 +37,10 @@ object DatastoreService {
   def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Option[E]] =
     DatastoreOperation { datastoreService =>
       val entityKey = datastoreService.createKey(key, format.kind)
-      datastoreService.find(entityKey).flatMap {
-        case None         => Right(None)
-        case Some(entity) => format.fromEntity(entity).map(Some(_))
+      datastoreService.find(entityKey) match {
+        case Success(None)         => Right(None)
+        case Success(Some(entity)) => format.fromEntity(entity).map(Some(_))
+        case Failure(error)        => exception(error)
       }
     }
 
@@ -96,7 +97,7 @@ object DatastoreService {
 trait DatastoreService {
   def delete(key: Key): Either[DatastoreError, Unit]
 
-  def find(entityKey: Key): Either[DatastoreError, Option[Entity]]
+  def find(entityKey: Key): Try[Option[Entity]]
 
   def put(entity: Entity): Either[DatastoreError, Entity]
 
@@ -132,10 +133,7 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
       error(s"Projection entity was returned from a mapping instead of WrappedEntity. This should never happen. Projection; $projection")
   }
 
-  override def find(entityKey: Key): Either[DatastoreError, Option[Entity]] = Try(Option(datastore.get(entityKey, noOptions: _*))) match {
-    case Success(result) => Right(result.map(new WrappedEntity(_)))
-    case Failure(f)      => exception(f)
-  }
+  override def find(entityKey: Key) = Try(Option(datastore.get(entityKey, noOptions: _*))).map(_.map(new WrappedEntity(_)))
 
   override def delete(key: Key): Either[DatastoreError, Unit] = Try(datastore.delete(key)) match {
     case Success(unit) => Right(unit)

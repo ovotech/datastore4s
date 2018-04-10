@@ -10,6 +10,7 @@ libraryDependencies ++= Seq(
   "com.google.cloud" % "google-cloud-datastore" % "1.14.0",
   // Test Dependencies
   "org.scalatest" %% "scalatest" % "3.0.4" % "test,it",
+  "org.mockito" % "mockito-core" % "2.18.0" % Test,
   "org.scalacheck" %% "scalacheck" % "1.13.4" % Test
 ).map(
   _.exclude("com.google.protobuf", "protobuf-java")
