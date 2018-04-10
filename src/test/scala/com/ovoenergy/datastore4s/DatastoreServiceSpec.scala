@@ -4,7 +4,7 @@ import org.scalatest.FlatSpec
 
 class DatastoreServiceSpec extends FlatSpec {
 
-  "The wrapped datastore service" should "return an error from find if an exception is thrown" in {
+  "The datastore service" should "return an error from find if an exception is thrown" in {
     pending
   }
 

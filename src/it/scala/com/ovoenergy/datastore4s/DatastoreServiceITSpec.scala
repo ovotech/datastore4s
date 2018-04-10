@@ -178,16 +178,19 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
     scenario("Sequence all entities with a certain property value") {
       val expectedPossibleInt = Option(-20)
       val (entity1, entity2, entity3) = (randomEntityWithId("Entity1"), randomEntityWithId("Entity2"), randomEntityWithId("Entity3"))
-      run(put(entity1.copy(possibleInt = expectedPossibleInt)))
-      run(put(entity2.copy(possibleInt = expectedPossibleInt)))
-      run(put(entity3.copy(possibleInt = None)))
+      val expectedEntity1 = entity1.copy(possibleInt = expectedPossibleInt)
+      val expectedEntity2 = entity2.copy(possibleInt = expectedPossibleInt)
+      val unexpectedEntity = entity3.copy(possibleInt = None)
+      run(put(expectedEntity1))
+      run(put(expectedEntity2))
+      run(put(unexpectedEntity))
       // NOTE: Eventually consistent query
       eventually {
         run(list[SomeEntityType].withPropertyEq("possibleInt", expectedPossibleInt).sequenced()) match {
           case Right(seq) =>
-            seq should contain(entity1)
-            seq should contain(entity2)
-            seq should not contain entity3
+            seq should contain(expectedEntity1)
+            seq should contain(expectedEntity2)
+            seq should not contain unexpectedEntity
           case Left(error) => fail(s"There was an error: $error")
         }
       }
