@@ -1,6 +1,8 @@
 package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore._
+import com.google.cloud.datastore.Query.{newEntityQueryBuilder, newProjectionEntityQueryBuilder}
+import com.google.cloud.datastore.{Entity => DsEntity, ProjectionEntity => DsProjectionEntity}
 
 import scala.util.{Failure, Success, Try}
 
@@ -78,23 +80,19 @@ object DatastoreService extends DatastoreErrors {
     }
 
   def list[E](implicit format: EntityFormat[E, _]): Query[E] = {
-    val queryBuilderSupplier = () => com.google.cloud.datastore.Query.newEntityQueryBuilder().setKind(format.kind.name)
-    new DatastoreQuery[E, com.google.cloud.datastore.Entity](queryBuilderSupplier, entityFunction = new WrappedEntity(_))
+    val queryBuilderSupplier = () => newEntityQueryBuilder().setKind(format.kind.name)
+    new DatastoreQuery[E, DsEntity](queryBuilderSupplier, entityFunction = new WrappedEntity(_))
   }
 
   def projectInto[E, A](firstMapping: (String, String), remainingMappings: (String, String)*)(implicit format: EntityFormat[E, _],
                                                                                               fromEntity: FromEntity[A]): Query[A] = {
     val queryBuilderSupplier = () =>
-      com.google.cloud.datastore.Query
-        .newProjectionEntityQueryBuilder()
+      newProjectionEntityQueryBuilder()
         .setKind(format.kind.name)
         .setProjection(firstMapping._1, remainingMappings.map(_._1): _*)
 
     val mappings = (firstMapping.swap +: remainingMappings.map(_.swap)).toMap
-    new DatastoreQuery[A, com.google.cloud.datastore.ProjectionEntity](
-      queryBuilderSupplier,
-      entityFunction = new ProjectionEntity(mappings, _)
-    )
+    new DatastoreQuery[A, DsProjectionEntity](queryBuilderSupplier, entityFunction = new ProjectionEntity(mappings, _))
   }
 
 }
