@@ -4,11 +4,11 @@ import java.time.Instant
 
 import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Blob, LatLng}
+import com.ovoenergy.datastore4s.ValueFormat.{BigDecimalStringValueFormat, ByteArrayValueFormat, InstantEpochMillisValueFormat}
 
 import scala.util.{Failure, Success, Try}
 
 trait ValueFormat[A] {
-  // TODO Remove ValueFormat, not needed, just have Fields. Can we do the same for Entity? Just store it is root level FieldFormat? Have field as a trait and combine them with dotting?
 
   def toValue(scalaValue: A): DatastoreValue
 
@@ -188,4 +188,10 @@ object ValueFormat {
       format.fromValue(datastoreValue).flatMap(constructor)
   }
 
+}
+
+trait DefaultFormats {
+  implicit val bigDecimalFormat = BigDecimalStringValueFormat
+  implicit val instantFormat = InstantEpochMillisValueFormat
+  implicit val byteArrayFormat = ByteArrayValueFormat
 }

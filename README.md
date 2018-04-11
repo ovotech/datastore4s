@@ -135,7 +135,7 @@ There are multiple `ValueFormat[A]`s already implicitly available for:
 - `com.google.cloud.datastore.Blob`
 - `com.google.cloud.datastore.LatLng`
 
-There are also formats available that can be brought into implicit scope for: 
+There are also formats available that can be brought into implicit scope (explicitly or from the `DefaultFormats` trait) for: 
 - `Array[Byte]` in the form of `ByteArrayValueFormat`
 - `BigDecimal` in the form of `BigDecimalStringValueFormat`
 - `java.time.Instant` in the form of `InstantEpochMillisValueFormat`
@@ -320,6 +320,13 @@ object NonMacroExample {
 
 }
 ```
+
+## Configuration
+
+To configure your `DatastoreRepository` you can either use `FromEnviornmentVariables` which will use the default datastore
+environment variables ([Documented Here](https://github.com/GoogleCloudPlatform/google-cloud-datastore/blob/b760d0e8767d60a3d169b6f9de7cdb81a966a308/java/datastore/src/main/java/com/google/datastore/v1/client/DatastoreHelper.java#L78))
+to configure your connection, along with an optional "DATASTORE_NAMESPACE" variable, or you can create a
+`ManualDatastoreConfiguration`.
 
 ## Feedback And Contribution
 

@@ -17,17 +17,15 @@ class KeyFactoryFacadeSpec extends FlatSpec with GeneratorDrivenPropertyChecks w
   private val nonEmptyString = Gen.alphaNumStr.filter(!_.isEmpty)
 
   "The key factory facade" should "build a key with a kind and name" in {
-    forAll(nonEmptyString, nonEmptyString) { (kind, name) =>
-      val key = KeyFactoryFacade(datastore, Kind(kind)).buildWithName(name)
-      key.getKind shouldBe kind
+    forAll(nonEmptyString) { name =>
+      val key = new KeyFactoryFacade(newKeyFactory()).buildWithName(name)
       key.getName shouldBe name
     }
   }
 
   it should "build a key with a kind and id" in {
-    forAll(nonEmptyString, Gen.choose(Long.MinValue, Long.MaxValue)) { (kind, id) =>
-      val key = KeyFactoryFacade(datastore, Kind(kind)).buildWithId(id)
-      key.getKind shouldBe kind
+    forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { id =>
+      val key = new KeyFactoryFacade(newKeyFactory()).buildWithId(id)
       key.getId shouldBe id
     }
   }
@@ -38,7 +36,7 @@ class KeyFactoryFacadeSpec extends FlatSpec with GeneratorDrivenPropertyChecks w
     implicit val SimpleToAncestor = ToAncestor.toStringAncestor[SimpleWrapper](kind)(_.name)
 
     forAll(nonEmptyString) { name =>
-      val key = KeyFactoryFacade(datastore, Kind("ancestor-test"))
+      val key = new KeyFactoryFacade(newKeyFactory())
         .addAncestor(SimpleWrapper(name))
         .buildWithName("test-name") 
       key.getAncestors should have size 1
@@ -65,5 +63,7 @@ class KeyFactoryFacadeSpec extends FlatSpec with GeneratorDrivenPropertyChecks w
       ancestor shouldBe new StringAncestor(Kind(kindName), string1 + string2)
     }
   }
+
+  private def newKeyFactory() = datastore.newKeyFactory().setKind("test-kind") // Kind cannot be null.
 
 }

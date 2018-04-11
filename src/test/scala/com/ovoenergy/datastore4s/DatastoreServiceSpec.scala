@@ -1,59 +1,160 @@
 package com.ovoenergy.datastore4s
 
-import org.scalatest.FlatSpec
+import com.google.cloud.datastore.{Key, Entity => DsEntity, ProjectionEntity => DsProjectionEntity}
+import com.ovoenergy.datastore4s.DatastoreOperationInterpreter.{run => runOp}
+import org.mockito.ArgumentMatchers.{eq => mockEq}
+import org.mockito.Mockito._
+import org.scalatest.mockito.MockitoSugar
+import org.scalatest.{BeforeAndAfter, FlatSpec, Matchers}
 
-class DatastoreServiceSpec extends FlatSpec {
+import scala.util.{Failure, Success}
 
-  "The wrapped datastore service" should "return an error from find if an exception is thrown" in {
-    pending
+class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with BeforeAndAfter {
+
+  private val testKey = Key.newBuilder("test-project", "test-namespace", "test-id").build()
+  private val expectedBuilder = new WrappedBuilder(testKey)
+
+  private implicit val mockEntityFormat = mock[EntityFormat[Object, String]]("mockEntityFormat")
+  private implicit val mockDatastoreService = mock[DatastoreService]("mockDatastoreService")
+
+  private val entityKey = "key"
+  private val kind = Kind("kind")
+
+  private val mockEntity = mock[Entity]("mockEntity")
+  private val mockEntityObject = mock[Object]("mockEntityObject")
+
+  before {
+    when(mockDatastoreService.createKey(entityKey, kind)).thenReturn(testKey)
+    when(mockEntityFormat.kind).thenReturn(kind)
+    when(mockEntityFormat.toEntity(mockEq(mockEntityObject), mockEq(expectedBuilder))).thenReturn(mockEntity)
+    when(mockEntityFormat.key(mockEntityObject)).thenReturn(entityKey)
   }
 
-  it should "return a None if null is returned from a get" in {
-    pending
+  it should "create a datastore service with the manually passed options" in {
+    val configuration = DataStoreConfiguration("test-project-id", "test-namespace")
+    val serviceConfiguration = DatastoreService(configuration).configuration
+    serviceConfiguration shouldBe configuration
   }
 
-  it should "return a wrapped entity if one is returned from a get" in {
-    pending
+  it should "create a datastore service with options taken from the environment" in {
+    val serviceConfiguration = DatastoreService(FromEnvironmentVariables).configuration
+    serviceConfiguration shouldBe DataStoreConfiguration("datastore4s", "datastore4s-namespace") // Set in build.sbt
   }
 
-  it should "be able to create a key for a Kind and valid key value" in {
-    pending
+  "The datastore service" should "return an error from find if an exception is thrown by the datastore" in {
+    val error = new Exception("error")
+    when(mockDatastoreService.find(testKey)).thenReturn(Failure(error))
+
+    val result = runOp(DatastoreService.findOne[Object, String](entityKey))
+    result shouldBe Left(new DatastoreException(error))
+  }
+
+  it should "return a None if nothing is returned from a find" in {
+    when(mockDatastoreService.find(testKey)).thenReturn(Success(None))
+
+    val result = runOp(DatastoreService.findOne[Object, String](entityKey))
+    result shouldBe Right(None)
+  }
+
+  it should "return a deserialised entity if one is returned from a find" in {
+    when(mockDatastoreService.find(testKey)).thenReturn(Success(Some(mockEntity)))
+
+    when(mockEntityFormat.fromEntity(mockEntity)).thenReturn(Right(mockEntityObject))
+
+    val result = runOp(DatastoreService.findOne[Object, String](entityKey))
+    result shouldBe Right(Some(mockEntityObject))
+  }
+
+  it should "return an error if an entity is returned but cannot be deserialised" in {
+    when(mockDatastoreService.find(testKey)).thenReturn(Success(Some(mockEntity)))
+
+    val error = new DeserialisationError("failed")
+    when(mockEntityFormat.fromEntity(mockEntity)).thenReturn(Left(error))
+
+    val result = runOp(DatastoreService.findOne[Object, String](entityKey))
+    result shouldBe Left(error)
   }
 
   it should "return and error if an exception is thrown trying to delete an entity" in {
-    pending
+    val error = new Exception("error")
+    when(mockDatastoreService.delete(testKey)).thenReturn(Some(error))
+
+    val result = runOp(DatastoreService.delete[Object, String](entityKey))
+    result shouldBe Left(new DatastoreException(error))
   }
 
-  it should "return a Right[Unit] if a delete call is successful" in {
-    pending
-  }
+  it should "return the key if a delete call is successful" in {
+    when(mockDatastoreService.delete(testKey)).thenReturn(None)
 
-  it should "return a stream of the results of a query" in {
-    pending
+    val result = runOp(DatastoreService.delete[Object, String](entityKey))
+    result shouldBe Right(entityKey)
   }
 
   it should "return an error if an exception is thrown on an attempt to put an entity" in {
-    pending
-  }
+    val error = new Exception("error")
 
-  it should "return an error if a projectionEntity is passed to put" in {
-    pending
+    when(mockDatastoreService.put(mockEntity)).thenReturn(Failure(error))
+
+    val result = runOp(DatastoreService.put(mockEntityObject))
+    result shouldBe Left(new DatastoreException(error))
   }
 
   it should "return a wrapped entity if a put is successful" in {
-    pending
+    when(mockDatastoreService.put(mockEntity)).thenReturn(Success(mockEntity))
+
+    val result = runOp(DatastoreService.put(mockEntityObject))
+    result shouldBe Right(Persisted(mockEntityObject, mockEntity))
   }
 
   it should "return an error if an exception is thrown on an attempt to save an entity" in {
-    pending
-  }
+    val error = new Exception("error")
 
-  it should "return an error if a projectionEntity is passed to save" in {
-    pending
+    when(mockDatastoreService.save(mockEntity)).thenReturn(Failure(error))
+
+    val result = runOp(DatastoreService.save(mockEntityObject))
+    result shouldBe Left(new DatastoreException(error))
   }
 
   it should "return a wrapped entity if a save is successful" in {
-    pending
+    when(mockDatastoreService.save(mockEntity)).thenReturn(Success(mockEntity))
+
+    val result = runOp(DatastoreService.save(mockEntityObject))
+    result shouldBe Right(Persisted(mockEntityObject, mockEntity))
+  }
+
+  it should "create a list query that will use the correct kind" in {
+    val query = DatastoreService.list[Object]
+    val castQuery = query.asInstanceOf[DatastoreQuery[Object, DsEntity]]
+
+    val datastoreQuery = castQuery.queryBuilderSupplier().build()
+    datastoreQuery.getKind shouldBe kind.name
+
+    val datastoreEntity = DsEntity.newBuilder(testKey).build()
+    castQuery.entityFunction(datastoreEntity) match {
+      case wrapped: WrappedEntity =>
+        wrapped.entity shouldBe datastoreEntity
+      case other => fail(s"Expected a wrapped entity but got $other")
+    }
+
+    castQuery.filters should be('empty)
+  }
+
+  it should "create a projection query that will use the correct kind and mappings" in {
+    val query = DatastoreService.projectInto[Object, Object]("entityProperty" -> "projectionProperty")
+    val castQuery = query.asInstanceOf[DatastoreQuery[Object, DsProjectionEntity]]
+
+    val datastoreQuery = castQuery.queryBuilderSupplier().build()
+    datastoreQuery.getKind shouldBe kind.name
+    datastoreQuery.getProjection() should have size 1
+    datastoreQuery.getProjection().get(0) shouldBe "entityProperty"
+
+    castQuery.entityFunction(null) match { // TODO cannot actually test against a projection entity
+      case projection: ProjectionEntity =>
+        projection.mappings shouldBe Map("projectionProperty" -> "entityProperty") // NOTE: Reverses the order so that .get() performs lookup by entity property
+      case other => fail(s"Expected a projection entity but got $other")
+    }
+
+    castQuery.filters should be('empty)
   }
 
 }

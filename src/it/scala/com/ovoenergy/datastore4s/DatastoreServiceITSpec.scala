@@ -3,6 +3,8 @@ package com.ovoenergy.datastore4s
 import java.util.concurrent.ThreadLocalRandom
 
 import com.google.cloud.datastore.Key
+import org.scalatest.concurrent.Eventually
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{FeatureSpec, Inside, Matchers}
 
 case class SomeEntityType(id: String, parent: EntityParent, possibleInt: Option[Int], compositeField: CompositeField)
@@ -40,7 +42,10 @@ trait TestDatastoreRepository extends DatastoreRepository {
 
 }
 
-class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with TestDatastoreRepository {
+class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with Eventually with TestDatastoreRepository {
+
+  override implicit val patienceConfig =
+    PatienceConfig(timeout = scaled(Span(10, Seconds)), interval = scaled(Span(100, Millis)))
 
   feature("Datastore support for persistence") {
     scenario("Put single entity") {
@@ -124,35 +129,31 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
 
   feature("Datastore support for listing entities of a type") {
     scenario("Sequence a type of entity") {
-      val (entity1, entity2, entity3) = (randomEntityWithId("Entity1"), randomEntityWithId("Entity2"), randomEntityWithId("Entity3"))
-      val result = run(for {
-        _ <- put(entity1)
-        _ <- put(entity2)
-        sequence <- list[SomeEntityType].sequenced()
-        _ <- put(entity3)
-      } yield sequence)
-      result match {
-        case Right(seq) =>
-          seq should contain(entity1)
-          seq should contain(entity2)
-          seq should not contain entity3
-        case Left(error) => fail(s"There was an error: $error")
+      val (entity1, entity2) = (randomEntityWithId("Entity1"), randomEntityWithId("Entity2"))
+      run(put(entity1))
+      run(put(entity2))
+      // NOTE: Eventually consistent query
+      eventually {
+        run(list[SomeEntityType].sequenced()) match {
+          case Right(seq) =>
+            seq should contain(entity1)
+            seq should contain(entity2)
+          case Left(error) => fail(s"There was an error: $error")
+        }
       }
     }
     scenario("Stream a type of entity") {
-      val (entity1, entity2, entity3) = (randomEntityWithId("StreamEntity1"), randomEntityWithId("StreamEntity2"), randomEntityWithId("StreamEntity3"))
-      val result = run(for {
-        _ <- put(entity1)
-        _ <- put(entity2)
-        stream <- list[SomeEntityType].stream()
-        _ <- put(entity3)
-      } yield stream)
-      result match {
-        case Right(stream) =>
-          stream should contain(Right(entity1))
-          stream should contain(Right(entity2))
-          stream should not contain Right(entity3)
-        case Left(error) => fail(s"There was an error: $error")
+      val (entity1, entity2) = (randomEntityWithId("StreamEntity1"), randomEntityWithId("StreamEntity2"))
+      run(put(entity1))
+      run(put(entity2))
+      // NOTE: Eventually consistent query
+      eventually {
+        run(list[SomeEntityType].stream()) match {
+          case Right(stream) =>
+            stream should contain(Right(entity1))
+            stream should contain(Right(entity2))
+          case Left(error) => fail(s"There was an error: $error")
+        }
       }
     }
     scenario("Sequence all entities with a certain ancestor") {
@@ -175,19 +176,23 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       }
     }
     scenario("Sequence all entities with a certain property value") {
-      val (entity1, entity2, entity3) = (randomEntityWithId("Entity1").copy(possibleInt = Option(-20)), randomEntityWithId("Entity2").copy(possibleInt = Option(-20)), randomEntityWithId("Entity3"))
-      val result = run(for {
-        _ <- put(entity1)
-        _ <- put(entity2)
-        _ <- put(entity3.copy(possibleInt = None))
-        sequence <- list[SomeEntityType].withPropertyEq("possibleInt", Option(-20)).sequenced()
-      } yield sequence)
-      result match {
-        case Right(seq) =>
-          seq should contain(entity1)
-          seq should contain(entity2)
-          seq should not contain entity3
-        case Left(error) => fail(s"There was an error: $error")
+      val expectedPossibleInt = Option(-20)
+      val (entity1, entity2, entity3) = (randomEntityWithId("Entity1"), randomEntityWithId("Entity2"), randomEntityWithId("Entity3"))
+      val expectedEntity1 = entity1.copy(possibleInt = expectedPossibleInt)
+      val expectedEntity2 = entity2.copy(possibleInt = expectedPossibleInt)
+      val unexpectedEntity = entity3.copy(possibleInt = None)
+      run(put(expectedEntity1))
+      run(put(expectedEntity2))
+      run(put(unexpectedEntity))
+      // NOTE: Eventually consistent query
+      eventually {
+        run(list[SomeEntityType].withPropertyEq("possibleInt", expectedPossibleInt).sequenced()) match {
+          case Right(seq) =>
+            seq should contain(expectedEntity1)
+            seq should contain(expectedEntity2)
+            seq should not contain unexpectedEntity
+          case Left(error) => fail(s"There was an error: $error")
+        }
       }
     }
     scenario("Sequence all entities with multiple properties") {
@@ -216,18 +221,22 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
   }
 
   feature("Datastore support for projections") {
-    scenario("Project a seqence of entities into a row format") {
-      // TODO Note here that the type of 'parent' is different, but the internal datastore type is still LongValue. I don't know if we want to allow this.
+    scenario("Project a sequence of entities into a row format") {
       val entity = randomEntityWithId("ProjectedEntity")
       val expectedProjection = ProjectedRow(entity.id, entity.compositeField.someBoolean, entity.parent.id)
-      val result = run(for {
-        _ <- put(entity)
-        projections <- projectInto[SomeEntityType, ProjectedRow]("id" -> "entityId", "compositeField.someBoolean" -> "boolean", "parent" -> "parentAsLong").sequenced()
-      } yield projections)
-      result match {
-        case Right(seq) =>
-          seq should contain(expectedProjection)
-        case Left(error) => fail(s"There was an error: $error")
+      run(put(entity))
+      // NOTE: Eventually consistent query
+      eventually {
+        // TODO Note here that the type of 'parent' is different, but the internal datastore type is still LongValue. I don't know if we want to allow this.
+        val projection = projectInto[SomeEntityType, ProjectedRow]("id" -> "entityId",
+          "compositeField.someBoolean" -> "boolean",
+          "parent" -> "parentAsLong")
+          .sequenced()
+        run(projection) match {
+          case Right(seq) =>
+            seq should contain(expectedProjection)
+          case Left(error) => fail(s"There was an error: $error")
+        }
       }
     }
   }

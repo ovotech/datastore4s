@@ -47,11 +47,6 @@ class KeyFactoryFacade(val factory: com.google.cloud.datastore.KeyFactory) exten
     }
 }
 
-object KeyFactoryFacade {
-  def apply(datastore: Datastore, kind: Kind): KeyFactoryFacade =
-    new KeyFactoryFacade(datastore.newKeyFactory().setKind(kind.name))
-}
-
 sealed trait ToAncestor[A] {
   def toAncestor(value: A): Ancestor
 }
@@ -59,11 +54,13 @@ sealed trait ToAncestor[A] {
 object ToAncestor {
 
   def toStringAncestor[A](kind: String)(f: A => String): ToAncestor[A] = new ToAncestor[A] {
-    override def toAncestor(value: A) = new StringAncestor(Kind(kind), f(value))
+    private val validKind = Kind(kind)
+    override def toAncestor(value: A) = new StringAncestor(validKind, f(value))
   }
 
   def toLongAncestor[A](kind: String)(f: A => Long): ToAncestor[A] = new ToAncestor[A] {
-    override def toAncestor(value: A) = new LongAncestor(Kind(kind), f(value))
+    private val validKind = Kind(kind)
+    override def toAncestor(value: A) = new LongAncestor(validKind, f(value))
   }
 
 }

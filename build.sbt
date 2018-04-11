@@ -10,6 +10,7 @@ libraryDependencies ++= Seq(
   "com.google.cloud" % "google-cloud-datastore" % "1.14.0",
   // Test Dependencies
   "org.scalatest" %% "scalatest" % "3.0.4" % "test,it",
+  "org.mockito" % "mockito-core" % "2.18.0" % Test,
   "org.scalacheck" %% "scalacheck" % "1.13.4" % Test
 ).map(
   _.exclude("com.google.protobuf", "protobuf-java")
@@ -27,6 +28,13 @@ libraryDependencies ++= Seq(
 configs(IntegrationTest)
 Defaults.itSettings
 testFrameworks in IntegrationTest := Seq(TestFrameworks.ScalaTest)
+
+val datastoreVariables = Map("DATASTORE_PROJECT_ID" -> "datastore4s", "DATASTORE_NAMESPACE" -> "datastore4s-namespace")
+
+envVars in Test := datastoreVariables
+fork in Test := true
+envVars in IntegrationTest := datastoreVariables
+fork in IntegrationTest := true
 
 bintrayOrganization := Some("ovotech")
 bintrayRepository := "maven-private"
