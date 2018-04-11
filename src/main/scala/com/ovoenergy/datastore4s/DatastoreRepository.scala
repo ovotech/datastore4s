@@ -5,6 +5,8 @@ import com.google.cloud.datastore.Key
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
+trait DefaultDatastoreRepository extends DatastoreRepository with DefaultFormats
+
 trait DatastoreRepository {
 
   def dataStoreConfiguration: DataStoreConfiguration

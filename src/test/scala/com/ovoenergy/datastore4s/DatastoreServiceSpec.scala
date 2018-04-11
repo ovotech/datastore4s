@@ -30,10 +30,16 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     when(mockEntityFormat.key(mockEntityObject)).thenReturn(entityKey)
   }
 
-  it should "create a datastore service with the manually passed options" in {
+  "The datastore service" should "create a datastore service with the manually passed options" in {
     val configuration = DataStoreConfiguration("test-project-id", "test-namespace")
     val serviceConfiguration = DatastoreService(configuration).configuration
     serviceConfiguration shouldBe configuration
+  }
+
+  it should "create a datastore service with the manually passed options with default namespace" in {
+    val projectId = "test-project-id"
+    val serviceConfiguration = DatastoreService(DataStoreConfiguration(projectId)).configuration
+    serviceConfiguration shouldBe DataStoreConfiguration(projectId, "")
   }
 
   it should "create a datastore service with options taken from the environment" in {
@@ -41,7 +47,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     serviceConfiguration shouldBe DataStoreConfiguration("datastore4s", "datastore4s-namespace") // Set in build.sbt
   }
 
-  "The datastore service" should "return an error from find if an exception is thrown by the datastore" in {
+  it should "return an error from find if an exception is thrown by the datastore" in {
     val error = new Exception("error")
     when(mockDatastoreService.find(testKey)).thenReturn(Failure(error))
 

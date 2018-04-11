@@ -1,5 +1,9 @@
 package com.ovoenergy.datastore4s
 
+import java.io.{File, FileInputStream}
+
+import com.google.auth.Credentials
+import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.datastore._
 import com.google.cloud.datastore.Query.{newEntityQueryBuilder, newProjectionEntityQueryBuilder}
 import com.google.cloud.datastore.{Entity => DsEntity, ProjectionEntity => DsProjectionEntity}
@@ -8,11 +12,25 @@ import scala.util.{Failure, Success, Try}
 
 sealed trait DataStoreConfiguration
 
-final case class ManualDataStoreConfiguration(projectId: String, namespace: String) extends DataStoreConfiguration
+final case class ManualDataStoreConfiguration(projectId: String, namespace: Option[String] = None, credentials: Option[Credentials] = None)
+    extends DataStoreConfiguration
 case object FromEnvironmentVariables extends DataStoreConfiguration
 
 object DataStoreConfiguration {
-  def apply(projectId: String, namespace: String): DataStoreConfiguration = ManualDataStoreConfiguration(projectId, namespace)
+  def apply(projectId: String): DataStoreConfiguration = ManualDataStoreConfiguration(projectId)
+  def apply(projectId: String, namespace: String): DataStoreConfiguration = ManualDataStoreConfiguration(projectId, Some(namespace))
+  def apply(projectId: String, credentialsFile: File): Try[DataStoreConfiguration] =
+    createCredentials(credentialsFile).map(c => ManualDataStoreConfiguration(projectId, credentials = Some(c)))
+  def apply(projectId: String, namespace: String, credentialsFile: File): Try[DataStoreConfiguration] =
+    createCredentials(credentialsFile).map(c => ManualDataStoreConfiguration(projectId, Some(namespace), Some(c)))
+
+  private def createCredentials(credentialsFile: File): Try[Credentials] =
+    Try(new FileInputStream(credentialsFile)).flatMap { is =>
+      for {
+        credentials <- Try(GoogleCredentials.fromStream(is))
+        _ <- Try(is.close())
+      } yield credentials
+    }
 }
 
 final case class Persisted[A](inputObject: A, entity: Entity)
@@ -20,21 +38,17 @@ final case class Persisted[A](inputObject: A, entity: Entity)
 object DatastoreService extends DatastoreErrors {
 
   def apply(dataStoreConfiguration: DataStoreConfiguration): DatastoreService = dataStoreConfiguration match {
-    case ManualDataStoreConfiguration(projectId, namespace) =>
-      new WrappedDatastore(
-        DatastoreOptions
-          .newBuilder()
-          .setProjectId(projectId)
-          .setNamespace(namespace)
-          .build()
-          .getService
-      )
+    case ManualDataStoreConfiguration(projectId, namespace, credentials) =>
+      val withProjectId = DatastoreOptions.newBuilder().setProjectId(projectId)
+      val withNamespace = namespace.fold(withProjectId)(ns => withProjectId.setNamespace(ns))
+      val withCredentials = credentials.fold(withNamespace)(creds => withNamespace.setCredentials(creds))
+      new WrappedDatastore(withCredentials.build().getService)
     case FromEnvironmentVariables =>
       val defaultOptions = DatastoreOptions.getDefaultInstance()
       val withNamespace =
         sys.env
           .get("DATASTORE_NAMESPACE")
-          .fold(defaultOptions)(ns => defaultOptions.toBuilder.setNamespace(ns).build()) // Technically side-effecty TODO should this be fixed?
+          .fold(defaultOptions)(ns => defaultOptions.toBuilder.setNamespace(ns).build())
       new WrappedDatastore(withNamespace.getService)
   }
 
