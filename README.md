@@ -9,10 +9,9 @@ simpler and less error-prone to use.
 
 The library is available in the Bintray OVO repository. Add this snippet to your build.sbt to use it.
 
-```sbtshell
-import sbt._
-import sbt.Keys.
+TODO Add maven badge, decide if going to maven or maven-private
 
+```sbtshell
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
 
 libraryDependencies ++= {
@@ -27,7 +26,7 @@ libraryDependencies ++= {
 ## A Contrived Example
 
 What follows is a basic example of using datastore4s to persist and stream a simple
-case class representing a Person using thier first and last name to generate their key.
+case class representing a Person using their first and last name to generate the datastore key.
 
 ```scala
 import com.ovoenergy.datastore4s._
@@ -46,34 +45,28 @@ object PersonRepository extends DatastoreRepository {
   def storePerson(person: Person)(implicit executionContext: ExecutionContext): Future[Persisted[Person]] = 
     runAsyncF(put(person))
     
-  def allPeople: Either[DatastoreError, Seq[Person]] = run(list[Person].sequenced())
+  def allPeople(implicit executionContext: ExecutionContext): Future[Seq[Person]] = 
+    runAsyncF(list[Person].sequenced())
 
 }
 
 ```
 
-While the internal functions can be called explicitly it is much simpler to extend the `DatastoreRepository` trait.
+While the internal functions can be called explicitly it is much simpler to extend the `DatastoreRepository` trait which
+contains alias functions to the library functions and creates the implicit `DatastoreService` required to connect to datastore.
 
 ## Datastore Operations
 
-### Execution
-
-Datastore operations can be executed using 4 different functions, these are available in the `DatastoreRepository` trait.
-
-1. Synchronous
-    - `run` which will run the operation synchronously and return `Either[DatastoreError, A]`
-    - `runF` which will run the operation synchronously and return `Try[A]`, turning a `Left` into a `Failure`
-2. Asynchronous
-    - `runAsync` which will run the operation asynchronously and return `Future[Either[DatastoreError, A]]`
-    - `runAsyncF` which will run the operation asynchronously and return `Future[A]`, flattening a `Left` into a `Failure`
-
 ### Operations
 
-1. `put[A](entity: A)` will persist an entity using its entity format, replacing any entity with the same key 
-2. `add[A](entity: A)` will persist an entity using its entity format, it will return an error if an entity already exists with the same key
+Datastore operations do not execute immediately, instead they describe an action to be performed by a `DatastoreService`.
+
+1. `put[A](entity: A)` will persist an entity using its entity format, replacing any entity with the same key. Returns `DatastoreOperation[Persisted[A]]`.
+2. `add[A](entity: A)` will persist an entity using its entity format, it will return an error if an entity already exists 
+with the same key. Returns `DatastoreOperation[Persisted[A]]`.
 3. `delete[E, K](key: K)` will delete the entity with the given key. Please note if no entity exists with the given key 
-a success will still be returned.
-4. `findOne[E, K](key: K)` returns a `Option` of the entity with the given key
+a success will still be returned. Returns `DatastoreOperation[K]`.
+4. `findOne[E, K](key: K)` returns a `Option` of the entity with the given key. Returns `DatastoreOperation[Option[E]]`.
 5. `list[E]` creates a query for the given entity type as long as an entity format is implicitly in scope 
     - You can add filters to the query
         - `withAncestor[A](ancestor: A)` filters the results to only entities with the given ancestor, there must be a
@@ -89,11 +82,12 @@ a success will still be returned.
         - `withPropertyGreaterThanEq[A](fieldName: String, value: A)` filters the results to just entities the given property greater than or equal to the given value,
         there must be a `ValueFormat[A]` in scope. The field name and type cannot be checked at compile time
     - Queries can return either:
-        - `Stream[Either[DatastoreError, A]]` by calling `stream()` if you need the individual errors for each entity
-        - `Seq[A]` by calling `sequenced()` where all entity errors are combined into one
+        - `DatastoreOperation[Stream[Either[DatastoreError, A]]]` by calling `stream()` if you need the individual errors for each entity
+        - `DatastoreOperation[Seq[A]]` by calling `sequenced()` where all entity errors are combined into one
 6. `projectInto[E, Projection](entityField -> projectionField...)` creates a projection query from the given entity type 
  into the projection type using the given field mappings. There must be both an `EntityFormat[E, _]` and `FromEntity[Projection]`
- in scope. There is a `FromEntity[A]` macro. This function does not check that the field names or types match up at compile time.
+ in scope. There is a `FromEntity[A]` macro. This function does not check that the field names or types match up at compile time. 
+ Note that this operation is experimental and may be replaced/removed in future versions.
 
 Datastore Operations can also be combined in for comprehensions e.g:
 
@@ -112,10 +106,21 @@ object ForComprehensionExample {
 }
 ```
 
+### Execution
+
+Datastore operations can be executed using 4 different interpreting functions, each of which requires an implicit `DatastoreService`.
+
+1. Synchronous
+    - `run` which will run the operation synchronously and return `Either[DatastoreError, A]`
+    - `runF` which will run the operation synchronously and return `Try[A]`, turning a `Left` into a `Failure`
+2. Asynchronous (Also require implicit `ExecutionContext`)
+    - `runAsync` which will run the operation asynchronously and return `Future[Either[DatastoreError, A]]`
+    - `runAsyncF` which will run the operation asynchronously and return `Future[A]`, flattening a `Left` into a `Failure`
+
 ## Entities
 
 Entity (de)serialisaion is based on three `Format` traits.
-- `ValueFormat`s which determines how a scala type is transformed into a datastore value
+- `ValueFormat`s which determines how a scala type is transformed into a datastore value (also used for query filtering)
 - `FieldFormat`s which determines how a field of an entity is stored in datastore
 - `EntityFormat`s which determines how a scala type is turned into a datastore entity
 
@@ -135,7 +140,7 @@ There are multiple `ValueFormat[A]`s already implicitly available for:
 - `com.google.cloud.datastore.Blob`
 - `com.google.cloud.datastore.LatLng`
 
-There are also formats available that can be brought into implicit scope (explicitly or from the `DefaultFormats` trait) for: 
+There are also formats available that can be brought into implicit scope (explicitly or by inheriting the `DefaultFormats` or `DefaultDatastoreRepository` traits) for: 
 - `Array[Byte]` in the form of `ByteArrayValueFormat`
 - `BigDecimal` in the form of `BigDecimalStringValueFormat`
 - `java.time.Instant` in the form of `InstantEpochMillisValueFormat`
@@ -152,7 +157,7 @@ case class CustomString(innerValue: String)
 
 object CustomString {
   implicit val format = ValueFormat.formatFromFunctions(CustomString.apply)(_.innerValue)
-  // DatastoreRepository contains a utility method formatFromFunctions
+  // DatastoreRepository contains an alias function formatFromFunctions
 }
 ```
 
@@ -169,15 +174,15 @@ object PositiveInteger {
     if(int <= 0) Left("whoops not positive") else Right(new PositiveInteger(int))
     
   implicit val format = ValueFormat.formatFromFunctionsEither(PositiveInteger.apply)(_.value)
-  // Again DefaultDatastoreSupport contains a utility method formatFromFunctionsEither
+  // Again DatastoreRepository contains an alias function formatFromFunctionsEither
 }
 ```
 
 ### Field Formats
 
-Usually a custom `ValueFormat` will suffice, this will then simply be used to generate a field from that type with the name of
-the field on your case class. In a very few cases you may wish to customise how a field is turned into and retrieved from 
-the fields of an entitiy. This is what the `FieldFormat` trait is for. Implicitly formats are available for:
+Usually a custom `ValueFormat` will suffice, this is then used to generate the `FieldFormat[A]`. In a very few cases you 
+may wish to customise how a field is turned into and retrieved from the fields of an entitiy. This is what the 
+`FieldFormat` type class is for. Implicitly formats are available for:
 
 - Any type `[A]` for which a `ValueFormat[A]` is in scope
 - `Either[L, R]` for any `[L]` and `[R]` for which a format exists (by using an `"either_side"` property)
@@ -186,9 +191,8 @@ There is also a macro which can be used to generate field formats for both case 
 
 #### Case Classes
 
-If you have a field that is a custom case class that is not itself an entity that is comprised of fields for which formats 
-are already in implicit scope there is a macro to generate a format that will nest the fields of that case class using dots 
-to separate the fields:
+If you have a field that is a custom case class that is comprised of fields for which `FieldFormat`s are already in implicit
+scope there is a macro to generate a format that will nest the fields of that case class using dots to separate the fields:
 
 ```scala
 import com.ovoenergy.datastore4s.FieldFormat
@@ -200,12 +204,12 @@ object Department {
 }
 ```
 
-Using the nested format above an Employee entity would be serialised to have properties:
+Using the format above an Employee entity would be serialised to have properties:
 
-- name of type String
-- age of type Int
-- department.name of type String
-- department.departmentHead of type String
+- name of type `String`
+- age of type `Int`
+- department.name of type `String`
+- department.departmentHead of type `String`
 
 #### Sealed Trait Hierarchies
 
@@ -215,8 +219,8 @@ this will store a nested `fieldname.type` field on the entity to determine what 
 ### Entity Formats
 
 To be able to persist and read entities from google datastore simply create your case class and use the `EntityFormat` macro.
-EntityFormats can also be created for sealed trait hierarchies that only contain case classes using the same macro. 
-A field `"type"` will be used on the entity to determine which subtype the entity represents.
+EntityFormats can also be created for sealed trait hierarchies that only contain case classes using the same macro, 
+a field `"type"` will be used on the entity to determine which subtype in the hierarchy the entity represents.
 To use the macro you need to provide:
  
 - the type of the entity and the key
@@ -227,7 +231,8 @@ For example:
 
 `EntityFormat[Person, String]("person-kind")(person => person.name)`
 
-**NOTE: The Key type cannot be primitive currently due to a compilation error**
+**NOTE: The Key type cannot be primitive currently due to a compilation error. To use primitive fields as keys you simply
+need to make the `KeyType` the object wrapper version of that primitive**
 
 #### Custom Keys
 
@@ -246,14 +251,19 @@ object CustomKeyExample {
 
   implicit object CustomToKey extends ToKey[CustomKey] {
     override def toKey(value: CustomKey, keyFactory: KeyFactory): Key = 
-      keyFactory.buildWithName(value.department + value.name)
+      keyFactory.buildWithName(s"${value.name}@${value.department}")
   }
   
   implicit val format = EntityFormat[Employee, CustomKey]("employees")(e => CustomKey(e.name, e.department))
 }
 ```
 
-**Note: If using a `Long` field as an key, the Key type must be `java.lang.Long` but it the field on your case class can be simply `Long`.**
+There is also a utility function in `DatastoreRepository` called `toKey[A]` that allows you to simply pass a function, for example:
+
+```scala
+implicit val customToKey = toKey[CustomKey]((value, keyFactory) =>
+  keyFactory.buildWithName(s"${value.name}@${value.department}"))
+```
 
 #### Ancestors
 
@@ -264,29 +274,25 @@ To use ancestors in keys and queries create an implicit `ToAncestor[A]` for your
 import com.ovoenergy.datastore4s._
 import com.google.cloud.datastore.Key
 
-object AncestorExample {
+object AncestorExample extends DatastoreRepository {
   case class Department(name: String)
   
-  // Provide the name of the kind and a function from A => String 
+  // Provide the name of the kind and a function A => String 
   // (Or A => Long in the case of a LongAncestor)
-  implicit val departmentAncestor = 
-    ToAncestor.toStringAncestor[Department]("Department")(_.name)
+  implicit val departmentAncestor = toStringAncestor[Department]("Department")(_.name)
   
   case class CustomKey(name: String, department: Department)
   
-  implicit object CustomToKey extends ToKey[CustomKey] {
-    override def toKey(value: CustomKey, keyFactory: KeyFactory): Key = 
-      keyFactory.addAncestor(value.department).buildWithName(value.name)
-  }
-  // The DefaultDatastoreSupport trait contains utility methods pointing to 
-  // `toStringAncestor` and `toLongAncestor`
+  implicit val customToKey = toKey[CustomKey]((value, keyFactory) =>
+      keyFactory.addAncestor(value.department).buildWithName(value.name))
 }
 ```
 
 ### For Those Who Hate Macros
 
-If you do not want to use macros there is nothing wrong with creating the formats yourself, it is however likely you will
-end up writing the same code that would have been generated. For example:
+If you do not want to use macros there is nothing wrong with creating the formats yourself, the underlying datastore APIs have
+been wrapped in a more scala friendly API. It is however likely you will end up writing the same code that would have been 
+generated. For example:
 
 ```scala
 import com.ovoenergy.datastore4s._
@@ -323,14 +329,14 @@ object NonMacroExample {
 
 ## Configuration
 
-To configure your `DatastoreRepository` you can either use `FromEnviornmentVariables` which will use the default datastore
-environment variables ([Documented Here](https://github.com/GoogleCloudPlatform/google-cloud-datastore/blob/b760d0e8767d60a3d169b6f9de7cdb81a966a308/java/datastore/src/main/java/com/google/datastore/v1/client/DatastoreHelper.java#L75))
-to configure your connection, along with an optional "DATASTORE_NAMESPACE" variable, or you can create a
-`ManualDatastoreConfiguration`.
+To configure your `DatastoreRepository` you must override the `datastoreConfiguration` function. You can either use `FromEnviornmentVariables`
+or create configuration object using one of the `apply` functions on `DatastoreConfiguration`. The configuration values are:
+
+- `projectId` - The ID of the GCP project to connect to. Environment variable: `DATASTORE_PROJECT_ID`.
+- `namespace` - An optional namespace to store your entities under. Environment variable: `DATASTORE_NAMESPACE`.
+- `credentials` - A JSON file containing the google credentials to use for the connection. Environment variable: `GOOGLE_APPLICATION_CREDENTIALS`, 
+if no file is explicitly passed then the environment variable will be used (this would allow reuse of the same file for multiple GCP client libraries).
 
 ## Feedback And Contribution
 
-## Disclaimer
-
-This API is in its early stages and breaking changes may occur. It should not be considered production-ready.
-
+Feedback, Issues and PR's are welcome.
