@@ -1,8 +1,9 @@
 # Datastore4s
 [![CircleCI](https://circleci.com/gh/ovotech/datastore4s/tree/master.svg?style=svg)](https://circleci.com/gh/ovotech/datastore4s/tree/master)
 
-Datastore4s is a library to make using [Datastore](https://cloud.google.com/datastore/docs/) with Scala 
-simpler and less error-prone by abstracting away the lower level details of the datastore API.
+Datastore4s is a scala library for [GCP Datastore](https://cloud.google.com/datastore/docs/). Datastore4s
+hides the complexities of the Datastore API, creates clean abstractions and removes boilerplate code making it 
+simpler and less error-prone to use.
 
 ## Getting Started
 
