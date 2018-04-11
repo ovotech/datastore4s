@@ -11,13 +11,11 @@ import scala.util.{Failure, Success}
 
 class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with BeforeAndAfter {
 
-  private val mockDatastoreService = mock[DatastoreService]("mockDatastoreService")
-  private val mockEntityFormat = mock[EntityFormat[Object, String]]("mockEntityFormat")
   private val testKey = Key.newBuilder("test-project", "test-namespace", "test-id").build()
   private val expectedBuilder = new WrappedBuilder(testKey)
 
-  implicit val format = mockEntityFormat
-  implicit val service = mockDatastoreService // TODO name mocks
+  private implicit val mockEntityFormat = mock[EntityFormat[Object, String]]("mockEntityFormat")
+  private implicit val mockDatastoreService = mock[DatastoreService]("mockDatastoreService")
 
   private val entityKey = "key"
   private val kind = Kind("kind")
