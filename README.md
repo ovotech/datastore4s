@@ -23,9 +23,9 @@ libraryDependencies ++= {
 
 ```
 
-## A Contrived Example
+### A Contrived Example
 
-What follows is a basic example of using datastore4s to persist and stream a simple
+What follows is a basic example of using datastore4s to persist and list a simple
 case class representing a Person using their first and last name to generate the datastore key.
 
 ```scala
@@ -54,6 +54,17 @@ object PersonRepository extends DatastoreRepository {
 
 While the internal functions can be called explicitly it is much simpler to extend the `DatastoreRepository` trait which
 contains alias functions to the library functions and creates the implicit `DatastoreService` required to connect to datastore.
+
+### Configuration
+ 
+ To configure your `DatastoreRepository` you must override the `datastoreConfiguration` function. You can either use `FromEnviornmentVariables`
+ or create configuration object using one of the `apply` functions on `DatastoreConfiguration`. The configuration values are:
+ 
+ - `projectId` - The ID of the GCP project to connect to. Environment variable: `DATASTORE_PROJECT_ID`.
+ - `namespace` - An optional namespace to store your entities under. Environment variable: `DATASTORE_NAMESPACE`.
+ - `credentials` - A JSON file containing the google credentials to use for the connection. Environment variable: `GOOGLE_APPLICATION_CREDENTIALS`, 
+ if no file is explicitly passed then the environment variable will be used (this would allow reuse of the same file for multiple GCP client libraries).
+ Either the value or the environment variable MUST be set.
 
 ## Datastore Operations
 
@@ -326,16 +337,6 @@ object NonMacroExample {
 
 }
 ```
-
-## Configuration
-
-To configure your `DatastoreRepository` you must override the `datastoreConfiguration` function. You can either use `FromEnviornmentVariables`
-or create configuration object using one of the `apply` functions on `DatastoreConfiguration`. The configuration values are:
-
-- `projectId` - The ID of the GCP project to connect to. Environment variable: `DATASTORE_PROJECT_ID`.
-- `namespace` - An optional namespace to store your entities under. Environment variable: `DATASTORE_NAMESPACE`.
-- `credentials` - A JSON file containing the google credentials to use for the connection. Environment variable: `GOOGLE_APPLICATION_CREDENTIALS`, 
-if no file is explicitly passed then the environment variable will be used (this would allow reuse of the same file for multiple GCP client libraries).
 
 ## Feedback And Contribution
 
