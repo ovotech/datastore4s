@@ -3,61 +3,40 @@ import java.io.{PrintStream, PrintWriter}
 
 sealed trait DatastoreError
 
-private[datastore4s] class DatastoreException(val exception: Throwable) extends DatastoreError {
-  override def toString: String = exception.getMessage
+final case class DatastoreException(exception: Throwable) extends DatastoreError
 
-  override def equals(obj: scala.Any): Boolean = obj match {
-    case other: DatastoreException => exception == other.exception
-    case _                         => false
-  }
-}
+final case class DeserialisationError(error: String) extends DatastoreError
 
-private[datastore4s] class DeserialisationError(val error: String) extends DatastoreError {
-  override def toString: String = error
-
-  override def equals(obj: scala.Any): Boolean = obj match {
-    case other: DeserialisationError => error == other.error
-    case _                           => false
-  }
-}
-
-private[datastore4s] class ComposedError(val errors: Seq[DatastoreError]) extends DatastoreError {
-  override def toString: String = errors.mkString("\n\n")
-
-  override def equals(obj: scala.Any): Boolean = obj match {
-    case other: ComposedError => errors == other.errors
-    case _                    => false
-  }
-}
+final case class ComposedError(errors: Seq[DatastoreError]) extends DatastoreError
 
 object DatastoreError { // TODO custom flatmapping that will concat all errors together. Possibly a DatastoreResult? Kind of like Validation[A]. Need to be able to add all errors together or return (A,B)
   def missingField[A](fieldName: String, entity: Entity): Either[DatastoreError, A] =
-    Left(new DeserialisationError(s"Field $fieldName could not be found on entity $entity"))
+    Left(DeserialisationError(s"Field $fieldName could not be found on entity $entity"))
 
   def wrongType[A](expectedType: DsType, datastoreValue: DatastoreValue): Either[DatastoreError, A] =
-    Left(new DeserialisationError(s"Expected a $expectedType but got $datastoreValue"))
+    Left(DeserialisationError(s"Expected a $expectedType but got $datastoreValue"))
 
   def error[A](error: String): Either[DatastoreError, A] =
-    Left(new DeserialisationError(error))
+    Left(DeserialisationError(error))
 
   def exception[A](exception: Throwable): Either[DatastoreError, A] =
-    Left(new DatastoreException(exception))
+    Left(DatastoreException(exception))
 
   def sequence[A](values: Seq[Either[DatastoreError, A]]): Either[DatastoreError, Seq[A]] =
     values.reverse.foldLeft(Right(Seq.empty): Either[ComposedError, Seq[A]]) {
       case (Right(acc), Right(value))    => Right(value +: acc)
-      case (Left(errorAcc), Left(error)) => Left(new ComposedError(error +: errorAcc.errors))
-      case (Right(_), Left(error))       => Left(new ComposedError(Seq(error)))
+      case (Left(errorAcc), Left(error)) => Left(ComposedError(error +: errorAcc.errors))
+      case (Right(_), Left(error))       => Left(ComposedError(Seq(error)))
       case (Left(errorAcc), Right(_))    => Left(errorAcc)
     }
 
   def asException(error: DatastoreError): Throwable = error match {
-    case e: DatastoreException   => e.exception
-    case e: DeserialisationError => new RuntimeException(e.error)
-    case e: ComposedError        => ComposedException(e.errors.map(asException))
+    case DatastoreException(exception) => exception
+    case DeserialisationError(error)   => new RuntimeException(error)
+    case ComposedError(errors)         => ComposedException(errors.map(asException))
   }
 
-  case class ComposedException(throwables: Seq[Throwable]) extends Exception {
+  final case class ComposedException(throwables: Seq[Throwable]) extends Exception {
 
     override def getMessage: String = throwables.map(_.getMessage).mkString("\n\n")
 

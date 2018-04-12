@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{Datastore, Key, PathElement}
+import com.google.cloud.datastore.{Key, PathElement}
 
 trait ToKey[A] {
   def toKey(value: A, keyFactory: KeyFactory): Key
@@ -32,7 +32,7 @@ sealed trait KeyFactory {
 
 }
 
-class KeyFactoryFacade(val factory: com.google.cloud.datastore.KeyFactory) extends KeyFactory {
+private[datastore4s] class KeyFactoryFacade(private val factory: com.google.cloud.datastore.KeyFactory) extends KeyFactory {
 
   override def buildWithName(name: String): Key = factory.newKey(name)
 
@@ -67,24 +67,6 @@ object ToAncestor {
 
 sealed trait Ancestor
 
-private[datastore4s] class StringAncestor(val kind: Kind, val name: String) extends Ancestor {
-  override def equals(obj: scala.Any): Boolean = obj match {
-    case StringAncestor(thatKind, thatName) => thatKind == kind && thatName == name
-    case _                                  => false
-  }
-}
+final case class StringAncestor(kind: Kind, name: String) extends Ancestor
 
-private[datastore4s] object StringAncestor {
-  def unapply(arg: StringAncestor): Option[(Kind, String)] = Some(arg.kind, arg.name)
-}
-
-private[datastore4s] class LongAncestor(val kind: Kind, val id: Long) extends Ancestor {
-  override def equals(obj: scala.Any): Boolean = obj match {
-    case LongAncestor(thatKind, thatId) => thatKind == kind && thatId == id
-    case _                              => false
-  }
-}
-
-private[datastore4s] object LongAncestor {
-  def unapply(arg: LongAncestor): Option[(Kind, Long)] = Some(arg.kind, arg.id)
-}
+final case class LongAncestor(kind: Kind, id: Long) extends Ancestor

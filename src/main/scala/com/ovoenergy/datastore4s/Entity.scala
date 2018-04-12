@@ -29,6 +29,13 @@ private[datastore4s] class WrappedEntity(val entity: FullEntity[Key]) extends En
   override def field(name: String): Option[DatastoreValue] =
     if (entity.contains(name)) Some(new WrappedValue(entity.getValue(name)))
     else None
+
+  override def toString = s"WrappedDatastoreEntity($entity)"
+
+  override def equals(obj: scala.Any) = obj match {
+    case e: WrappedEntity => e.entity == entity
+    case _                => false
+  }
 }
 
 private[datastore4s] class ProjectionEntity(val mappings: Map[String, String], val actualEntity: BaseEntity[Key]) extends Entity {
@@ -36,6 +43,13 @@ private[datastore4s] class ProjectionEntity(val mappings: Map[String, String], v
     val fieldName = mappings.getOrElse(name, name)
     if (actualEntity.contains(fieldName)) Some(new WrappedValue(actualEntity.getValue(fieldName)))
     else None
+  }
+
+  override def toString = s"DatastoreProjection(mappings: $mappings, actualEntity: $actualEntity)"
+
+  override def equals(obj: scala.Any) = obj match {
+    case e: ProjectionEntity => e.mappings == mappings && e.actualEntity == actualEntity
+    case _                   => false
   }
 }
 
@@ -61,4 +75,6 @@ private[datastore4s] class WrappedBuilder(val key: Key, val fields: Seq[(String,
     case other: WrappedBuilder => key == other.key && fields == other.fields
     case _                     => false
   }
+
+  override def toString = s"EntityBuilder(key: $key, fields: $fields)"
 }
