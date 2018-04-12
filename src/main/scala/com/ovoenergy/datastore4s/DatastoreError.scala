@@ -7,6 +7,8 @@ final case class DatastoreException(exception: Throwable) extends DatastoreError
 
 final case class DeserialisationError(error: String) extends DatastoreError
 
+final case class FieldError(fieldName: String, error: DatastoreError) extends DatastoreError
+
 final case class ComposedError(errors: Seq[DatastoreError]) extends DatastoreError
 
 object DatastoreError { // TODO custom flatmapping that will concat all errors together. Possibly a DatastoreResult? Kind of like Validation[A]. Need to be able to add all errors together or return (A,B)
@@ -22,6 +24,8 @@ object DatastoreError { // TODO custom flatmapping that will concat all errors t
   def exception[A](exception: Throwable): Either[DatastoreError, A] =
     Left(DatastoreException(exception))
 
+  def errorInField(fieldName: String)(existingError: DatastoreError): DatastoreError = FieldError(fieldName, existingError)
+
   def sequence[A](values: Seq[Either[DatastoreError, A]]): Either[DatastoreError, Seq[A]] =
     values.reverse.foldLeft(Right(Seq.empty): Either[ComposedError, Seq[A]]) {
       case (Right(acc), Right(value))    => Right(value +: acc)
@@ -31,12 +35,13 @@ object DatastoreError { // TODO custom flatmapping that will concat all errors t
     }
 
   def asException(error: DatastoreError): Throwable = error match {
-    case DatastoreException(exception) => exception
-    case DeserialisationError(error)   => new RuntimeException(error)
-    case ComposedError(errors)         => ComposedException(errors.map(asException))
+    case DatastoreException(exception)      => exception
+    case FieldError(fieldName, cause)       => SuppressedStackTrace(s"Could not read the field: $fieldName", asException(cause))
+    case DeserialisationError(errorMessage) => new RuntimeException(errorMessage)
+    case ComposedError(errors)              => ComposedException(errors.map(asException))
   }
 
-  final case class ComposedException(throwables: Seq[Throwable]) extends Exception {
+  final case class ComposedException(throwables: Seq[Throwable]) extends RuntimeException {
 
     override def getMessage: String = throwables.map(_.getMessage).mkString("\n\n")
 
@@ -44,6 +49,8 @@ object DatastoreError { // TODO custom flatmapping that will concat all errors t
 
     override def printStackTrace(s: PrintStream): Unit = throwables.foreach(_.printStackTrace(s))
   }
+
+  final case class SuppressedStackTrace(error: String, cause: Throwable) extends RuntimeException(error, cause, false, false)
 
 }
 
