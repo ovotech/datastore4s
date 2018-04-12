@@ -12,17 +12,6 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.4" % "test,it",
   "org.mockito" % "mockito-core" % "2.18.0" % Test,
   "org.scalacheck" %% "scalacheck" % "1.13.4" % Test
-).map(
-  _.exclude("com.google.protobuf", "protobuf-java")
-    .exclude("com.google.guava", "guava")
-    .exclude("com.google.code.findbugs", "jsr305")
-)
-
-// Explicitly import conflicting dependencies
-libraryDependencies ++= Seq(
-  "com.google.protobuf" % "protobuf-java" % "3.0.0",
-  "com.google.guava" % "guava" % "20.0",
-  "com.google.code.findbugs" % "jsr305" % "3.0.0"
 )
 
 configs(IntegrationTest)
