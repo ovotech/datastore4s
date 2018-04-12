@@ -14,7 +14,7 @@ sealed trait DataStoreConfiguration
 
 final case class ManualDataStoreConfiguration(projectId: String, namespace: Option[String] = None, credentials: Option[Credentials] = None)
     extends DataStoreConfiguration
-case object FromEnvironmentVariables extends DataStoreConfiguration
+final case object FromEnvironmentVariables extends DataStoreConfiguration
 
 object DataStoreConfiguration {
   def apply(projectId: String): DataStoreConfiguration = ManualDataStoreConfiguration(projectId)

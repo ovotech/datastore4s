@@ -27,9 +27,8 @@ sealed trait Query[E] {
 object Query {
   def ancestorToKey(ancestor: Ancestor, datastoreService: DatastoreService): Key =
     ancestor match {
-      case StringAncestor(kind, name) =>
-        datastoreService.createKey(name, kind)
-      case LongAncestor(kind, id) => datastoreService.createKey(Long.box(id), kind)
+      case StringAncestor(kind, name) => datastoreService.createKey(name, kind)
+      case LongAncestor(kind, id)     => datastoreService.createKey(Long.box(id), kind)
     }
 
   type FilterSupplier = DatastoreService => PropertyFilter

@@ -109,11 +109,19 @@ workflows:
           requires:
             - build
       - format-check
-      - publish:
+      - hold:
+          type: approval
           requires:
             - unit-test
             - integration-test
             - format-check
+          filters:
+            branches:
+              only:
+                - master
+      - publish:
+          requires:
+            - hold
           filters:
             branches:
               only:
