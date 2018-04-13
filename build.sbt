@@ -7,7 +7,7 @@ scalaVersion := "2.12.4"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % "2.12.4",
-  "com.google.cloud" % "google-cloud-datastore" % "1.14.0",
+  "com.google.cloud" % "google-cloud-datastore" % "1.25.0",
   // Test Dependencies
   "org.scalatest" %% "scalatest" % "3.0.4" % "test,it",
   "org.mockito" % "mockito-core" % "2.18.0" % Test,
