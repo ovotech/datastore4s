@@ -1,7 +1,7 @@
+import com.typesafe.sbt.git.ConsoleGitRunner
+
 name := "datastore4s"
 organization := "com.ovoenergy"
-
-version := "0.1-SNAPSHOT"
 
 scalaVersion := "2.12.4"
 
@@ -31,3 +31,10 @@ bintrayPackage := "datastore4s"
 bintrayPackageLabels := Seq("gcp", "datastore")
 
 licenses := Seq(("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")))
+
+// sbt-git plugin for versioning
+enablePlugins(GitVersioning)
+git.remoteRepo := "origin"
+git.runner := ConsoleGitRunner
+git.baseVersion := "0.0"
+git.useGitDescribe := true
