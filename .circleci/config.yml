@@ -93,8 +93,11 @@ jobs:
           name: Extract Bintray Creds
           command: build/bintray.sh
       - run:
+          name: Tag Release
+          command: build/tag.sh
+      - run:
           name: Publish
-          command: sbt publish
+          command: build/publish.sh
 
 
 workflows:
