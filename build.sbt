@@ -3,6 +3,8 @@ organization := "com.ovoenergy"
 
 scalaVersion := "2.12.4"
 
+version := "0.0"
+
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % "2.12.4",
   "com.google.cloud" % "google-cloud-datastore" % "1.25.0",

@@ -1,5 +1,3 @@
-import java.util.UUID
-
 import sbt.Keys._
 import sbt._
 
@@ -32,17 +30,11 @@ object Release extends AutoPlugin {
       }
 
       maybeBumpedPrerelease
-        .orElse(maybeSnapshotVersion)
         .orElse(maybeBumpedLastSubversion)
         .getOrElse(bumpMajor)
     }
 
     private def bumpMajor = copy(major = major + 1, subversions = Seq.fill(subversions.length)(0))
-
-    private def maybeSnapshotVersion = qualifier match {
-      case Some(SnapshotQualifier) => Some(copy(qualifier = Some("." + UUID.randomUUID().toString)))
-      case _ => None
-    }
 
     private def maybeBumpedLastSubversion = bumpSubversionOpt(subversions.length - 1)
 
