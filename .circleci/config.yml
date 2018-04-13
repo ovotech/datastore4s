@@ -5,6 +5,7 @@ defaults: &defaults
 
 version: 2
 jobs:
+
   build:
     <<: *defaults
     steps:
@@ -81,6 +82,7 @@ jobs:
   publish:
     <<: *defaults
     steps:
+      - add_ssh_keys # TODO issue where a read only key is needed to access the config.yml then read/write is used to push tags
       - checkout
       - attach_workspace:
           at: .
@@ -92,6 +94,9 @@ jobs:
       - run:
           name: Extract Bintray Creds
           command: build/bintray.sh
+      - run:
+          name: Git Setup # TODO why do we need the config?
+          command: git config user.email "deploy@circleci.com" && git config user.name "CircleCI"
       - run:
           name: Tag Release
           command: build/tag.sh
@@ -125,7 +130,3 @@ workflows:
       - publish:
           requires:
             - hold
-          filters:
-            branches:
-              only:
-                - master
