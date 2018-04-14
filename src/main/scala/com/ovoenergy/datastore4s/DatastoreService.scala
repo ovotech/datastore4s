@@ -4,6 +4,7 @@ import java.io.{File, FileInputStream}
 
 import com.google.auth.Credentials
 import com.google.auth.oauth2.GoogleCredentials
+import com.google.cloud.NoCredentials
 import com.google.cloud.datastore._
 import com.google.cloud.datastore.Query.{newEntityQueryBuilder, newProjectionEntityQueryBuilder}
 import com.google.cloud.datastore.{Entity => DsEntity, ProjectionEntity => DsProjectionEntity}
@@ -14,11 +15,16 @@ sealed trait DataStoreConfiguration
 
 final case class ManualDataStoreConfiguration(projectId: String, namespace: Option[String] = None, credentials: Option[Credentials] = None)
     extends DataStoreConfiguration
+final case class EmulatorConfiguration(projectId: String, emulatorHost: String, namespace: Option[String]) extends DataStoreConfiguration
+final case class Options(datastoreOptions: DatastoreOptions) extends DataStoreConfiguration
 final case object FromEnvironmentVariables extends DataStoreConfiguration
 
 object DataStoreConfiguration {
+  def apply(datastoreOptions: DatastoreOptions): DataStoreConfiguration = Options(datastoreOptions)
   def apply(projectId: String): DataStoreConfiguration = ManualDataStoreConfiguration(projectId)
   def apply(projectId: String, namespace: String): DataStoreConfiguration = ManualDataStoreConfiguration(projectId, Some(namespace))
+  def apply(projectId: String, emulatorHost: String, namespace: Option[String]): DataStoreConfiguration =
+    EmulatorConfiguration(projectId, emulatorHost, namespace)
   def apply(projectId: String, credentialsFile: File): Try[DataStoreConfiguration] =
     createCredentials(credentialsFile).map(c => ManualDataStoreConfiguration(projectId, credentials = Some(c)))
   def apply(projectId: String, namespace: String, credentialsFile: File): Try[DataStoreConfiguration] =
@@ -31,6 +37,8 @@ object DataStoreConfiguration {
         _ <- Try(is.close())
       } yield credentials
     }
+  import scala.language.implicitConversions
+  implicit def fromOptions(datastoreOptions: DatastoreOptions): DataStoreConfiguration = DataStoreConfiguration(datastoreOptions)
 }
 
 final case class Persisted[A](inputObject: A, entity: Entity)
@@ -43,13 +51,20 @@ object DatastoreService extends DatastoreErrors {
       val withNamespace = namespace.fold(withProjectId)(ns => withProjectId.setNamespace(ns))
       val withCredentials = credentials.fold(withNamespace)(creds => withNamespace.setCredentials(creds))
       new WrappedDatastore(withCredentials.build().getService)
+    case EmulatorConfiguration(projectId, host, namespace) =>
+      val withProjectId = DatastoreOptions.newBuilder().setProjectId(projectId).setHost(host).setCredentials(NoCredentials.getInstance())
+      val withNamespace = namespace.fold(withProjectId)(ns => withProjectId.setNamespace(ns))
+      new WrappedDatastore(withNamespace.build().getService)
+    case Options(options) => new WrappedDatastore(options.getService)
     case FromEnvironmentVariables =>
-      val defaultOptions = DatastoreOptions.getDefaultInstance()
-      val withNamespace =
-        sys.env
-          .get("DATASTORE_NAMESPACE")
-          .fold(defaultOptions)(ns => defaultOptions.toBuilder.setNamespace(ns).build())
-      new WrappedDatastore(withNamespace.getService)
+      val defaultOptionsBuilder = DatastoreOptions.getDefaultInstance().toBuilder
+      val withEmulator = sys.env
+        .get("DATASTORE_EMULATOR_HOST")
+        .fold(defaultOptionsBuilder)(host => defaultOptionsBuilder.setHost(host).setCredentials(NoCredentials.getInstance()))
+      val withNamespace = sys.env
+        .get("DATASTORE_NAMESPACE")
+        .fold(withEmulator)(ns => withEmulator.setNamespace(ns))
+      new WrappedDatastore(withNamespace.build().getService)
   }
 
   def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Option[E]] =
@@ -124,7 +139,7 @@ trait DatastoreService {
 
   def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D]
 
-  def configuration: DataStoreConfiguration
+  def options: DatastoreOptions
 
 }
 
@@ -159,8 +174,5 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
   import scala.collection.JavaConverters._
   override def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D] = datastore.run(query, noOptions: _*).asScala.toStream
 
-  override def configuration = {
-    val options = datastore.getOptions
-    DataStoreConfiguration(options.getProjectId, options.getNamespace)
-  }
+  override def options = datastore.getOptions
 }

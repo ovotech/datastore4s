@@ -20,4 +20,10 @@ class DatastoreConfigurationITSpec extends FlatSpec with Matchers {
     DataStoreConfiguration(projectId, credentialsFile = new File("src/it/resources/not-a-valid-service-account-file.json")) should be('Failure)
   }
 
+  it should "create a datastore service with options taken from the environment" in { // Set in build.sbt
+    val options = DatastoreService(FromEnvironmentVariables).options
+    options.getProjectId shouldBe "datastore4s"
+    options.getNamespace shouldBe "datastore4s-namespace"
+  }
+
 }

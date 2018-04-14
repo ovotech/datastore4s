@@ -62,9 +62,19 @@ contains alias functions to the library functions and creates the implicit `Data
  
  - `projectId` - The ID of the GCP project to connect to. Environment variable: `DATASTORE_PROJECT_ID`.
  - `namespace` - An optional namespace to store your entities under. Environment variable: `DATASTORE_NAMESPACE`.
+ - `emulatorHost` - If you are using the datastore emulator, this property is needed. Environment variable: `DATASTORE_EMULATOR_HOST`.
+ If the emulator is used then no credentials are required.
  - `credentials` - A JSON file containing the google credentials to use for the connection. Environment variable: `GOOGLE_APPLICATION_CREDENTIALS`, 
  if no file is explicitly passed then the environment variable will be used (this would allow reuse of the same file for multiple GCP client libraries).
- Either the value or the environment variable MUST be set.
+ Either the value or the environment variable MUST be set if not using the emulator.
+ 
+ If you need more fine grained control than available here then you can create your own `DatastoreOptions` object which
+ can be implicitly converted into a `DatastoreConfiguration` e.g.
+ 
+ ```scala
+def dataStoreConfiguration: DataStoreConfiguration = 
+  DatastoreOptions.newBuilder().set(//options).build() 
+```
 
 ## Datastore Operations
 
