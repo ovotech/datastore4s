@@ -73,7 +73,7 @@ contains alias functions to the library functions and creates the implicit `Data
  
  ```scala
 def dataStoreConfiguration: DataStoreConfiguration = 
-  DatastoreOptions.newBuilder().set(//options).build() 
+  DatastoreOptions.newBuilder().set(/*options*/).build() 
 ```
 
 ## Datastore Operations
