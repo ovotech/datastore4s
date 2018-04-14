@@ -23,7 +23,6 @@ object Release extends AutoPlugin {
   }
 
   case class Version(major: Int, subversions: Seq[Int], qualifier: Option[String]) {
-    val SnapshotQualifier = "-SNAPSHOT"
     def bumpOrSnapshot = {
       val maybeBumpedPrerelease = qualifier.collect {
         case Version.PreReleaseQualifierR() => withoutQualifier
@@ -38,18 +37,16 @@ object Release extends AutoPlugin {
 
     private def maybeBumpedLastSubversion = bumpSubversionOpt(subversions.length - 1)
 
-    private def bumpSubversionOpt(idx: Int) = {
-      val bumped = subversions.drop(idx)
+    private def bumpSubversionOpt(index: Int) = {
+      val bumped = subversions.drop(index)
       val reset = bumped.drop(1).length
       bumped.headOption map { head =>
         val patch = (head + 1) +: Seq.fill(reset)(0)
-        copy(subversions = subversions.patch(idx, patch, patch.length))
+        copy(subversions = subversions.patch(index, patch, patch.length)).withoutQualifier
       }
     }
 
     def withoutQualifier = copy(qualifier = None)
-
-    def asSnapshot = copy(qualifier = Some(SnapshotQualifier))
 
     def string = "" + major + mkString(subversions) + qualifier.getOrElse("")
 
