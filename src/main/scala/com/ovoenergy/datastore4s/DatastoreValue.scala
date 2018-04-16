@@ -10,24 +10,29 @@ sealed trait DatastoreValue {
 
 private[datastore4s] class WrappedValue(val dsValue: Value[_]) extends DatastoreValue {
   override def toString: String = this match {
-    case StringValue(s) => s"""StringValue("$s")"""
-    case LongValue(l) => s"LongValue($l)"
-    case DoubleValue(d) => s"DoubleValue($d)"
-    case BooleanValue(d) => s"BooleanValue($d)"
-    case BlobValue(b) => s"BlobValue($b)"
+    case StringValue(s)    => s"""StringValue("$s")"""
+    case LongValue(l)      => s"LongValue($l)"
+    case DoubleValue(d)    => s"DoubleValue($d)"
+    case BooleanValue(d)   => s"BooleanValue($d)"
+    case BlobValue(b)      => s"BlobValue($b)"
     case TimestampValue(t) => s"TimestampValue($t)"
-    case LatLngValue(ll) => s"LatLngValue($ll)"
+    case LatLngValue(ll)   => s"LatLngValue($ll)"
     case ListValue(values) => s"ListValue(${values.mkString(", ")})"
-    case NullValue(_) => "NullValue"
+    case NullValue(_)      => "NullValue"
   }
 
-  override def ignoreIndexes = new WrappedValue(dsValue.toBuilder
-    .setExcludeFromIndexes(true).asInstanceOf[ValueBuilder[_, _, _]] // TODO these casts are a hack to get around the poor return type of .toBuilder
-    .build().asInstanceOf[Value[_]])
+  override def ignoreIndexes =
+    new WrappedValue(
+      dsValue.toBuilder
+        .setExcludeFromIndexes(true)
+        .asInstanceOf[ValueBuilder[_, _, _]] // TODO these casts are a hack to get around the poor return type of .toBuilder
+        .build()
+        .asInstanceOf[Value[_]]
+    )
 
   override def equals(obj: scala.Any): Boolean = obj match {
     case v: WrappedValue => v.dsValue == dsValue
-    case _ => false
+    case _               => false
   }
 }
 
@@ -43,7 +48,7 @@ case object StringValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[String] = value match {
     case WrappedValue(s: ds.StringValue) => Some(s.get())
-    case _ => None
+    case _                               => None
   }
 }
 
@@ -53,7 +58,7 @@ case object LongValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[Long] = value match {
     case WrappedValue(l: ds.LongValue) => Some(l.get())
-    case _ => None
+    case _                             => None
   }
 }
 
@@ -63,7 +68,7 @@ case object DoubleValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[Double] = value match {
     case WrappedValue(d: ds.DoubleValue) => Some(d.get())
-    case _ => None
+    case _                               => None
   }
 }
 
@@ -73,7 +78,7 @@ case object BooleanValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[Boolean] = value match {
     case WrappedValue(b: ds.BooleanValue) => Some(b.get())
-    case _ => None
+    case _                                => None
   }
 }
 
@@ -83,7 +88,7 @@ case object TimestampValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[Timestamp] = value match {
     case WrappedValue(t: ds.TimestampValue) => Some(t.get())
-    case _ => None
+    case _                                  => None
   }
 }
 
@@ -93,7 +98,7 @@ case object BlobValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[Blob] = value match {
     case WrappedValue(b: ds.BlobValue) => Some(b.get())
-    case _ => None
+    case _                             => None
   }
 }
 
@@ -103,7 +108,7 @@ case object LatLngValue extends DsType {
 
   def unapply(value: DatastoreValue): Option[LatLng] = value match {
     case WrappedValue(l: ds.LatLngValue) => Some(l.get())
-    case _ => None
+    case _                               => None
   }
 }
 
@@ -128,6 +133,6 @@ private[datastore4s] case object NullValue {
 
   def unapply(value: DatastoreValue): Option[Null] = value match {
     case WrappedValue(_: ds.NullValue) => Some(null)
-    case _ => None
+    case _                             => None
   }
 }

@@ -18,7 +18,7 @@ final case class Field private (values: Map[String, DatastoreValue]) {
 
   def +(other: Field) = Field(other.values ++ values) // Composite field
 
-  def ignoreIndexes = Field(values.map{ case (key, value) => (key, value.ignoreIndexes) })
+  def ignoreIndexes = Field(values.map { case (key, value) => (key, value.ignoreIndexes) })
 }
 
 object Field {
