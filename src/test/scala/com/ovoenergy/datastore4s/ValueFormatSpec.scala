@@ -330,6 +330,14 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     }
   }
 
+  "Datastore Values" should "be able to ignore indexes" in {
+    forAll(Gen.oneOf(stringValueGen, longValueGen, doubleValueGen, booleanValueGen, blobValueGen, timestampValueGen, latLngValueGen)) { value =>
+      value.ignoreIndexes match {
+        case wrapped: WrappedValue => wrapped.dsValue.excludeFromIndexes() shouldBe true
+      }
+    }
+  }
+
   private val stringValueGen = Gen.alphaNumStr.map(StringValue(_))
   private val longValueGen = Gen.choose(Long.MinValue, Long.MaxValue).map(LongValue(_))
   private val doubleValueGen = Gen.choose(Double.MinValue, Double.MaxValue).map(DoubleValue(_))

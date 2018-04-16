@@ -13,14 +13,16 @@ trait FieldFormat[A] {
 
 }
 
-class Field private (val values: Seq[(String, DatastoreValue)]) {
-  def +(name: String, value: DatastoreValue) = new Field((name -> value) +: values)
+final case class Field private (values: Map[String, DatastoreValue]) {
+  def +(name: String, value: DatastoreValue) = Field(values + (name -> value))
 
-  def +(other: Field) = new Field(other.values ++ values) // Composite field
+  def +(other: Field) = Field(other.values ++ values) // Composite field
+
+  def ignoreIndexes = Field(values.map{ case (key, value) => (key, value.ignoreIndexes) })
 }
 
 object Field {
-  def apply(name: String, value: DatastoreValue): Field = new Field(Seq(name -> value))
+  def apply(name: String, value: DatastoreValue): Field = new Field(Map(name -> value))
 }
 
 object FieldFormat {

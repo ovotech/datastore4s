@@ -316,6 +316,11 @@ object AncestorExample extends DatastoreRepository {
 }
 ```
 
+### Indexes
+
+We aim to add more index support in the future, but for now you can indicate that you would not like a field to be
+indexed by annotating it with `@IgnoreIndex`.
+
 ### For Those Who Hate Macros
 
 If you do not want to use macros there is nothing wrong with creating the formats yourself, the underlying datastore APIs have

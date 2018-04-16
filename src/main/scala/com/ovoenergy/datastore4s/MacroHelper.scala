@@ -36,6 +36,8 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
 
   def singletonObject(typeSymbol: Symbol) = typeSymbol.asClass.selfType.termSymbol.asModule
 
+  def fieldIsAnnotatedWithIgnoreIndex(field: Symbol): Boolean = field.annotations.exists(_.tree.tpe =:= typeOf[IgnoreIndex])
+
   def abort[A](error: String): A = context.abort(context.enclosingPosition, error)
 
   def sealedTraitCaseClassOrAbort[A](tpe: Type, sealedTraitExpression: => Expr[A], caseClassExpression: => Expr[A]): Expr[A] =
