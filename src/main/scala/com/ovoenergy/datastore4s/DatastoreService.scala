@@ -44,6 +44,8 @@ object DatastoreService extends DatastoreErrors {
     * When the production code runs in an emulated environment then the host and NoCredentials is handled internally
     * to allow connecting to the emulator without credentials being verified. This is hidden from the production repository
     * and doesn't forces the test environment to override the DataStoreConfiguration
+    *
+    * https://github.com/GoogleCloudPlatform/google-cloud-java/blob/master/TESTING.md#testing-code-that-uses-datastore
     */
   private def handleEmulatorHost(builder: DatastoreOptions.Builder): DatastoreOptions.Builder =
     sys.env
