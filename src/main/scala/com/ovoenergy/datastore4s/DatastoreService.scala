@@ -12,8 +12,7 @@ import scala.util.{Failure, Success, Try}
 
 sealed trait DataStoreConfiguration
 
-final case class ManualDataStoreConfiguration(projectId: String, namespace: Option[String] = None)
-    extends DataStoreConfiguration
+final case class ManualDataStoreConfiguration(projectId: String, namespace: Option[String] = None) extends DataStoreConfiguration
 final case class EmulatorConfiguration(projectId: String, emulatorHost: String, namespace: Option[String]) extends DataStoreConfiguration
 final case class Options(datastoreOptions: DatastoreOptions) extends DataStoreConfiguration
 final case object FromEnvironmentVariables extends DataStoreConfiguration
