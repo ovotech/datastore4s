@@ -29,9 +29,9 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
   def subTypes(tpe: Type): Set[Symbol] =
     tpe.typeSymbol.asClass.knownDirectSubclasses
 
-  def requireLiteral[A](expression: Expr[A], parameter: String): Unit = expression.tree match {
-    case Literal(Constant(_)) => ()
-    case _                    => abort(s"$parameter must be a literal")
+  def requireLiteral[A](expression: Expr[A], parameter: String): A = expression.tree match {
+    case Literal(Constant(value)) => value.asInstanceOf[A] // Doesn't type check without cast.
+    case _                        => abort(s"$parameter must be a literal")
   }
 
   def singletonObject(typeSymbol: Symbol) = typeSymbol.asClass.selfType.termSymbol.asModule

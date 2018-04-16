@@ -61,6 +61,31 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     }
   }
 
+  private val firstProperty = "testName1"
+  private val secondProperty = "testName2"
+  private val field = Field(Map(firstProperty -> StringValue("testValue1"), secondProperty -> LongValue(12)))
+
+  "Fields" should "be indexed by default" in {
+    (field.values.get(firstProperty), field.values.get(firstProperty)) match {
+      case (Some(firstWrapped: WrappedValue), Some(secondWrapped: WrappedValue)) =>
+        firstWrapped.dsValue.excludeFromIndexes() shouldBe false
+        secondWrapped.dsValue.excludeFromIndexes() shouldBe false
+      case other => fail(s"expected 2 wrapped values for $firstProperty and $secondProperty but got $other")
+    }
+
+  }
+
+  "Fields" should "be able to have their indexes ignored" in {
+    val ignored = field.ignoreIndexes
+    (ignored.values.get(firstProperty), ignored.values.get(firstProperty)) match {
+      case (Some(firstWrapped: WrappedValue), Some(secondWrapped: WrappedValue)) =>
+        firstWrapped.dsValue.excludeFromIndexes() shouldBe true
+        secondWrapped.dsValue.excludeFromIndexes() shouldBe true
+      case other => fail(s"expected 2 wrapped values for $firstProperty and $secondProperty but got $other")
+    }
+
+  }
+
   val fieldName = "FIELD"
 
   private def forallTestRoundTrip[A](generator: Gen[A])(implicit fieldFormat: FieldFormat[A]) = {

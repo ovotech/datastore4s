@@ -316,6 +316,18 @@ object AncestorExample extends DatastoreRepository {
 }
 ```
 
+### Indexes
+
+We aim to add more index support in the future, but for now you can indicate that you would not like a field to be
+indexed by adding a vararg of indexes to ignore to the entity format:
+
+```scala
+EntityFormat[MyEntity, MeyKey]("kind", "ignoreProperty1", "ignoreProperty2"...)(_.key)
+```
+
+The property list will not currently be checked at compile time for invalid naming, this is to allow you to ignore indexes
+on different properties of subtypes in a sealed trait hierarchy. 
+
 ### For Those Who Hate Macros
 
 If you do not want to use macros there is nothing wrong with creating the formats yourself, the underlying datastore APIs have

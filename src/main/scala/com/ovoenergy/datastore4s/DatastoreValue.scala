@@ -1,10 +1,12 @@
 package com.ovoenergy.datastore4s
 
 import com.google.cloud.Timestamp
-import com.google.cloud.datastore.{Blob, LatLng, Value}
+import com.google.cloud.datastore.{Blob, LatLng, Value, ValueBuilder}
 import com.google.cloud.{datastore => ds}
 
-sealed trait DatastoreValue
+sealed trait DatastoreValue {
+  def ignoreIndexes: DatastoreValue
+}
 
 private[datastore4s] class WrappedValue(val dsValue: Value[_]) extends DatastoreValue {
   override def toString: String = this match {
@@ -18,6 +20,15 @@ private[datastore4s] class WrappedValue(val dsValue: Value[_]) extends Datastore
     case ListValue(values) => s"ListValue(${values.mkString(", ")})"
     case NullValue(_)      => "NullValue"
   }
+
+  override def ignoreIndexes =
+    new WrappedValue(
+      dsValue.toBuilder
+        .setExcludeFromIndexes(true)
+        .asInstanceOf[ValueBuilder[_, _, _]] // TODO these casts are a hack to get around the poor return type of .toBuilder
+        .build()
+        .asInstanceOf[Value[_]]
+    )
 
   override def equals(obj: scala.Any): Boolean = obj match {
     case v: WrappedValue => v.dsValue == dsValue
