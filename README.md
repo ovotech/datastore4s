@@ -325,8 +325,9 @@ indexed by adding a vararg of indexes to ignore to the entity format:
 EntityFormat[MyEntity, MeyKey]("kind", "ignoreProperty1", "ignoreProperty2"...)(_.key)
 ```
 
-The property list will not currently be checked at compile time for invalid naming, this is to allow you to ignore indexes
-on different properties of subtypes in a sealed trait hierarchy. 
+This field list will be checked at compile time to ensure:
+- In the case of a case class that all properties exist on that case class
+- In the case of a sealed trait that all properties exist on AT LEAST ONE of the subtypes
 
 ### For Those Who Hate Macros
 

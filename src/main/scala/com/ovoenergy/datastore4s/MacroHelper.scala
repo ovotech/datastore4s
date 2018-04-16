@@ -47,6 +47,34 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
       abort(s"Type must either be a sealed trait or a case class but $tpe is not")
     }
 
+  def fieldsMustExistInHierarchy(entityType: Type, ignoredIndexes: Set[String]): Unit =
+    if (isSealedTrait(entityType)) {
+      val missingFieldNames = subTypes(entityType)
+        .map(_.typeSignature)
+        .filter(isCaseClass)
+        .map(missingFields(_, ignoredIndexes))
+        .reduce(_ intersect _)
+      errorIfFieldsMissing(entityType, missingFieldNames)
+    } else if (isCaseClass(entityType)) {
+      errorIfFieldsMissing(entityType, missingFields(entityType, ignoredIndexes))
+    }
+
+  private def missingFields(entityType: Type, ignoredIndexes: Set[String]): Set[String] = {
+    val fieldNames = caseClassFieldList(entityType).map(_.name.toString)
+    ignoredIndexes.foldLeft(Set.empty[String]) {
+      case (missingFields, fieldName) => if (fieldNames.contains(fieldName)) missingFields else missingFields + fieldName
+    }
+  }
+
+  private def errorIfFieldsMissing(entityType: Type, fields: Set[String]) =
+    if (!fields.isEmpty) abort(s"Could not find fields: ${fields.mkString(", ")} in type hierarchy for $entityType")
+
+  def indexesForSubtype(subType: Symbol, ignoredIndexes: Set[String]) = {
+    val subTypeAsType = subType.typeSignature
+    val fieldNames = if (isCaseClass(subTypeAsType)) caseClassFieldList(subTypeAsType).map(_.name.toString) else Seq.empty
+    ignoredIndexes.filter(fieldNames.contains(_)).map(property => context.Expr[String](Literal(Constant(property))))
+  }
+
 }
 
 private[datastore4s] object MacroHelper {

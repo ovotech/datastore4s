@@ -81,7 +81,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     }
 
     scenario("Attempt to make an EntityFormat and ignore the index of a property that does not exist") {
-      """EntityFormat[LongKeyObject, java.lang.Long]("long-type", "someProperty")(_.key)""".stripMargin should compile
+      """EntityFormat[LongKeyObject, java.lang.Long]("long-type", "someProperty")(_.key)""".stripMargin shouldNot compile
     }
 
     scenario("Attempt to make an EntityFormat and ignore the index of a property that is not a constant") {

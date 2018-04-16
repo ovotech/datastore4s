@@ -37,8 +37,9 @@ object EntityFormat {
     import context.universe._
     val helper = MacroHelper(context)
     helper.requireLiteral(kind, "kind")
-
     val entityType = weakTypeTag[EntityType].tpe
+    helper.fieldsMustExistInHierarchy(entityType, ignoredIndexes)
+
     helper.sealedTraitCaseClassOrAbort[EntityFormat[EntityType, KeyType]](
       entityType,
       sealedTraitFormat(context)(helper)(kind, keyFunction, ignoredIndexes),
@@ -57,7 +58,7 @@ object EntityFormat {
     val subTypes = helper.subTypes(entityType)
 
     val cases = subTypes.map { subType =>
-      val indexes = ignoredIndexes.map(property => context.Expr[String](Literal(Constant(property))))
+      val indexes = helper.indexesForSubtype(subType, ignoredIndexes)
       cq"""e: ${subType.asClass} => EntityFormat[$subType, $keyType]($kind, ..$indexes)($keyFunction).toEntity(e, builder.addField(stringFormat.toEntityField("type", ${subType.name.toString})))"""
     }
 
