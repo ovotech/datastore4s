@@ -79,8 +79,7 @@ object EntityFormat {
     val fieldExpressions = helper.caseClassFieldList(entityType).map { field =>
       val fieldName = field.asTerm.name
       val fieldExpression = q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(${fieldName.toString}, value.$fieldName)"""
-      val noIndex = helper.fieldIsAnnotatedWithIgnoreIndex(field)
-      if (noIndex) {
+      if (helper.fieldIsAnnotatedWithIgnoreIndex(field)) {
         q"$fieldExpression.ignoreIndexes"
       } else {
         fieldExpression
