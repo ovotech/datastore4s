@@ -1,5 +1,6 @@
 package com.ovoenergy.datastore4s
 
+import scala.annotation.StaticAnnotation
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox
 
@@ -11,6 +12,8 @@ trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
   def toEntity(record: EntityType, builder: EntityBuilder): Entity
 
 }
+
+case class IgnoreIndex() extends StaticAnnotation
 
 object EntityFormat {
   def apply[EntityType, KeyType](kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] =
@@ -75,7 +78,12 @@ object EntityFormat {
 
     val fieldExpressions = helper.caseClassFieldList(entityType).map { field =>
       val fieldName = field.asTerm.name
-      q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(${fieldName.toString}, value.$fieldName)"""
+      val fieldExpression = q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(${fieldName.toString}, value.$fieldName)"""
+      if (helper.fieldIsAnnotatedWithIgnoreIndex(field)) {
+        q"$fieldExpression.ignoreIndexes"
+      } else {
+        fieldExpression
+      }
     }
 
     val toEntityExpression =

@@ -62,7 +62,7 @@ sealed trait EntityBuilder {
   def build(): Entity
 }
 
-private[datastore4s] class WrappedBuilder(val key: Key, val fields: Seq[(String, DatastoreValue)] = Seq.empty) extends EntityBuilder {
+private[datastore4s] class WrappedBuilder(val key: Key, val fields: Map[String, DatastoreValue] = Map.empty) extends EntityBuilder {
   override def addField(field: Field): EntityBuilder =
     new WrappedBuilder(key, field.values ++ fields)
 

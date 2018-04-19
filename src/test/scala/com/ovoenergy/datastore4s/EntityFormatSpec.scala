@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.Key
+import com.google.cloud.datastore.{Key, StringValue => DsStringValue}
 import com.ovoenergy.datastore4s.ToKey.JavaLong
 import org.scalatest.{FeatureSpec, Matchers}
 
@@ -46,6 +46,8 @@ case class MissingFieldFormatEntity(missingTypeField: MissingFieldFormatType, st
 case class MissingFieldFormatType()
 
 case class EmptyCaseClass()
+
+case class IgnoredIndexObject(key: String, @IgnoreIndex ignoredIndexProperty: String)
 
 class EntityFormatSpec extends FeatureSpec with Matchers {
 
@@ -142,6 +144,23 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       secondEntity.fieldOfType[Double]("someDouble") shouldBe Right(1824672.23572)
 
       sealedEntityFormat.fromEntity(secondEntity) shouldBe Right(secondRecord)
+    }
+
+    scenario("An entity for which a field has an index ignored") {
+      val ignoredIndexFormat = EntityFormat[IgnoredIndexObject, String]("ignored-type")(_.key)
+      val record = IgnoredIndexObject("test-key", "test-property")
+      val entity = DatastoreService.toEntity(record, ignoredIndexFormat, datastoreService)
+      ignoredIndexFormat.kind.name shouldBe "ignored-type"
+      ignoredIndexFormat.key(record) shouldBe "test-key"
+      entity.fieldOfType[String]("ignoredIndexProperty") shouldBe Right("test-property")
+      entity match {
+        case e: WrappedEntity =>
+          e.entity.getValue[DsStringValue]("ignoredIndexProperty").excludeFromIndexes() shouldBe true
+        case _ => fail("Expected a wrapped entity")
+      }
+
+      val roundTripped = ignoredIndexFormat.fromEntity(entity)
+      roundTripped shouldBe Right(record)
     }
   }
 
