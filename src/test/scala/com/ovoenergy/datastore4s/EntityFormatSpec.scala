@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.Key
+import com.google.cloud.datastore.{Key, StringValue => DsStringValue}
 import com.ovoenergy.datastore4s.ToKey.JavaLong
 import org.scalatest.{FeatureSpec, Matchers}
 
@@ -80,6 +80,24 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
          EntityFormat[StringKeyObject, String](kind)(_.someKey)""".stripMargin shouldNot compile
     }
 
+    scenario("Attempt to make an EntityFormat and ignore the index of a property that does not exist") {
+      """EntityFormat.ignoreIndexes[LongKeyObject, java.lang.Long]("someProperty")("long-type")(_.key)""".stripMargin shouldNot compile
+    }
+
+    scenario("Attempt to make an EntityFormat and ignore the index of a property that is not a constant") {
+      """val property = "key"
+        EntityFormat.ignoreIndexes[LongKeyObject, java.lang.Long](property)("long-type")(_.key)""".stripMargin shouldNot compile
+    }
+
+    scenario("Attempt to make an EntityFormat and only index of a property that does not exist") {
+      """EntityFormat.onlyIndex[LongKeyObject, java.lang.Long]("someProperty")("long-type")(_.key)""".stripMargin shouldNot compile
+    }
+
+    scenario("Attempt to make an EntityFormat and only index a property that is not a constant") {
+      """val property = "key"
+        EntityFormat.onlyIndex[LongKeyObject, java.lang.Long](property)("long-type")(_.key)""".stripMargin shouldNot compile
+    }
+
     scenario("A simple case class with only a long key") {
       val longEntityFormat = EntityFormat[LongKeyObject, JavaLong]("long-type")(_.key)
       val record = LongKeyObject(20)
@@ -142,6 +160,46 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       secondEntity.fieldOfType[Double]("someDouble") shouldBe Right(1824672.23572)
 
       sealedEntityFormat.fromEntity(secondEntity) shouldBe Right(secondRecord)
+    }
+
+    scenario("An entity for which a field has an index ignored") {
+      val stringEntityFormat = EntityFormat.ignoreIndexes[StringKeyObject, String]("someProperty")("string-type")(_.someKey)
+      val record = StringKeyObject("key", "propertyValue")
+      val entity = DatastoreService.toEntity(record, stringEntityFormat, datastoreService)
+      stringEntityFormat.kind.name shouldBe "string-type"
+      stringEntityFormat.key(record) shouldBe "key"
+      entity.fieldOfType[String]("someProperty") shouldBe Right("propertyValue")
+      entity.fieldOfType[String]("someKey") shouldBe Right("key")
+
+      entity match {
+        case e: WrappedEntity =>
+          e.entity.getValue[DsStringValue]("someProperty").excludeFromIndexes() shouldBe true
+          e.entity.getValue[DsStringValue]("someKey").excludeFromIndexes() shouldBe false
+        case _ => fail("Expected a wrapped entity")
+      }
+
+      val roundTripped = stringEntityFormat.fromEntity(entity)
+      roundTripped shouldBe Right(record)
+    }
+
+    scenario("An entity for which all fields but one are indexed") {
+      val stringEntityFormat = EntityFormat.onlyIndex[StringKeyObject, String]("someProperty")("string-type")(_.someKey)
+      val record = StringKeyObject("key", "propertyValue")
+      val entity = DatastoreService.toEntity(record, stringEntityFormat, datastoreService)
+      stringEntityFormat.kind.name shouldBe "string-type"
+      stringEntityFormat.key(record) shouldBe "key"
+      entity.fieldOfType[String]("someProperty") shouldBe Right("propertyValue")
+      entity.fieldOfType[String]("someKey") shouldBe Right("key")
+
+      entity match {
+        case e: WrappedEntity =>
+          e.entity.getValue[DsStringValue]("someKey").excludeFromIndexes() shouldBe true
+          e.entity.getValue[DsStringValue]("someProperty").excludeFromIndexes() shouldBe false
+        case _ => fail("Expected a wrapped entity")
+      }
+
+      val roundTripped = stringEntityFormat.fromEntity(entity)
+      roundTripped shouldBe Right(record)
     }
   }
 
