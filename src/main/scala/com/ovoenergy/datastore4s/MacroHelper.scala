@@ -31,7 +31,7 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
 
   def requireLiteral[A](expression: Expr[A], parameter: String): A = expression.tree match {
     case Literal(Constant(value)) => value.asInstanceOf[A] // Doesn't type check without cast.
-    case _ => abort(s"$parameter must be a literal")
+    case _                        => abort(s"$parameter must be a literal")
   }
 
   def singletonObject(typeSymbol: Symbol) = typeSymbol.asClass.selfType.termSymbol.asModule
@@ -62,7 +62,7 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
   def allFieldNamesExcept(entityType: Type, indexedFields: Set[String]): Set[String] =
     allFieldNames(entityType) diff indexedFields
 
-  private def allFieldNames(entityType: Type): Set[String] = {
+  private def allFieldNames(entityType: Type): Set[String] =
     if (isSealedTrait(entityType)) {
       subTypes(entityType)
         .map(_.typeSignature)
@@ -72,7 +72,6 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
     } else {
       Set.empty
     }
-  }
 
 }
 

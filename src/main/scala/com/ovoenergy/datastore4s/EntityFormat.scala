@@ -16,25 +16,28 @@ object EntityFormat {
   def apply[EntityType, KeyType](kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] =
     macro deriveFormatWithAllIndexes[EntityType, KeyType]
 
-  def ignoreIndexes[EntityType, KeyType](ignoredIndexes: String*)(kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] =
+  def ignoreIndexes[EntityType, KeyType](
+    ignoredIndexes: String*
+  )(kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] =
     macro deriveFormatWithIgnoredIndexes[EntityType, KeyType]
 
-  def onlyIndex[EntityType, KeyType](onlyIndex: String*)(kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] =
-  macro deriveFormatOnlyIndexing[EntityType, KeyType]
+  def onlyIndex[EntityType, KeyType](
+    onlyIndex: String*
+  )(kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] =
+    macro deriveFormatOnlyIndexing[EntityType, KeyType]
 
   def deriveFormatWithAllIndexes[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
     context: blackbox.Context
   )(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] =
-    deriveFormat(context)(kind)(keyFunction)(Set.empty){subType =>
+    deriveFormat(context)(kind)(keyFunction)(Set.empty) { subType =>
       import context.universe._
       val keyType = weakTypeTag[KeyType].tpe
       q"EntityFormat[$subType, $keyType]($kind)($keyFunction)"
     }
 
-
-  def deriveFormatWithIgnoredIndexes[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: blackbox.Context)
-    (ignoredIndexes: context.Expr[String]*)(kind: context.Expr[String])
-    (keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
+  def deriveFormatWithIgnoredIndexes[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: blackbox.Context)(
+    ignoredIndexes: context.Expr[String]*
+  )(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
     val helper = MacroHelper(context)
     val indexes = ignoredIndexes.map(helper.requireLiteral(_, "ignoredIndexes")).toSet
@@ -48,15 +51,15 @@ object EntityFormat {
     }
   }
 
-  def deriveFormatOnlyIndexing[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: blackbox.Context)
-    (onlyIndex: context.Expr[String]*)(kind: context.Expr[String])
-    (keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
+  def deriveFormatOnlyIndexing[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: blackbox.Context)(
+    onlyIndex: context.Expr[String]*
+  )(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType]): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
     val helper = MacroHelper(context)
     val indexedFields = onlyIndex.map(helper.requireLiteral(_, "onlyIndex")).toSet
     val entityType = weakTypeTag[EntityType].tpe
     helper.fieldsMustExistInHierarchy(entityType, indexedFields)
-    deriveFormat(context)(kind)(keyFunction)(helper.allFieldNamesExcept(entityType, indexedFields)){ subType =>
+    deriveFormat(context)(kind)(keyFunction)(helper.allFieldNamesExcept(entityType, indexedFields)) { subType =>
       import context.universe._
       val keyType = weakTypeTag[KeyType].tpe
       val subTypeIndexes = helper.indexesForSubtype(subType, indexedFields)
@@ -64,10 +67,11 @@ object EntityFormat {
     }
   }
 
-  def deriveFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: blackbox.Context)(
-    kind: context.Expr[String]
-  )(keyFunction: context.Expr[EntityType => KeyType])(ignoredIndexes: Set[String])
-    (subTypeFormatProvider: context.universe.Symbol => context.universe.Tree): context.Expr[EntityFormat[EntityType, KeyType]] = {
+  def deriveFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
+    context: blackbox.Context
+  )(kind: context.Expr[String])(keyFunction: context.Expr[EntityType => KeyType])(
+    ignoredIndexes: Set[String]
+  )(subTypeFormatProvider: context.universe.Symbol => context.universe.Tree): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
     val helper = MacroHelper(context)
     helper.requireLiteral(kind, "kind")
@@ -80,12 +84,12 @@ object EntityFormat {
     )
   }
 
-  private def sealedTraitFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](
-    context: blackbox.Context
-  )(helper: MacroHelper[context.type])(kind: context.Expr[String],
-                                       keyFunction: context.Expr[EntityType => KeyType],
-                                       ignoredIndexes: Set[String],
-                                       subTypeFormatProvider: context.universe.Symbol => context.universe.Tree): context.Expr[EntityFormat[EntityType, KeyType]] = {
+  private def sealedTraitFormat[EntityType: context.WeakTypeTag, KeyType: context.WeakTypeTag](context: blackbox.Context)(
+    helper: MacroHelper[context.type]
+  )(kind: context.Expr[String],
+    keyFunction: context.Expr[EntityType => KeyType],
+    ignoredIndexes: Set[String],
+    subTypeFormatProvider: context.universe.Symbol => context.universe.Tree): context.Expr[EntityFormat[EntityType, KeyType]] = {
     import context.universe._
     val entityType = weakTypeTag[EntityType].tpe
     val keyType = weakTypeTag[KeyType].tpe

@@ -335,12 +335,12 @@ EntityFormat.onlyIndex[MyEntity, MeyKey]("property1", "property2", ...)("kind")(
 
 This property list will be checked at compile time to ensure:
 - In the case of a case class that all properties exist on that case class
-- In the case of a sealed trait that all properties exist on AT LEAST ONE of the subtypes
+- In the case of a sealed trait that all properties exist on **AT LEAST ONE** of the subtypes
 
 #### WARNINGS
 
-- If you exclude an index of a property you are querying on then your queries will not work.
-- You can only exclude indexes from top level properties, we aim to add more fine-grained control in the future. For example:
+- If you exclude an index of a property you using for queries then your queries will not work.
+- You can only exclude indexes from top level properties, we aim to add more fine grained control in the future. For example:
 
 ```scala
 case class Property(field1: String, field2: Int)
