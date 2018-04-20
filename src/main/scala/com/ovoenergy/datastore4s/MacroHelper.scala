@@ -31,7 +31,7 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
 
   def requireLiteral[A](expression: Expr[A], parameter: String): A = expression.tree match {
     case Literal(Constant(value)) => value.asInstanceOf[A] // Doesn't type check without cast.
-    case _                        => abort(s"$parameter must be a literal")
+    case _ => abort(s"$parameter must be a literal")
   }
 
   def singletonObject(typeSymbol: Symbol) = typeSymbol.asClass.selfType.termSymbol.asModule
@@ -47,32 +47,31 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
       abort(s"Type must either be a sealed trait or a case class but $tpe is not")
     }
 
-  def fieldsMustExistInHierarchy(entityType: Type, ignoredIndexes: Set[String]): Unit =
-    if (isSealedTrait(entityType)) {
-      val missingFieldNames = subTypes(entityType)
-        .map(_.typeSignature)
-        .filter(isCaseClass)
-        .map(missingFields(_, ignoredIndexes))
-        .reduce(_ intersect _)
-      errorIfFieldsMissing(entityType, missingFieldNames)
-    } else if (isCaseClass(entityType)) {
-      errorIfFieldsMissing(entityType, missingFields(entityType, ignoredIndexes))
-    }
-
-  private def missingFields(entityType: Type, ignoredIndexes: Set[String]): Set[String] = {
-    val fieldNames = caseClassFieldList(entityType).map(_.name.toString)
-    ignoredIndexes.foldLeft(Set.empty[String]) {
-      case (missingFields, fieldName) => if (fieldNames.contains(fieldName)) missingFields else missingFields + fieldName
-    }
+  def fieldsMustExistInHierarchy(entityType: Type, fieldNamesToCheck: Set[String]): Unit = {
+    val allFields = allFieldNames(entityType)
+    val missingFields = fieldNamesToCheck.filterNot(allFields.contains)
+    if (!missingFields.isEmpty) abort(s"Could not find fields: ${missingFields.mkString(", ")} in type hierarchy for $entityType")
   }
-
-  private def errorIfFieldsMissing(entityType: Type, fields: Set[String]) =
-    if (!fields.isEmpty) abort(s"Could not find fields: ${fields.mkString(", ")} in type hierarchy for $entityType")
 
   def indexesForSubtype(subType: Symbol, ignoredIndexes: Set[String]) = {
     val subTypeAsType = subType.typeSignature
     val fieldNames = if (isCaseClass(subTypeAsType)) caseClassFieldList(subTypeAsType).map(_.name.toString) else Seq.empty
     ignoredIndexes.filter(fieldNames.contains(_)).map(property => context.Expr[String](Literal(Constant(property))))
+  }
+
+  def allFieldNamesExcept(entityType: Type, indexedFields: Set[String]): Set[String] =
+    allFieldNames(entityType) diff indexedFields
+
+  private def allFieldNames(entityType: Type): Set[String] = {
+    if (isSealedTrait(entityType)) {
+      subTypes(entityType)
+        .map(_.typeSignature)
+        .flatMap(allFieldNames)
+    } else if (isCaseClass(entityType)) {
+      caseClassFieldList(entityType).map(_.name.toString).toSet
+    } else {
+      Set.empty
+    }
   }
 
 }

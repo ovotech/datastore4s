@@ -81,12 +81,21 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     }
 
     scenario("Attempt to make an EntityFormat and ignore the index of a property that does not exist") {
-      """EntityFormat[LongKeyObject, java.lang.Long]("long-type", "someProperty")(_.key)""".stripMargin shouldNot compile
+      """EntityFormat.ignoreIndexes[LongKeyObject, java.lang.Long]("someProperty")("long-type")(_.key)""".stripMargin shouldNot compile
     }
 
     scenario("Attempt to make an EntityFormat and ignore the index of a property that is not a constant") {
       """val property = "key"
-        EntityFormat[LongKeyObject, java.lang.Long]("long-type", property)(_.key)""".stripMargin shouldNot compile
+        EntityFormat.ignoreIndexes[LongKeyObject, java.lang.Long](property)("long-type")(_.key)""".stripMargin shouldNot compile
+    }
+
+    scenario("Attempt to make an EntityFormat and only index of a property that does not exist") {
+      """EntityFormat.onlyIndex[LongKeyObject, java.lang.Long]("someProperty")("long-type")(_.key)""".stripMargin shouldNot compile
+    }
+
+    scenario("Attempt to make an EntityFormat and only index a property that is not a constant") {
+      """val property = "key"
+        EntityFormat.onlyIndex[LongKeyObject, java.lang.Long](property)("long-type")(_.key)""".stripMargin shouldNot compile
     }
 
     scenario("A simple case class with only a long key") {
@@ -154,7 +163,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     }
 
     scenario("An entity for which a field has an index ignored") {
-      val stringEntityFormat = EntityFormat[StringKeyObject, String]("string-type", "someProperty")(_.someKey)
+      val stringEntityFormat = EntityFormat.ignoreIndexes[StringKeyObject, String]("someProperty")("string-type")(_.someKey)
       val record = StringKeyObject("key", "propertyValue")
       val entity = DatastoreService.toEntity(record, stringEntityFormat, datastoreService)
       stringEntityFormat.kind.name shouldBe "string-type"
@@ -165,6 +174,27 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       entity match {
         case e: WrappedEntity =>
           e.entity.getValue[DsStringValue]("someProperty").excludeFromIndexes() shouldBe true
+          e.entity.getValue[DsStringValue]("someKey").excludeFromIndexes() shouldBe false
+        case _ => fail("Expected a wrapped entity")
+      }
+
+      val roundTripped = stringEntityFormat.fromEntity(entity)
+      roundTripped shouldBe Right(record)
+    }
+
+    scenario("An entity for which all fields but one are indexed") {
+      val stringEntityFormat = EntityFormat.onlyIndex[StringKeyObject, String]("someProperty")("string-type")(_.someKey)
+      val record = StringKeyObject("key", "propertyValue")
+      val entity = DatastoreService.toEntity(record, stringEntityFormat, datastoreService)
+      stringEntityFormat.kind.name shouldBe "string-type"
+      stringEntityFormat.key(record) shouldBe "key"
+      entity.fieldOfType[String]("someProperty") shouldBe Right("propertyValue")
+      entity.fieldOfType[String]("someKey") shouldBe Right("key")
+
+      entity match {
+        case e: WrappedEntity =>
+          e.entity.getValue[DsStringValue]("someKey").excludeFromIndexes() shouldBe true
+          e.entity.getValue[DsStringValue]("someProperty").excludeFromIndexes() shouldBe false
         case _ => fail("Expected a wrapped entity")
       }
 
