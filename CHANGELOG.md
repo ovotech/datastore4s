@@ -1,6 +1,12 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+## 0.1.3 - 2018-04-20
+### Added
+- Ability to customise which top level properties are indexed at `EntityFormat` level.
+
 ## 0.1.2 - 2018-04-16
 ### Added
 - Automatic reconfiguration of a Repository when connecting to an emulator.
