@@ -164,6 +164,7 @@ There are multiple `ValueFormat[A]`s already implicitly available for:
 - `Int`
 - `Option[A]` for any `[A]` for which a format exists
 - `Seq[A]` for any `[A]` for which a format exists
+- `Set[A]` for any `[A]` for which a format exists
 - `com.google.cloud.Timestamp`
 - `com.google.cloud.datastore.Blob`
 - `com.google.cloud.datastore.LatLng`

@@ -166,6 +166,8 @@ object ValueFormat {
         }
     }
 
+  implicit def setValueFormat[A](implicit seqFormat: ValueFormat[Seq[A]]) = formatFromFunctions[Set[A], Seq[A]](_.toSet)(_.toList)
+
   def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
     formatFromFunctionsWithError(constructor andThen (a => Right(a)))(extractor)
 

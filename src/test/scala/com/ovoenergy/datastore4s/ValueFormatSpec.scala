@@ -270,7 +270,47 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     forAll(listGen) { stringList =>
       val format = implicitly[ValueFormat[Seq[String]]]
       inside(format.fromValue(format.toValue(stringList))) {
-        case Right(list) => list should contain theSameElementsAs stringList
+        case Right(list) => list shouldBe stringList
+        case Left(error) => fail(s"Expected a Right of a list of strings but got: $error")
+      }
+    }
+  }
+
+  "The set value format" should "write any A to a list value" in {
+    forAll(Gen.listOf(Gen.alphaNumStr).map(_.toSet)) { stringSet =>
+      val format = implicitly[ValueFormat[Set[String]]]
+      inside(format.toValue(stringSet)) {
+        case ListValue(list) => list should contain theSameElementsAs stringSet.map(StringValue(_))
+        case other => fail(s"Expected a list value but got: $other")
+      }
+    }
+  }
+
+  it should "read list values into sets" in {
+    forAll(Gen.listOf(Gen.alphaNumStr).map(_.toSet)) { stringSet =>
+      val format = implicitly[ValueFormat[Set[String]]]
+      inside(format.fromValue(ListValue(stringSet.map(StringValue(_)).toList))) {
+        case Right(set) => set should contain theSameElementsAs stringSet
+        case Left(error) => fail(s"Expected a Right of a set of strings but got: $error")
+      }
+    }
+  }
+
+  it should "return an error if any element of the set is the wrong type" in {
+    forAll(Gen.listOf(Gen.alphaNumStr).map(_.toSet)) { stringSet =>
+      val format = implicitly[ValueFormat[Set[String]]]
+
+      val values = LongValue(0) +: stringSet.map(StringValue(_)).toList
+      format.fromValue(ListValue(values)) shouldBe 'Left
+    }
+  }
+
+  it should "read a written value correctly" in {
+    val listGen: Gen[Set[String]] = Gen.listOf(Gen.alphaNumStr).map(_.toSet)
+    forAll(listGen) { stringSet =>
+      val format = implicitly[ValueFormat[Set[String]]]
+      inside(format.fromValue(format.toValue(stringSet))) {
+        case Right(set) => set shouldBe stringSet
         case Left(error) => fail(s"Expected a Right of a list of strings but got: $error")
       }
     }
