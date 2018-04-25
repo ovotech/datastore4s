@@ -103,7 +103,7 @@ object ValueFormat {
 
   val instantEpochMillisValueFormat: ValueFormat[Instant] = formatFromFunctions(Instant.ofEpochMilli)(_.toEpochMilli)
 
-  val bigDecimalDoubleValueFormat: ValueFormat[BigDecimal] = formatFromFunctions(BigDecimal.valueOf(_:Double))(_.doubleValue())
+  val bigDecimalDoubleValueFormat: ValueFormat[BigDecimal] = formatFromFunctions(BigDecimal.valueOf(_: Double))(_.doubleValue())
 
   object BigDecimalStringValueFormat extends ValueFormat[BigDecimal] with DatastoreErrors {
     override def toValue(scalaValue: BigDecimal): DatastoreValue =
