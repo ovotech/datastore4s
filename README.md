@@ -159,9 +159,10 @@ There are multiple `ValueFormat[A]`s already implicitly available for:
 
 - `String`
 - `Long`
+- `Int`
 - `Boolean`
 - `Double`
-- `Int`
+- `Float`
 - `Option[A]` for any `[A]` for which a format exists
 - `Seq[A]` for any `[A]` for which a format exists
 - `Set[A]` for any `[A]` for which a format exists
@@ -170,9 +171,9 @@ There are multiple `ValueFormat[A]`s already implicitly available for:
 - `com.google.cloud.datastore.LatLng`
 
 There are also formats available that can be brought into implicit scope (explicitly or by inheriting the `DefaultFormats` or `DefaultDatastoreRepository` traits) for: 
-- `Array[Byte]` in the form of `ByteArrayValueFormat`
+- `Array[Byte]` in the form of `ValueFormat.byteArrayValueFormat`
 - `BigDecimal` in the form of `BigDecimalStringValueFormat`
-- `java.time.Instant` in the form of `InstantEpochMillisValueFormat`
+- `java.time.Instant` in the form of `ValueFormat.instantEpochMillisValueFormat`
 
 These are not implicit by default to allow your own implementations for those types.
 

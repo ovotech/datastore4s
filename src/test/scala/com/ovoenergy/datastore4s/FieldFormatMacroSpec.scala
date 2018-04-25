@@ -2,7 +2,6 @@ package com.ovoenergy.datastore4s
 
 import java.time.Instant
 
-import com.ovoenergy.datastore4s.ValueFormat.InstantEpochMillisValueFormat
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
@@ -19,7 +18,7 @@ class FieldFormatMacroSpec extends FlatSpec with Matchers with GeneratorDrivenPr
                             someBooleanField: Boolean,
                             someTimeField: Instant)
 
-  implicit val instantFormat = InstantEpochMillisValueFormat
+  implicit val instantFormat = ValueFormat.instantEpochMillisValueFormat
 
   val caseClassEntityGen = for {
     id <- Gen.alphaNumStr.filter(!_.isEmpty)
