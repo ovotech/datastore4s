@@ -4,7 +4,6 @@ import java.time.Instant
 
 import com.google.cloud.Timestamp
 import com.google.cloud.datastore.{Blob, LatLng}
-import com.ovoenergy.datastore4s.ValueFormat.{BigDecimalStringValueFormat, ByteArrayValueFormat, InstantEpochMillisValueFormat}
 
 import scala.util.{Failure, Success, Try}
 
@@ -40,16 +39,7 @@ object ValueFormat {
       }
   }
 
-  implicit object IntValueFormat extends ValueFormat[Int] with DatastoreErrors {
-    override def toValue(scalaValue: Int): DatastoreValue =
-      LongValue(scalaValue)
-
-    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Int] =
-      datastoreValue match {
-        case LongValue(long) => Right(long.toInt)
-        case other           => wrongType(LongValue, other)
-      }
-  }
+  implicit val intValueFormat: ValueFormat[Int] = formatFromFunctions[Int, Long](_.toInt)(_.toLong)
 
   implicit object DoubleValueFormat extends ValueFormat[Double] with DatastoreErrors {
     override def toValue(scalaValue: Double): DatastoreValue =
@@ -61,6 +51,8 @@ object ValueFormat {
         case other               => wrongType(DoubleValue, other)
       }
   }
+
+  implicit val floatValueFormat: ValueFormat[Float] = formatFromFunctions[Float, Double](_.toFloat)(_.toDouble)
 
   implicit object BooleanValueFormat extends ValueFormat[Boolean] with DatastoreErrors {
     override def toValue(scalaValue: Boolean): DatastoreValue =
@@ -107,22 +99,11 @@ object ValueFormat {
   }
 
   // The following formats will have to be brought into implicit scope to be used
-  object ByteArrayValueFormat extends ValueFormat[Array[Byte]] {
-    override def toValue(scalaValue: Array[Byte]): DatastoreValue =
-      BlobValueFormat.toValue(Blob.copyFrom(scalaValue))
+  val byteArrayValueFormat: ValueFormat[Array[Byte]] = formatFromFunctions[Array[Byte], Blob](_.toByteArray)(Blob.copyFrom)
 
-    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Array[Byte]] =
-      BlobValueFormat.fromValue(datastoreValue).map(_.toByteArray)
-  }
+  val instantEpochMillisValueFormat: ValueFormat[Instant] = formatFromFunctions(Instant.ofEpochMilli)(_.toEpochMilli)
 
-  object InstantEpochMillisValueFormat extends ValueFormat[Instant] {
-    override def toValue(scalaValue: Instant): DatastoreValue =
-      LongValueFormat.toValue(scalaValue.toEpochMilli)
-
-    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, Instant] =
-      LongValueFormat.fromValue(datastoreValue).map(Instant.ofEpochMilli)
-
-  }
+  val bigDecimalDoubleValueFormat: ValueFormat[BigDecimal] = formatFromFunctions(BigDecimal.valueOf(_: Double))(_.doubleValue())
 
   object BigDecimalStringValueFormat extends ValueFormat[BigDecimal] with DatastoreErrors {
     override def toValue(scalaValue: BigDecimal): DatastoreValue =
@@ -166,6 +147,8 @@ object ValueFormat {
         }
     }
 
+  implicit def setValueFormat[A](implicit seqFormat: ValueFormat[Seq[A]]) = formatFromFunctions[Set[A], Seq[A]](_.toSet)(_.toList)
+
   def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
     formatFromFunctionsWithError(constructor andThen (a => Right(a)))(extractor)
 
@@ -191,7 +174,7 @@ object ValueFormat {
 }
 
 trait DefaultFormats {
-  implicit val bigDecimalFormat = BigDecimalStringValueFormat
-  implicit val instantFormat = InstantEpochMillisValueFormat
-  implicit val byteArrayFormat = ByteArrayValueFormat
+  implicit val bigDecimalFormat = ValueFormat.BigDecimalStringValueFormat
+  implicit val instantFormat = ValueFormat.instantEpochMillisValueFormat
+  implicit val byteArrayFormat = ValueFormat.byteArrayValueFormat
 }

@@ -57,13 +57,13 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
 
   "The Int value format" should "write ints to a int value" in {
     forAll(Gen.choose(Int.MinValue, Int.MaxValue)) { int =>
-      IntValueFormat.toValue(int) shouldBe LongValue(int)
+      ValueFormat.intValueFormat.toValue(int) shouldBe LongValue(int)
     }
   }
 
   it should "read int values into ints" in {
     forAll(Gen.choose(Int.MinValue, Int.MaxValue)) { int =>
-      IntValueFormat.fromValue(LongValue(int)) shouldBe Right(int)
+      ValueFormat.intValueFormat.fromValue(LongValue(int)) shouldBe Right(int)
     }
   }
 
@@ -91,6 +91,28 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
 
   it should "read a written value correctly" in {
     forAllTestRoundTrip(Gen.choose(Double.MinValue, Double.MaxValue))
+  }
+
+  "The Float value format" should "write floats to a double value" in {
+    forAll(Gen.choose(Float.MinValue, Float.MaxValue)) { float =>
+      ValueFormat.floatValueFormat.toValue(float) shouldBe DoubleValue(float)
+    }
+  }
+
+  it should "read double values into floats" in {
+    forAll(Gen.choose(Float.MinValue, Float.MaxValue)) { float =>
+      ValueFormat.floatValueFormat.fromValue(DoubleValue(float)) shouldBe Right(float)
+    }
+  }
+
+  it should "not read other types to floats" in {
+    forAll(Gen.oneOf(stringValueGen, longValueGen, booleanValueGen, blobValueGen, timestampValueGen, latLngValueGen)) { value =>
+      ValueFormat.floatValueFormat.fromValue(value) shouldBe 'Left
+    }
+  }
+
+  it should "read a written value correctly" in {
+    forAllTestRoundTrip(Gen.choose(Float.MinValue, Float.MaxValue))
   }
 
   "The Boolean value format" should "write booleans to a boolean value" in {
@@ -183,36 +205,36 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
 
   "The ByteArray value format" should "write byte arrays to a blob value" in {
     forAll(byteArrayGen.filter(!_.isEmpty)) { byteArray =>
-      ByteArrayValueFormat.toValue(byteArray) shouldBe BlobValue(Blob.copyFrom(byteArray))
+      ValueFormat.byteArrayValueFormat.toValue(byteArray) shouldBe BlobValue(Blob.copyFrom(byteArray))
     }
   }
 
   it should "read blob values into byte arrays" in {
     forAll(byteArrayGen.filter(!_.isEmpty)) { byteArray =>
-      ByteArrayValueFormat.fromValue(BlobValue(Blob.copyFrom(byteArray))).map(_.deep) shouldBe Right(byteArray.deep)
+      ValueFormat.byteArrayValueFormat.fromValue(BlobValue(Blob.copyFrom(byteArray))).map(_.deep) shouldBe Right(byteArray.deep)
     }
   }
 
   it should "read a written value correctly" in {
     forAll(byteArrayGen.filter(!_.isEmpty)) { byteArray =>
-      ByteArrayValueFormat.fromValue(ByteArrayValueFormat.toValue(byteArray)).map(_.deep) shouldBe Right(byteArray.deep)
+      ValueFormat.byteArrayValueFormat.fromValue(ValueFormat.byteArrayValueFormat.toValue(byteArray)).map(_.deep) shouldBe Right(byteArray.deep)
     }
   }
 
   "The Instant value format" should "write instants to a long value" in {
     forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { millis =>
-      InstantEpochMillisValueFormat.toValue(Instant.ofEpochMilli(millis)) shouldBe LongValue(millis)
+      ValueFormat.instantEpochMillisValueFormat.toValue(Instant.ofEpochMilli(millis)) shouldBe LongValue(millis)
     }
   }
 
   it should "read long values into instants" in {
     forAll(Gen.choose(Long.MinValue, Long.MaxValue)) { millis =>
-      InstantEpochMillisValueFormat.fromValue(LongValue(millis)) shouldBe Right(Instant.ofEpochMilli(millis))
+      ValueFormat.instantEpochMillisValueFormat.fromValue(LongValue(millis)) shouldBe Right(Instant.ofEpochMilli(millis))
     }
   }
 
   it should "read a written value correctly" in {
-    implicit val format = InstantEpochMillisValueFormat
+    implicit val format = ValueFormat.instantEpochMillisValueFormat
     forAllTestRoundTrip(Gen.choose(Long.MinValue, Long.MaxValue).map(Instant.ofEpochMilli))
   }
 
@@ -270,7 +292,47 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     forAll(listGen) { stringList =>
       val format = implicitly[ValueFormat[Seq[String]]]
       inside(format.fromValue(format.toValue(stringList))) {
-        case Right(list) => list should contain theSameElementsAs stringList
+        case Right(list) => list shouldBe stringList
+        case Left(error) => fail(s"Expected a Right of a list of strings but got: $error")
+      }
+    }
+  }
+
+  "The set value format" should "write any A to a list value" in {
+    forAll(Gen.listOf(Gen.alphaNumStr).map(_.toSet)) { stringSet =>
+      val format = implicitly[ValueFormat[Set[String]]]
+      inside(format.toValue(stringSet)) {
+        case ListValue(list) => list should contain theSameElementsAs stringSet.map(StringValue(_))
+        case other => fail(s"Expected a list value but got: $other")
+      }
+    }
+  }
+
+  it should "read list values into sets" in {
+    forAll(Gen.listOf(Gen.alphaNumStr).map(_.toSet)) { stringSet =>
+      val format = implicitly[ValueFormat[Set[String]]]
+      inside(format.fromValue(ListValue(stringSet.map(StringValue(_)).toList))) {
+        case Right(set) => set should contain theSameElementsAs stringSet
+        case Left(error) => fail(s"Expected a Right of a set of strings but got: $error")
+      }
+    }
+  }
+
+  it should "return an error if any element of the set is the wrong type" in {
+    forAll(Gen.listOf(Gen.alphaNumStr).map(_.toSet)) { stringSet =>
+      val format = implicitly[ValueFormat[Set[String]]]
+
+      val values = LongValue(0) +: stringSet.map(StringValue(_)).toList
+      format.fromValue(ListValue(values)) shouldBe 'Left
+    }
+  }
+
+  it should "read a written value correctly" in {
+    val listGen: Gen[Set[String]] = Gen.listOf(Gen.alphaNumStr).map(_.toSet)
+    forAll(listGen) { stringSet =>
+      val format = implicitly[ValueFormat[Set[String]]]
+      inside(format.fromValue(format.toValue(stringSet))) {
+        case Right(set) => set shouldBe stringSet
         case Left(error) => fail(s"Expected a Right of a list of strings but got: $error")
       }
     }

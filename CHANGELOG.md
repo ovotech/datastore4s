@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+### Added
+- Format for `Set[A]`
+- Format for `Float`
 
 ## 0.1.3 - 2018-04-20
 ### Added
