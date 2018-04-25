@@ -241,6 +241,30 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
     }
   }
 
+  feature("Datastore support for batch operations") {
+    scenario("PutAll entities") {
+      pending
+    }
+    scenario("PutAll entities where some entities with the same key already exist"){
+      pending
+    }
+
+    scenario("SaveAll entities") {
+      pending
+    }
+    scenario("SaveAll entities where some entities with the same key already exist"){
+      pending
+    }
+
+    scenario("DeleteAll entities") {
+      pending
+    }
+
+    scenario("Batch different types of operations") {
+      pending
+    }
+  }
+
   private val random = ThreadLocalRandom.current()
 
   private def randomEntityWithId(id: String) = randomEntityWithKey(ComplexKey(id, EntityParent(random.nextLong(1, Long.MaxValue))))
