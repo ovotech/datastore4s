@@ -305,8 +305,8 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
     }
 
     scenario("DeleteAll entities") {
-      val parent = EntityParent(500)
-      val entities = Seq(randomEntityWithId("SaveAllEntity1"), randomEntityWithId("SaveAllEntity2"), randomEntityWithId("SaveAllEntity3"))
+      val parent = EntityParent(500) // Use combined parent so that we can have strong consistency in the queries
+      val entities = Seq(randomEntityWithKey(ComplexKey("DeleteAllEntity1", parent)), randomEntityWithKey(ComplexKey("DeleteAllEntity2", parent)), randomEntityWithKey(ComplexKey("DeleteAllEntity3", parent)))
       val keys = entities.map(e => ComplexKey(e.id, e.parent))
       val result = run(for {
         _ <- putAll(entities)
