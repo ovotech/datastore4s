@@ -129,6 +129,12 @@ object DatastoreService extends DatastoreErrors {
       datastoreService.delete(dsKey).map(exception).getOrElse(Right(key))
     }
 
+  def deleteAll[E, K](keys: Seq[K])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[K]] =
+    DatastoreOperation { datastoreService =>
+      val dsKeys = keys.map(datastoreService.createKey(_, format.kind))
+      datastoreService.deleteAll(dsKeys).map(exception).getOrElse(Right(keys))
+    }
+
   def list[E](implicit format: EntityFormat[E, _]): Query[E] = {
     val queryBuilderSupplier = () => newEntityQueryBuilder().setKind(format.kind.name)
     new DatastoreQuery[E, DsEntity](queryBuilderSupplier, entityFunction = new WrappedEntity(_))
@@ -149,6 +155,8 @@ object DatastoreService extends DatastoreErrors {
 
 trait DatastoreService {
   def delete(key: Key): Option[Throwable]
+
+  def deleteAll(keys: Seq[Key]): Option[Throwable]
 
   def find(entityKey: Key): Try[Option[Entity]]
 
@@ -217,6 +225,8 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
   override def find(entityKey: Key) = Try(Option(datastore.get(entityKey, noOptions: _*))).map(_.map(new WrappedEntity(_)))
 
   override def delete(key: Key) = try { datastore.delete(key); None } catch { case e: Throwable => Some(e) } // Cannot return anything useful.
+
+  override def deleteAll(keys: Seq[Key]) = try { datastore.delete(keys: _*); None } catch { case e: Throwable => Some(e) } // Cannot return anything useful.
 
   import scala.collection.JavaConverters._
   override def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D] = datastore.run(query, noOptions: _*).asScala.toStream

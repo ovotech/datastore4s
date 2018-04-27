@@ -298,14 +298,31 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         run(list[SomeEntityType].sequenced()) match {
           case Right(seq) =>
             seq should contain(existing)
-            seq should not contain(failedEntity)
+            seq should not contain (failedEntity)
           case Left(error) => fail(s"There was an error: $error")
         }
       }
     }
 
     scenario("DeleteAll entities") {
-      pending
+      val parent = EntityParent(500)
+      val entities = Seq(randomEntityWithId("SaveAllEntity1"), randomEntityWithId("SaveAllEntity2"), randomEntityWithId("SaveAllEntity3"))
+      val keys = entities.map(e => ComplexKey(e.id, e.parent))
+      val result = run(for {
+        _ <- putAll(entities)
+        before <- list[SomeEntityType].withAncestor(parent).sequenced()
+        deleted <- deleteAll[SomeEntityType, ComplexKey](keys)
+        after <- list[SomeEntityType].withAncestor(parent).sequenced()
+      } yield (before, deleted, after))
+      result match {
+        case Right((before, deleted, after)) =>
+          before should contain allElementsOf entities
+          deleted should contain theSameElementsAs keys
+          for (entity <- entities) {
+            after should not contain entity
+          }
+        case Left(error) => fail(s"There was an error: $error")
+      }
     }
 
     scenario("Batch different types of operations") {

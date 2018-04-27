@@ -79,6 +79,21 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     result shouldBe Right(entityKey)
   }
 
+  it should "return and error if an exception is thrown trying to deleteAll entities in a key list" in {
+    val error = new Exception("error")
+    when(mockDatastoreService.deleteAll(Seq(testKey))).thenReturn(Some(error))
+
+    val result = runOp(DatastoreService.deleteAll[Object, String](Seq(entityKey)))
+    result shouldBe Left(new DatastoreException(error))
+  }
+
+  it should "return the key if a deleteAll call is successful" in {
+    when(mockDatastoreService.deleteAll(Seq(testKey))).thenReturn(None)
+
+    val result = runOp(DatastoreService.deleteAll[Object, String](Seq(entityKey)))
+    result shouldBe Right(Seq(entityKey))
+  }
+
   it should "return an error if an exception is thrown on an attempt to put an entity" in {
     val error = new Exception("error")
 
