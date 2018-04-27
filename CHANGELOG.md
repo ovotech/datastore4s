@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Format for `Set[A]`
 - Format for `Float`
+- Batch operations `putAll`, `saveAll` and `deleteAll`.
 
 ## 0.1.3 - 2018-04-20
 ### Added

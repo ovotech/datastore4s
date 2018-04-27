@@ -324,10 +324,6 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         case Left(error) => fail(s"There was an error: $error")
       }
     }
-
-    scenario("Batch different types of operations") {
-      pending
-    }
   }
 
   private val random = ThreadLocalRandom.current()
