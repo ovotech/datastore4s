@@ -111,6 +111,38 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     result shouldBe Right(Persisted(mockEntityObject, mockEntity))
   }
 
+  it should "return an error if an exception is thrown on an attempt to putAll entities" in {
+    val error = new Exception("error")
+
+    when(mockDatastoreService.putAll(Seq(mockEntity))).thenReturn(Failure(error))
+
+    val result = runOp(DatastoreService.putAll(Seq(mockEntityObject)))
+    result shouldBe Left(new DatastoreException(error))
+  }
+
+  it should "return a wrapped entity if a putAll is successful" in {
+    when(mockDatastoreService.putAll(Seq(mockEntity))).thenReturn(Success(Seq(mockEntity)))
+
+    val result = runOp(DatastoreService.putAll(Seq(mockEntityObject)))
+    result shouldBe Right(Seq(Persisted(mockEntityObject, mockEntity)))
+  }
+
+  it should "return an error if an exception is thrown on an attempt to saveAll entities" in {
+    val error = new Exception("error")
+
+    when(mockDatastoreService.saveAll(Seq(mockEntity))).thenReturn(Failure(error))
+
+    val result = runOp(DatastoreService.saveAll(Seq(mockEntityObject)))
+    result shouldBe Left(new DatastoreException(error))
+  }
+
+  it should "return a wrapped entity if a saveAll is successful" in {
+    when(mockDatastoreService.saveAll(Seq(mockEntity))).thenReturn(Success(Seq(mockEntity)))
+
+    val result = runOp(DatastoreService.saveAll(Seq(mockEntityObject)))
+    result shouldBe Right(Seq(Persisted(mockEntityObject, mockEntity)))
+  }
+
   it should "create a list query that will use the correct kind" in {
     val query = DatastoreService.list[Object]
     val castQuery = query.asInstanceOf[DatastoreQuery[Object, DsEntity]]
