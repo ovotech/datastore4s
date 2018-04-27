@@ -26,7 +26,7 @@ envVars in IntegrationTest := datastoreVariables
 fork in IntegrationTest := true
 
 bintrayOrganization := Some("ovotech")
-bintrayRepository := "maven-private"
+bintrayRepository := "maven"
 bintrayPackage := "datastore4s"
 bintrayPackageLabels := Seq("gcp", "datastore")
 

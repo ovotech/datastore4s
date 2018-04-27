@@ -243,17 +243,67 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
 
   feature("Datastore support for batch operations") {
     scenario("PutAll entities") {
-      pending
+      val entities = Seq(randomEntityWithId("PutAllEntity1"), randomEntityWithId("PutAllEntity2"), randomEntityWithId("PutAllEntity3"))
+      run(putAll(entities))
+
+      eventually {
+        run(list[SomeEntityType].sequenced()) match {
+          case Right(seq) =>
+            seq should contain allElementsOf entities
+          case Left(error) => fail(s"There was an error: $error")
+        }
+      }
     }
-    scenario("PutAll entities where some entities with the same key already exist"){
-      pending
+    scenario("PutAll entities where some entities with the same key already exist") {
+      val key = ComplexKey("Key that already exists for putAll", EntityParent(400))
+      val replaced = randomEntityWithKey(key)
+      val entities = Seq(randomEntityWithId("PutAllReplaceEntity1"), randomEntityWithKey(key), randomEntityWithId("PutAllReplaceEntity2"))
+      run(for {
+        _ <- put(replaced)
+        _ <- putAll(entities)
+      } yield ())
+
+      eventually {
+        run(list[SomeEntityType].sequenced()) match {
+          case Right(seq) =>
+            seq should contain allElementsOf entities
+            seq should not contain replaced
+          case Left(error) => fail(s"There was an error: $error")
+        }
+      }
     }
 
     scenario("SaveAll entities") {
-      pending
+      val entities = Seq(randomEntityWithId("SaveAllEntity1"), randomEntityWithId("SaveAllEntity2"), randomEntityWithId("SaveAllEntity3"))
+      run(saveAll(entities))
+
+      eventually {
+        run(list[SomeEntityType].sequenced()) match {
+          case Right(seq) =>
+            seq should contain allElementsOf entities
+          case Left(error) => fail(s"There was an error: $error")
+        }
+      }
     }
-    scenario("SaveAll entities where some entities with the same key already exist"){
-      pending
+    scenario("SaveAll entities where some entities with the same key already exist") {
+      val key = ComplexKey("Key that already exists for saveAll", EntityParent(310))
+      val existing = randomEntityWithKey(key)
+      val (entity1, entity2, entity3) = (randomEntityWithId("SaveAllFailEntity1"), randomEntityWithKey(key), randomEntityWithId("SaveAllFailEntity2"))
+      val result = run(for {
+        _ <- put(existing)
+        _ <- saveAll(Seq(entity1, entity2, entity3))
+      } yield ())
+      result should be('Left)
+      eventually {
+        run(list[SomeEntityType].sequenced()) match {
+          case Right(seq) =>
+            seq should contain(existing)
+            seq should not contain(entity1)
+            seq should not contain(entity2)
+            seq should not contain(entity3)
+          case Left(error) => fail(s"There was an error: $error")
+        }
+      }
     }
 
     scenario("DeleteAll entities") {

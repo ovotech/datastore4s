@@ -83,8 +83,14 @@ object DatastoreService extends DatastoreErrors {
   def put[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
     persistEntity(entityObject, (datastoreService, entity) => datastoreService.put(entity))
 
+  def putAll[E, K](entities: Seq[K])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+    ???
+
   def save[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
     persistEntity(entityObject, (datastoreService, entity) => datastoreService.save(entity))
+
+  def saveAll[E, K](entities: Seq[K])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+    ???
 
   private def persistEntity[E, K](
     entityObject: E,
