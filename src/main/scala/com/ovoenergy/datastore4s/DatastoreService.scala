@@ -81,10 +81,16 @@ object DatastoreService extends DatastoreErrors {
     }
 
   def put[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
-    persistEntity(entityObject, (datastoreService, entity) => datastoreService.put(entity))
+    persistEntity(entityObject, _.put(_))
+
+  def putAll[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+    persistEntities(entities, _.putAll(_))
 
   def save[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
-    persistEntity(entityObject, (datastoreService, entity) => datastoreService.save(entity))
+    persistEntity(entityObject, _.save(_))
+
+  def saveAll[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+    persistEntities(entities, _.saveAll(_))
 
   private def persistEntity[E, K](
     entityObject: E,
@@ -95,6 +101,18 @@ object DatastoreService extends DatastoreErrors {
       persistingFunction(datastoreService, entity) match {
         case Success(persisted) => Right(Persisted(entityObject, persisted))
         case Failure(error)     => exception(error)
+      }
+    }
+
+  private def persistEntities[E, K](
+    entities: Seq[E],
+    persistingFunction: (DatastoreService, Seq[Entity]) => Try[Seq[Entity]]
+  )(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+    DatastoreOperation { datastoreService =>
+      val mapped = entities.map(entityObject => Persisted(entityObject, toEntity(entityObject, format, datastoreService)))
+      persistingFunction(datastoreService, mapped.map(_.entity)) match {
+        case Success(_)     => Right(mapped)
+        case Failure(error) => exception(error)
       }
     }
 
@@ -109,6 +127,12 @@ object DatastoreService extends DatastoreErrors {
     DatastoreOperation { datastoreService =>
       val dsKey = datastoreService.createKey(key, format.kind)
       datastoreService.delete(dsKey).map(exception).getOrElse(Right(key))
+    }
+
+  def deleteAll[E, K](keys: Seq[K])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[K]] =
+    DatastoreOperation { datastoreService =>
+      val dsKeys = keys.map(datastoreService.createKey(_, format.kind))
+      datastoreService.deleteAll(dsKeys).map(exception).getOrElse(Right(keys))
     }
 
   def list[E](implicit format: EntityFormat[E, _]): Query[E] = {
@@ -132,11 +156,17 @@ object DatastoreService extends DatastoreErrors {
 trait DatastoreService {
   def delete(key: Key): Option[Throwable]
 
+  def deleteAll(keys: Seq[Key]): Option[Throwable]
+
   def find(entityKey: Key): Try[Option[Entity]]
 
   def put(entity: Entity): Try[Entity]
 
+  def putAll(entities: Seq[Entity]): Try[Seq[Entity]]
+
   def save(entity: Entity): Try[Entity]
+
+  def saveAll(entities: Seq[Entity]): Try[Seq[Entity]]
 
   def createKey[K](key: K, kind: Kind)(implicit toKey: ToKey[K]): Key
 
@@ -147,6 +177,7 @@ trait DatastoreService {
 }
 
 private[datastore4s] class WrappedDatastore(private val datastore: Datastore) extends DatastoreService with DatastoreErrors {
+  import scala.collection.JavaConverters._
 
   private val noOptions = Seq.empty[ReadOption]
   private type DsEntity = com.google.cloud.datastore.FullEntity[Key]
@@ -155,9 +186,13 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
 
   private def newKeyFactory(kind: Kind): KeyFactory = new KeyFactoryFacade(datastore.newKeyFactory().setKind(kind.name))
 
-  override def put(entity: Entity) = persist(entity, (ds, e) => ds.put(e))
+  override def put(entity: Entity) = persist(entity, _.put(_))
 
-  override def save(entity: Entity) = persist(entity, (ds, e) => ds.add(e))
+  override def putAll(entities: Seq[Entity]) = persistAll(entities, _.put(_: _*).asScala.toSeq)
+
+  override def save(entity: Entity) = persist(entity, _.add(_))
+
+  override def saveAll(entities: Seq[Entity]) = persistAll(entities, _.add(_: _*).asScala.toSeq)
 
   private def persist(entity: Entity, persistingFunction: (Datastore, DsEntity) => DsEntity): Try[Entity] = entity match {
     case wrapped: WrappedEntity =>
@@ -170,9 +205,28 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
       )
   }
 
+  private def persistAll(entities: Seq[Entity], persistingFunction: (Datastore, Seq[DsEntity]) => Seq[DsEntity]): Try[Seq[Entity]] = {
+    val dsEntities = entities map {
+      case wrapped: WrappedEntity => Success(wrapped.entity)
+      case projection: ProjectionEntity => // TODO is it possible to ensure this doesn't happen at compile time?
+        Failure(
+          new RuntimeException(
+            s"Attempted to persist a Projection entity. This should never happen, an EntityFormat somehow returned a projection. Projection; $projection"
+          )
+        )
+    }
+    sequenceTry(dsEntities).map(persistingFunction(datastore, _)).map(_.map(new WrappedEntity(_)))
+  }
+
+  def sequenceTry[T](xs: Seq[Try[T]]): Try[Seq[T]] = xs.foldLeft(Try(Seq[T]())) { (a, b) =>
+    a flatMap (c => b map (d => c :+ d))
+  }
+
   override def find(entityKey: Key) = Try(Option(datastore.get(entityKey, noOptions: _*))).map(_.map(new WrappedEntity(_)))
 
   override def delete(key: Key) = try { datastore.delete(key); None } catch { case e: Throwable => Some(e) } // Cannot return anything useful.
+
+  override def deleteAll(keys: Seq[Key]) = try { datastore.delete(keys: _*); None } catch { case e: Throwable => Some(e) } // Cannot return anything useful.
 
   import scala.collection.JavaConverters._
   override def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D] = datastore.run(query, noOptions: _*).asScala.toStream

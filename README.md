@@ -90,12 +90,18 @@ def dataStoreConfiguration: DataStoreConfiguration =
 Datastore operations do not execute immediately, instead they describe an action to be performed by a `DatastoreService`.
 
 1. `put[A](entity: A)` will persist an entity using its entity format, replacing any entity with the same key. Returns `DatastoreOperation[Persisted[A]]`.
-2. `add[A](entity: A)` will persist an entity using its entity format, it will return an error if an entity already exists 
+2. `putAll[A](entities: Seq[A])` will persist all entities in a batch using the entity format for `A`, replacing any entities
+ with the same keys. Returns `DatastoreOperation[Seq[Persisted[A]]]`.
+3. `save[A](entity: A)` will persist an entity using its entity format, it will return an error if an entity already exists 
 with the same key. Returns `DatastoreOperation[Persisted[A]]`.
-3. `delete[E, K](key: K)` will delete the entity with the given key. Please note if no entity exists with the given key 
+4. `saveAll[A](entities: Seq[A])` will persist all entities in a batch using the entity format for `A`, returning an error if
+any entities with the same keys exist. Returns `DatastoreOperation[Seq[Persisted[A]]]`.
+5. `delete[E, K](key: K)` will delete the entity with the given key. Please note if no entity exists with the given key 
 a success will still be returned. Returns `DatastoreOperation[K]`.
-4. `findOne[E, K](key: K)` returns a `Option` of the entity with the given key. Returns `DatastoreOperation[Option[E]]`.
-5. `list[E]` creates a query for the given entity type as long as an entity format is implicitly in scope 
+6. `deleteAll[E, K](keys: Seq[K])` will delete all the entities with the given keys. Please note if no entity exists with 
+any given key a success will still be returned. Returns `DatastoreOperation[Sqe[K]]`.
+7. `findOne[E, K](key: K)` returns a `Option` of the entity with the given key. Returns `DatastoreOperation[Option[E]]`.
+8. `list[E]` creates a query for the given entity type as long as an entity format is implicitly in scope 
     - You can add filters to the query
         - `withAncestor[A](ancestor: A)` filters the results to only entities with the given ancestor, there must be a
         `ToAncestor[A]` in scope
@@ -112,7 +118,7 @@ a success will still be returned. Returns `DatastoreOperation[K]`.
     - Queries can return either:
         - `DatastoreOperation[Stream[Either[DatastoreError, A]]]` by calling `stream()` if you need the individual errors for each entity
         - `DatastoreOperation[Seq[A]]` by calling `sequenced()` where all entity errors are combined into one
-6. `projectInto[E, Projection](entityField -> projectionField...)` creates a projection query from the given entity type 
+9. `projectInto[E, Projection](entityField -> projectionField...)` creates a projection query from the given entity type 
  into the projection type using the given field mappings. There must be both an `EntityFormat[E, _]` and `FromEntity[Projection]`
  in scope. There is a `FromEntity[A]` macro. This function does not check that the field names or types match up at compile time. 
  Note that this operation is experimental and may be replaced/removed in future versions.
