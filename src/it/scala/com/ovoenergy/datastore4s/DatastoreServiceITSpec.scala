@@ -288,19 +288,17 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
     scenario("SaveAll entities where some entities with the same key already exist") {
       val key = ComplexKey("Key that already exists for saveAll", EntityParent(310))
       val existing = randomEntityWithKey(key)
-      val (entity1, entity2, entity3) = (randomEntityWithId("SaveAllFailEntity1"), randomEntityWithKey(key), randomEntityWithId("SaveAllFailEntity2"))
+      val (entity1, failedEntity, entity3) = (randomEntityWithId("SaveAllFailEntity1"), randomEntityWithKey(key), randomEntityWithId("SaveAllFailEntity2"))
       val result = run(for {
         _ <- put(existing)
-        _ <- saveAll(Seq(entity1, entity2, entity3))
+        _ <- saveAll(Seq(entity1, failedEntity, entity3))
       } yield ())
       result should be('Left)
       eventually {
         run(list[SomeEntityType].sequenced()) match {
           case Right(seq) =>
             seq should contain(existing)
-            seq should not contain(entity1)
-            seq should not contain(entity2)
-            seq should not contain(entity3)
+            seq should not contain(failedEntity)
           case Left(error) => fail(s"There was an error: $error")
         }
       }
