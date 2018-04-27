@@ -1,5 +1,6 @@
 # Datastore4s
 [![CircleCI](https://circleci.com/gh/ovotech/datastore4s/tree/master.svg?style=svg)](https://circleci.com/gh/ovotech/datastore4s/tree/master)
+[ ![Download](https://api.bintray.com/packages/ovotech/maven/datastore4s/images/download.svg) ](https://bintray.com/ovotech/maven/datastore4s/_latestVersion)
 
 Datastore4s is a scala library for [GCP Datastore](https://cloud.google.com/datastore/docs/). Datastore4s
 hides the complexities of the Datastore API, creates clean abstractions and removes boilerplate code making it 
@@ -8,8 +9,6 @@ simpler and less error-prone to use.
 ## Getting Started
 
 The library is available in the Bintray OVO repository. Add this snippet to your build.sbt to use it.
-
-TODO Add maven badge, decide if going to maven or maven-private
 
 ```sbtshell
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
