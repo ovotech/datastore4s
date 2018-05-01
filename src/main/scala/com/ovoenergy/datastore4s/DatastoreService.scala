@@ -130,6 +130,8 @@ object DatastoreService extends DatastoreErrors {
     new DatastoreQuery[A, DsProjectionEntity](queryBuilderSupplier, entityFunction = new ProjectionEntity(mappings, _))
   }
 
+  def transactionally[A](operation: DatastoreOperation[A]): DatastoreOperation[A] = ???
+
 }
 
 trait DatastoreService {

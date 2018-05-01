@@ -86,3 +86,15 @@ projectInto[Entity, Projected]("projectionMapping" -> "mapped")
  
 Example usages of queries and projections can be found [here](../examples/QueryExamples.md).
  
+## Transaction Support
+
+Any datastore operation can be wrapped within a transaction returning another DatastoreOperation. For example:
+
+```scala
+def transactionalPersist(entity1: TypeOne, entity2: TypeTwo): DatastoreOperation[(TypeOne, TypeTwo, Mapping)]= 
+  transactionally { for {
+    persisted1 <- put(entity1)
+    persisted2 <- put(entity2)
+    persistedMapping <- save(Mapping(entity1, entity2))
+  } yield (persisted1, persisted2, persistedMapping) }
+```
