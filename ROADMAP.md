@@ -4,10 +4,10 @@ This is a list of features we would ideally like to add. They are not guaranteed
 
 - [x] Complete version 0.1 with basic datastore CRUD functionality and type class generation
 - [x] Support for batch operations
+- [x] Support for transactions
 - [ ] Improvement of implicit not found error messages
 - [ ] Support for default values of fields
 - [ ] Support for subtype queries. In the case of sealed traits, it would be good to be able to query/find only one subtype
-- [ ] Support for transactions
 - [ ] Support for Entity fields and entity groups
 
 - [ ] Support for automatic Index generation? (OPTIONAL)

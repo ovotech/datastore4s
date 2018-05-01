@@ -149,6 +149,20 @@ Datastore operations can be executed using 4 different interpreting functions, e
 2. Asynchronous (Also require implicit `ExecutionContext`)
     - `runAsync` which will run the operation asynchronously and return `Future[Either[DatastoreError, A]]`
     - `runAsyncF` which will run the operation asynchronously and return `Future[A]`, flattening a `Left` into a `Failure`
+    
+### Transaction Support
+
+Any datastore operation can be wrapped within a transaction returning another DatastoreOperation. For example:
+
+```scala
+def transactionalPersist(entity1: TypeOne, entity2: TypeTwo)
+ : DatastoreOperation[(TypeOne, TypeTwo, Mapping)]= 
+  transactionally { for {
+    persisted1 <- put(entity1)
+    persisted2 <- put(entity2)
+    persistedMapping <- put(Mapping(entity1, entity2))
+  } yield (persisted1, persisted2, persistedMapping) }
+```
 
 ## Entities
 

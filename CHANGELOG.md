@@ -2,6 +2,8 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+### Added
+- Support for Transactional actions
 
 ## 0.1.4 2018-04-27 (First public release)
 ### Added

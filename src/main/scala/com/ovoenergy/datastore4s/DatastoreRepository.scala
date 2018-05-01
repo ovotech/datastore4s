@@ -57,6 +57,8 @@ trait DatastoreRepository {
                                                                                               fromEntity: FromEntity[A]): Query[A] =
     DatastoreService.projectInto(firstMapping, remainingMappings: _*)
 
+  def transactionally[A](operation: DatastoreOperation[A]): DatastoreOperation[A] = DatastoreService.transactionally(operation)
+
   def run[A](operation: DatastoreOperation[A]): Either[DatastoreError, A] = DatastoreOperationInterpreter.run(operation)
 
   def runF[A](operation: DatastoreOperation[A]): Try[A] = DatastoreOperationInterpreter.runF(operation)
