@@ -25,8 +25,7 @@ object CustomKeyExample {
 There is also a utility function in `DatastoreRepository` called `toKey[A]` that allows you to simply pass a function, for example:
 
 ```scala
-implicit val customToKey = toKey[CustomKey]((value, keyFactory) =>
-  keyFactory.buildWithName(s"${value.name}@${value.department}"))
+implicit val customToKey = toKey[CustomKey]((value, keyFactory) => keyFactory.buildWithName(s"${value.name}@${value.department}"))
 ```
 
 ## Ancestors
@@ -51,5 +50,3 @@ object AncestorExample extends DatastoreRepository {
       keyFactory.addAncestor(value.department).buildWithName(value.name))
 }
 ```
-
-[BACK](../README.md)

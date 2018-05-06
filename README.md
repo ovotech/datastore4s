@@ -79,7 +79,7 @@ Entity (de)serialisation is based on three `Format` traits.
 ### Entity Formats
 
 To be able to persist and read entities from google datastore simply create your case class and use the `EntityFormat` macro.
-The same macro can be used to create EntityFormats for sealed trait hierarchies that only contain case classes. An additional 
+The same macro can be used to create `EntityFormat`s for sealed trait hierarchies that only contain case classes. An additional 
 field `"type"` will be used on the entity to determine which subtype in the hierarchy the entity represents.
 
 To use the macro you need to provide:
@@ -92,7 +92,7 @@ For example:
 
 `EntityFormat[Person, String]("person-kind")(person => person.name)`
 
-*Warning:* Key types cannot be primitive. Out of the box only `String` and `java.lang.Long` keys are supported, if you 
+**Warning:** Key types cannot be primitive. Out of the box only `String` and `java.lang.Long` keys are supported, if you 
 need a custom type then see the [Datastore Key Customisation](./docs/CustomKeys.md) documentation. 
 
 ### Value Formats
@@ -155,19 +155,13 @@ object PositiveInteger {
 
 ### Field Formats
 
-Usually a custom `ValueFormat` will suffice, this is then used to generate the `FieldFormat[A]`. In a very few cases you 
-may wish to customise how a field is turned into and retrieved from the fields of an entitiy. This is what the 
-`FieldFormat` type class is for. Implicitly formats are available for:
-
-- Any type `[A]` for which a `ValueFormat[A]` is in scope
-- `Either[L, R]` for any `[L]` and `[R]` for which a format exists (by using an `"either_side"` property)
-
-There is also a macro which can be used to generate field formats for both case classes and sealed trait hierarchies.
+When a field only contains one value a `FieldFormat` will be generated using the `ValueFormat`. For fields of type `Either[L, R]` 
+a `FieldFormat` is generated using `ValueFormat[L]` and `ValueFormat[R]` and a value `"either_side"` of `"Left"` or `"Right"` is added.
 
 #### Case Classes
 
 If you have a field that is a custom case class that is comprised of fields for which `FieldFormat`s are already in implicit
-scope there is a macro to generate a format that will nest the fields of that case class using dots to separate the fields:
+scope there is a macro to generate a `FieldFormat` that will nest the fields of that case class using dots to separate the fields:
 
 ```scala
 import com.ovoenergy.datastore4s.FieldFormat
@@ -179,7 +173,7 @@ object Department {
 }
 ```
 
-Using the format above an Employee entity would be serialised to have properties:
+Using the format above an Employee entity would be serialised to have values:
 
 - name of type `String`
 - age of type `Int`
@@ -188,8 +182,8 @@ Using the format above an Employee entity would be serialised to have properties
 
 #### Sealed Trait Hierarchies
 
-Similarly to create a field format for a sealed trait hierarchy composed of only case classes and/or objects simply use the same macro,
-this will store a nested `fieldname.type` field on the entity to determine what subtype the field is.
+Similarly to create a `FieldFormat` for a sealed trait hierarchy composed of only case classes and/or objects simply use the same macro,
+this will store a nested `fieldname.type` value on the entity to determine what subtype the field is.
 
 ### For Those Who Hate Macros
 
@@ -216,7 +210,7 @@ object NonMacroExample {
     } yield Job(title, wage)
   }
 
-  implicit object EmployeeFormat extends EntityFormat[Person, String] {
+  implicit object PersonFormat extends EntityFormat[Person, String] {
     override val kind = Kind("person")
     override def key(person: Person) = person.firstName + person.lastName
 
@@ -231,6 +225,20 @@ object NonMacroExample {
       job <- entity.fieldOfType[Job]("job")
     } yield Person(firstName, lastName, age, job)
   }
+}
+```
+
+The above is the same as: 
+
+```scala
+import com.ovoenergy.datastore4s._
+
+case class Person(firstName: String, lastName: String, age: Int, job: Job)
+case class Job(title: String, wage: BigDecimal)
+
+object MacroExample {
+  implicit val jobFormat = FieldFormat[Job]
+  implicit val personFormat = EntityFormat[Person, String]("person")(person => person.firstName + person.lastName)
 }
 ```
 

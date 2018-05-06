@@ -39,7 +39,7 @@ object ValueFormat {
       }
   }
 
-  implicit val intValueFormat: ValueFormat[Int] = formatFromFunctions[Int, Long](_.toInt)(_.toLong)
+  implicit val intValueFormat: ValueFormat[Int] = formatFrom[Int, Long](_.toInt)(_.toLong)
 
   implicit object DoubleValueFormat extends ValueFormat[Double] with DatastoreErrors {
     override def toValue(scalaValue: Double): DatastoreValue =
@@ -52,7 +52,7 @@ object ValueFormat {
       }
   }
 
-  implicit val floatValueFormat: ValueFormat[Float] = formatFromFunctions[Float, Double](_.toFloat)(_.toDouble)
+  implicit val floatValueFormat: ValueFormat[Float] = formatFrom[Float, Double](_.toFloat)(_.toDouble)
 
   implicit object BooleanValueFormat extends ValueFormat[Boolean] with DatastoreErrors {
     override def toValue(scalaValue: Boolean): DatastoreValue =
@@ -99,11 +99,11 @@ object ValueFormat {
   }
 
   // The following formats will have to be brought into implicit scope to be used
-  val byteArrayValueFormat: ValueFormat[Array[Byte]] = formatFromFunctions[Array[Byte], Blob](_.toByteArray)(Blob.copyFrom)
+  val byteArrayValueFormat: ValueFormat[Array[Byte]] = formatFrom[Array[Byte], Blob](_.toByteArray)(Blob.copyFrom)
 
-  val instantEpochMillisValueFormat: ValueFormat[Instant] = formatFromFunctions(Instant.ofEpochMilli)(_.toEpochMilli)
+  val instantEpochMillisValueFormat: ValueFormat[Instant] = formatFrom(Instant.ofEpochMilli)(_.toEpochMilli)
 
-  val bigDecimalDoubleValueFormat: ValueFormat[BigDecimal] = formatFromFunctions(BigDecimal.valueOf(_: Double))(_.doubleValue())
+  val bigDecimalDoubleValueFormat: ValueFormat[BigDecimal] = formatFrom(BigDecimal.valueOf(_: Double))(_.doubleValue())
 
   object BigDecimalStringValueFormat extends ValueFormat[BigDecimal] with DatastoreErrors {
     override def toValue(scalaValue: BigDecimal): DatastoreValue =

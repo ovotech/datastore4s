@@ -25,5 +25,3 @@ Environment variables are used to configure the datastore
 def dataStoreConfiguration: DataStoreConfiguration = 
   DatastoreOptions.newBuilder().set(/*options*/).build() 
 ```
-
-[BACK](../README.md)

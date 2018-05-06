@@ -49,6 +49,3 @@ Datastore operations can be executed using 4 different interpreting functions, e
 2. Asynchronous (Also require implicit `ExecutionContext`)
     - `runAsync` which will run the operation asynchronously and return `Future[Either[DatastoreError, A]]`
     - `runAsyncF` which will run the operation asynchronously and return `Future[A]`, flattening a `Left` into a `Failure`
-
-
-[BACK](../README.md)
