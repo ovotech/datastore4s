@@ -1,7 +1,9 @@
 package com.ovoenergy.datastore4s
 import java.io.{PrintStream, PrintWriter}
 
-sealed trait DatastoreError
+sealed trait DatastoreError {
+  def asException = DatastoreError.asException(this)
+}
 
 final case class DatastoreException(exception: Throwable) extends DatastoreError
 
@@ -11,7 +13,7 @@ final case class FieldError(fieldName: String, error: DatastoreError) extends Da
 
 final case class ComposedError(errors: Seq[DatastoreError]) extends DatastoreError
 
-object DatastoreError { // TODO custom flatmapping that will concat all errors together. Possibly a DatastoreResult? Kind of like Validation[A]. Need to be able to add all errors together or return (A,B)
+object DatastoreError { // TODO custom flatmapping that will concat all errors together. Possibly a DatastoreResult? Kind of like Validation[A]. Need to be able to add all errors together
   def missingField[A](fieldName: String, entity: Entity): Either[DatastoreError, A] =
     Left(DeserialisationError(s"Field $fieldName could not be found on entity $entity"))
 

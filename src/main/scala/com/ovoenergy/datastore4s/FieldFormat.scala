@@ -6,10 +6,13 @@ trait FieldFormat[A] {
 
   def toEntityField(fieldName: String, value: A): Field
 
+  // TODO rename these methods
   def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, A] =
     fromEntityFieldWithoutContext(fieldName, entity).left.map(DatastoreError.errorInField(fieldName))
 
-  private[datastore4s] def fromEntityFieldWithoutContext(fieldName: String, entity: Entity): Either[DatastoreError, A]
+  def fromEntityFieldWithoutContext(fieldName: String, entity: Entity): Either[DatastoreError, A]
+
+  def toValue[B](scalaValue: B)(implicit valueFormat: ValueFormat[B]): DatastoreValue = valueFormat.toValue(scalaValue)
 
 }
 
@@ -23,6 +26,7 @@ final case class Field private (values: Map[String, DatastoreValue]) {
 
 object Field {
   def apply(name: String, value: DatastoreValue): Field = new Field(Map(name -> value))
+  def apply(fields: (String, DatastoreValue)*): Field = new Field(fields.toMap)
 }
 
 object FieldFormat {
