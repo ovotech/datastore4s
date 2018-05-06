@@ -6,11 +6,10 @@ trait FieldFormat[A] {
 
   def toEntityField(fieldName: String, value: A): Field
 
-  // TODO rename these methods
-  def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, A] =
-    fromEntityFieldWithoutContext(fieldName, entity).left.map(DatastoreError.errorInField(fieldName))
+  def fromEntityFieldWithContext(fieldName: String, entity: Entity): Either[DatastoreError, A] =
+    fromEntityField(fieldName, entity).left.map(DatastoreError.errorInField(fieldName))
 
-  def fromEntityFieldWithoutContext(fieldName: String, entity: Entity): Either[DatastoreError, A]
+  def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, A]
 
   def toValue[B](scalaValue: B)(implicit valueFormat: ValueFormat[B]): DatastoreValue = valueFormat.toValue(scalaValue)
 
@@ -36,7 +35,7 @@ object FieldFormat {
       override def toEntityField(fieldName: String, value: A) =
         Field(fieldName, valueFormat.toValue(value))
 
-      override def fromEntityFieldWithoutContext(fieldName: String, entity: Entity): Either[DatastoreError, A] =
+      override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, A] =
         entity
           .field(fieldName)
           .map(valueFormat.fromValue)
@@ -52,10 +51,10 @@ object FieldFormat {
         case Right(r) => rightFormat.toEntityField(fieldName, r) + (s"$fieldName.$eitherField", StringValue("Right"))
       }
 
-      override def fromEntityFieldWithoutContext(fieldName: String, entity: Entity): Either[DatastoreError, Either[L, R]] =
+      override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, Either[L, R]] =
         entity.field(s"$fieldName.$eitherField") match {
-          case Some(StringValue("Left"))  => leftFormat.fromEntityField(fieldName, entity).map(Left(_))
-          case Some(StringValue("Right")) => rightFormat.fromEntityField(fieldName, entity).map(Right(_))
+          case Some(StringValue("Left"))  => leftFormat.fromEntityFieldWithContext(fieldName, entity).map(Left(_))
+          case Some(StringValue("Right")) => rightFormat.fromEntityFieldWithContext(fieldName, entity).map(Right(_))
           case Some(other)                => DatastoreError.error(s"Either field should be either 'Left' or 'Right' but was $other.")
           case None                       => DatastoreError.missingField(eitherField, entity)
         }
@@ -91,7 +90,7 @@ object FieldFormat {
       if (helper.isObject(subType)) {
         cq"""Right(${subType.name.toString}) => Right(${helper.singletonObject(subType)})"""
       } else {
-        cq"""Right(${subType.name.toString}) => FieldFormat[$subType].fromEntityField(fieldName, entity)"""
+        cq"""Right(${subType.name.toString}) => FieldFormat[$subType].fromEntityFieldWithContext(fieldName, entity)"""
       }
     }
 
@@ -103,7 +102,7 @@ object FieldFormat {
               case ..$toCases
             }
 
-            override def fromEntityFieldWithoutContext(fieldName: String, entity: Entity): Either[DatastoreError, $fieldType] = stringFormat.fromEntityField(fieldName + ".type", entity) match {
+            override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, $fieldType] = stringFormat.fromEntityFieldWithContext(fieldName + ".type", entity) match {
               case ..$fromCases
               case Right(other) => DatastoreError.error(s"Unknown subtype found: $$other")
               case Left(error) => Left(error)
@@ -131,7 +130,7 @@ object FieldFormat {
 
     val fieldFormats = fields.map { field =>
       val fieldName = field.asTerm.name
-      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature}]].fromEntityField(fieldName + "." + ${fieldName.toString}, entity)"""
+      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature}]].fromEntityFieldWithContext(fieldName + "." + ${fieldName.toString}, entity)"""
     }
 
     context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._
@@ -141,7 +140,7 @@ object FieldFormat {
               ${fieldExpressions.reduce(concatFieldExpressionsWithAdd(context)(_, _))}
             }
 
-            override def fromEntityFieldWithoutContext(fieldName: String, entity: Entity): Either[DatastoreError, $fieldType] = {
+            override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, $fieldType] = {
               for (
                 ..$fieldFormats
               ) yield $companion.apply(..$companionNamedArguments)

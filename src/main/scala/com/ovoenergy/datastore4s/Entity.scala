@@ -21,7 +21,7 @@ sealed trait Entity {
   def field(name: String): Option[DatastoreValue]
 
   def fieldOfType[A](name: String)(implicit fieldFormat: FieldFormat[A]): Either[DatastoreError, A] =
-    fieldFormat.fromEntityField(name, this)
+    fieldFormat.fromEntityFieldWithContext(name, this)
 
 }
 

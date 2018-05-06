@@ -210,7 +210,7 @@ object NonMacroExample {
         s"$fieldName.wage" -> toValue(value.wage)
       )
 
-    override def fromEntityFieldWithoutContext(fieldName: String, entity: Entity) = for {
+    override def fromEntityField(fieldName: String, entity: Entity) = for {
       title <- entity.fieldOfType[String](s"$fieldName.title")
       wage <- entity.fieldOfType[BigDecimal](s"$fieldName.wage")
     } yield Job(title, wage)
