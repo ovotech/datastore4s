@@ -13,6 +13,8 @@ trait ValueFormat[A] {
 
   def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, A]
 
+  def ignoreIndex: ValueFormat[A] = ValueFormat.ignoreIndex(this)
+
 }
 
 object ValueFormat {
@@ -176,6 +178,12 @@ object ValueFormat {
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, A] =
       format.fromValue(datastoreValue).flatMap(constructor)
+  }
+
+  def ignoreIndex[A](existingFormat: ValueFormat[A]): ValueFormat[A] = new ValueFormat[A] {
+    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, A] = existingFormat.fromValue(datastoreValue)
+
+    override def toValue(scalaValue: A): DatastoreValue = existingFormat.toValue(scalaValue).ignoreIndex
   }
 
 }

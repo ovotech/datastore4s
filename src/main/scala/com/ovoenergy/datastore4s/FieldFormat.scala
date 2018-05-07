@@ -13,6 +13,8 @@ trait FieldFormat[A] {
 
   def toValue[B](scalaValue: B)(implicit valueFormat: ValueFormat[B]): DatastoreValue = valueFormat.toValue(scalaValue)
 
+  def ignoreIndexes: FieldFormat[A] = FieldFormat.ignoreIndexes(this)
+
 }
 
 final case class Field private (values: Map[String, DatastoreValue]) {
@@ -20,7 +22,7 @@ final case class Field private (values: Map[String, DatastoreValue]) {
 
   def +(other: Field) = Field(other.values ++ values) // Composite field
 
-  def ignoreIndexes = Field(values.map { case (key, value) => (key, value.ignoreIndexes) })
+  def ignoreIndexes = Field(values.map { case (key, value) => (key, value.ignoreIndex) })
 }
 
 object Field {
@@ -59,6 +61,12 @@ object FieldFormat {
           case None                       => DatastoreError.missingField(eitherField, entity)
         }
     }
+
+  def ignoreIndexes[A](existingFormat: FieldFormat[A]): FieldFormat[A] = new FieldFormat[A] {
+    override def toEntityField(fieldName: String, value: A) = existingFormat.toEntityField(fieldName, value).ignoreIndexes
+
+    override def fromEntityField(fieldName: String, entity: Entity) = existingFormat.fromEntityField(fieldName, entity)
+  }
 
   import scala.language.experimental.macros
 

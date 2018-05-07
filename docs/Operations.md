@@ -12,7 +12,7 @@ any entities with the same keys exist. Returns `DatastoreOperation[Seq[Persisted
 5. `delete[E, K](key: K)` will delete the entity with the given key. Please note if no entity exists with the given key 
 a success will still be returned. Returns `DatastoreOperation[K]`.
 6. `deleteAll[E, K](keys: Seq[K])` will delete all the entities with the given keys. Please note if no entity exists with 
-any given key a success will still be returned. Returns `DatastoreOperation[Sqe[K]]`.
+any given key a success will still be returned. Returns `DatastoreOperation[Seq[K]]`.
 7. `findOne[E, K](key: K)` returns a `Option` of the entity with the given key. Returns `DatastoreOperation[Option[E]]`.
 
 ## Queries

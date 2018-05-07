@@ -35,7 +35,7 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
 
   "Field format generated from functions" should "wrap an existing format in constructor and extractor functions" in {
     case class SimpleWrapper(innerValue: String)
-    implicit val format = ValueFormat.formatFromFunctions(SimpleWrapper.apply)(_.innerValue)
+    implicit val format = ValueFormat.formatFrom(SimpleWrapper.apply)(_.innerValue)
     forallTestRoundTrip(Gen.alphaNumStr.map(SimpleWrapper(_)))
 
     testEntity(SimpleWrapper("hello")) { entity =>

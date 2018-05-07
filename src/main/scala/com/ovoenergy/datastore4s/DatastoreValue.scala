@@ -5,7 +5,7 @@ import com.google.cloud.datastore.{Blob, LatLng, Value, ValueBuilder}
 import com.google.cloud.{datastore => ds}
 
 sealed trait DatastoreValue {
-  def ignoreIndexes: DatastoreValue
+  def ignoreIndex: DatastoreValue
 }
 
 private[datastore4s] class WrappedValue(val dsValue: Value[_]) extends DatastoreValue {
@@ -21,7 +21,7 @@ private[datastore4s] class WrappedValue(val dsValue: Value[_]) extends Datastore
     case NullValue(_)      => "NullValue"
   }
 
-  override def ignoreIndexes =
+  override def ignoreIndex =
     new WrappedValue(
       dsValue.toBuilder
         .setExcludeFromIndexes(true)
