@@ -37,11 +37,11 @@ To use ancestors in keys and queries create an implicit `ToAncestor[A]` for your
 import com.ovoenergy.datastore4s._
 import com.google.cloud.datastore.Key
 
+case class Department(name: String)
+
 object AncestorExample extends DatastoreRepository {
-  case class Department(name: String)
-  
-  // Provide the name of the kind and a function A => String 
-  // (Or A => Long in the case of a LongAncestor)
+    
+  // Provide the name of the kind and a function A => String (Or A => Long in the case of a LongAncestor)
   implicit val departmentAncestor = toStringAncestor[Department]("Department")(_.name)
   
   case class CustomKey(name: String, department: Department)
