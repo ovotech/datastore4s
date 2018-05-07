@@ -30,8 +30,8 @@ implicit val customToKey = toKey[CustomKey]((value, keyFactory) => keyFactory.bu
 
 ## Ancestors
 
-To use ancestors in keys and queries create an implicit `ToAncestor[A]` for your types using the `toStringAncestor` or
-`toLongAncestor` function. For example:
+To use [ancestors](https://cloud.google.com/datastore/docs/concepts/entities#ancestor_paths) in keys and queries create 
+an implicit `ToAncestor[A]` for your types using the `toStringAncestor` or `toLongAncestor` function. For example:
 
 ```scala
 import com.ovoenergy.datastore4s._

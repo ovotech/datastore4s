@@ -6,7 +6,7 @@ configuration using one of the following methods:
 ## FromEnvironmentVariables
 If you implement the method using `override def dataStoreConfiguration = FromEnvironmentVariables` then the following 
 environment variables are used to configure the datastore:
- - `DATASTORE_PROJECT_ID`. The ID of the GCP project to connect to. 
+ - `DATASTORE_PROJECT_ID` - The ID of the GCP project to connect to. 
  - `DATASTORE_NAMESPACE` - An optional namespace to store your entities under.
  
 ## DatastoreConfiguration apply Method
@@ -14,7 +14,7 @@ You can use `DatastoreConfiguration(projectId)` or `DatastoreConfiguration(proje
 
 ## Using DatastoreOptions
  
-If you need more fine-grained control over your repository then you can create your own [DatastoreOptions](https://googlecloudplatform.github.io/google-cloud-java/0.46.0/apidocs/index.html) object which
+If you need more fine-grained control over your repository then you can create your own [DatastoreOptions](https://googlecloudplatform.github.io/google-cloud-java/0.46.0/apidocs/com/google/cloud/datastore/DatastoreOptions.html) object which
 can be implicitly converted into a `DatastoreConfiguration` e.g.
   
   ```scala
@@ -34,7 +34,8 @@ val dataStoreConfiguration: DatastoreConfiguration = DatastoreOptions.newBuilder
 ## Datastore Emulator
 
 For testing purposes it can be useful to use the [Datastore Emulator](https://cloud.google.com/datastore/docs/tools/datastore-emulator).
-There are a couple of ways to configure your repository to connect to the emulator.
+There are two ways to configure your repository to connect to the emulator, in both cases the credentials will be set to `NoCredentials`
+and retry settings will be disabled as per the [notes in the documentation](https://github.com/GoogleCloudPlatform/google-cloud-java/blob/master/TESTING.md#testing-code-that-uses-datastore).
 
 ### Explicitly
 
@@ -54,6 +55,4 @@ val testRepo = MyRepository(DatastoreConfiguration("my-test-project", emulatorHo
 ### Implicitly
 
 By using the environment variable `DATASTORE_EMULATOR_HOST` then any method of configuration will be automatically overridden
-to connect to the emulator instead.
-
-In both cases connecting to the emulator will also set the credentials to `NoCredentials` and disable retry settings.
+to connect to the emulator instead but keeping the other properties the same e.g. projectId.

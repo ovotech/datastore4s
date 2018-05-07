@@ -17,7 +17,7 @@ This property list will be checked at compile time to ensure:
 ## WARNINGS
 
 - If you exclude an index of a property you using for queries then your queries will not work.
-- You can only exclude indexes from top level properties, we aim to add more fine grained control in the future. For example:
+- You can only exclude/include indexes from top level properties, we aim to add more fine grained control in the future. For example:
 
 ```scala
 import com.ovoenergy.datastore4s.EntityFormat
