@@ -56,7 +56,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     }
   }
 
-  implicit val datastoreService = DatastoreService(DataStoreConfiguration("test-project", "test-namespace"))
+  implicit val datastoreService = DatastoreService(DatastoreConfiguration("test-project", "test-namespace"))
 
   feature("The EntityFormat macro") {
     scenario("Attempt to make an EntityFormat of a type that is not a case class or sealed trait") {

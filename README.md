@@ -28,7 +28,7 @@ object PersonRepository extends DatastoreRepository {
 
   implicit val personFormat = EntityFormat[Person, String]("person-kind")(p => p.firstName + p.lastName)
 
-  override def dataStoreConfiguration = DataStoreConfiguration("my-project", "my-namespace")
+  override def datastoreConfiguration = DatastoreConfiguration("my-project", "my-namespace")
     
   def storePerson(person: Person): Either[DatastoreError, Persisted[Person]] = run(put(person))
     

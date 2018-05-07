@@ -4,71 +4,46 @@ import java.io.{File, FileInputStream}
 
 import com.google.auth.Credentials
 import com.google.auth.oauth2.GoogleCredentials
-import com.google.cloud.NoCredentials
+import com.google.cloud.{NoCredentials, ServiceOptions}
 import com.google.cloud.datastore.{DatastoreOptions, Entity => DsEntity, ProjectionEntity => DsProjectionEntity, _}
 import com.google.cloud.datastore.Query.{newEntityQueryBuilder, newProjectionEntityQueryBuilder}
 
 import scala.util.{Failure, Success, Try}
-
-sealed trait DataStoreConfiguration
-
-final case class ManualDataStoreConfiguration(projectId: String, namespace: Option[String] = None) extends DataStoreConfiguration
-final case class EmulatorConfiguration(projectId: String, emulatorHost: String, namespace: Option[String]) extends DataStoreConfiguration
-final case class Options(datastoreOptions: DatastoreOptions) extends DataStoreConfiguration
-final case object FromEnvironmentVariables extends DataStoreConfiguration
-
-object DataStoreConfiguration {
-  def apply(datastoreOptions: DatastoreOptions): DataStoreConfiguration = Options(datastoreOptions)
-  def apply(projectId: String): DataStoreConfiguration = ManualDataStoreConfiguration(projectId)
-  def apply(projectId: String, namespace: String): DataStoreConfiguration = ManualDataStoreConfiguration(projectId, Some(namespace))
-  def apply(projectId: String, emulatorHost: String, namespace: Option[String]): DataStoreConfiguration =
-    EmulatorConfiguration(projectId, emulatorHost, namespace)
-
-  private def createCredentials(credentialsFile: File): Try[Credentials] =
-    Try(new FileInputStream(credentialsFile)).flatMap { is =>
-      for {
-        credentials <- Try(GoogleCredentials.fromStream(is))
-        _ <- Try(is.close())
-      } yield credentials
-    }
-  import scala.language.implicitConversions
-  implicit def fromOptions(datastoreOptions: DatastoreOptions): DataStoreConfiguration = DataStoreConfiguration(datastoreOptions)
-}
 
 final case class Persisted[A](inputObject: A, entity: Entity)
 
 object DatastoreService extends DatastoreErrors {
 
   /**
-    * When the production code runs in an emulated environment then the host and NoCredentials is handled internally
-    * to allow connecting to the emulator without credentials being verified. This is hidden from the production repository
-    * and doesn't forces the test environment to override the DataStoreConfiguration
+    * When the production code runs in an emulated environment then the host, credentials and retry options are handled internally
+    * to allow connecting to the emulator without credentials being verified.
     *
     * https://github.com/GoogleCloudPlatform/google-cloud-java/blob/master/TESTING.md#testing-code-that-uses-datastore
     */
-  private def handleEmulatorHost(builder: DatastoreOptions.Builder): DatastoreOptions.Builder =
-    sys.env
-      .get("DATASTORE_EMULATOR_HOST")
-      .fold(builder)(host => builder.setHost(host).setCredentials(NoCredentials.getInstance()))
+  private def handleEmulatorHost(builder: DatastoreOptions.Builder)(emulatorHost: String): DatastoreOptions.Builder =
+    builder.setHost(emulatorHost).setCredentials(NoCredentials.getInstance()).setRetrySettings(ServiceOptions.getNoRetrySettings())
 
-  def apply(dataStoreConfiguration: DataStoreConfiguration): DatastoreService = dataStoreConfiguration match {
-    case ManualDataStoreConfiguration(projectId, namespace) =>
+  def apply(dataStoreConfiguration: DatastoreConfiguration): DatastoreService = dataStoreConfiguration match {
+    case ManualDatastoreConfiguration(projectId, namespace) =>
       val withProjectId = DatastoreOptions.newBuilder().setProjectId(projectId)
       val withNamespace = namespace.fold(withProjectId)(ns => withProjectId.setNamespace(ns))
-      new WrappedDatastore(handleEmulatorHost(withNamespace).build().getService)
+      val withEmulator = emulatorVariable().fold(withNamespace)(handleEmulatorHost(withNamespace))
+      new WrappedDatastore(withEmulator.build().getService)
     case EmulatorConfiguration(projectId, host, namespace) =>
-      val withProjectId = DatastoreOptions.newBuilder().setProjectId(projectId).setHost(host).setCredentials(NoCredentials.getInstance())
+      val withProjectId = DatastoreOptions.newBuilder().setProjectId(projectId)
       val withNamespace = namespace.fold(withProjectId)(ns => withProjectId.setNamespace(ns))
-      new WrappedDatastore(withNamespace.build().getService)
+      new WrappedDatastore(handleEmulatorHost(withNamespace)(host).build().getService)
     case Options(options) => new WrappedDatastore(options.getService)
     case FromEnvironmentVariables =>
       val defaultOptionsBuilder = DatastoreOptions.getDefaultInstance().toBuilder
-      val withEmulator = handleEmulatorHost(defaultOptionsBuilder)
+      val withEmulator = emulatorVariable().fold(defaultOptionsBuilder)(handleEmulatorHost(defaultOptionsBuilder))
       val withNamespace = sys.env
         .get("DATASTORE_NAMESPACE")
         .fold(withEmulator)(ns => withEmulator.setNamespace(ns))
       new WrappedDatastore(withNamespace.build().getService)
   }
+
+  private def emulatorVariable() = sys.env.get("DATASTORE_EMULATOR_HOST")
 
   def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Option[E]] =
     DatastoreOperation { datastoreService =>

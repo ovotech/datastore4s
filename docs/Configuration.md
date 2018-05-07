@@ -1,27 +1,59 @@
 # Configuration
  
-To configure your `DatastoreRepository` you must override the `dataStoreConfiguration` function. You can provide datastore configuration using one of the following methods:
- 
- ## ManualDataStoreConfiguration
-  - `projectId` - The ID of the GCP project to connect to.
-  - `namespace` - An optional namespace to store your entities under.
-  - Environment variable `DATASTORE_EMULATOR_HOST` - If it is provided then the datastore credential is set to NoCredentials to allow to connect to emulator without checking credentials.
-  
- ## EmulatorConfiguration
- - `projectId` - The ID of the GCP project to connect to.
- - `namespace` - An optional namespace to store your entities under.
- - `emulatorHost` - If you are using the datastore emulator, this property is needed.
+To configure your `DatastoreRepository` you must override the `dataStoreConfiguration` function. You can provide datastore 
+configuration using one of the following methods:
 
 ## FromEnvironmentVariables
-Environment variables are used to configure the datastore
+If you implement the method using `override def dataStoreConfiguration = FromEnvironmentVariables` then the following 
+environment variables are used to configure the datastore:
  - `DATASTORE_PROJECT_ID`. The ID of the GCP project to connect to. 
  - `DATASTORE_NAMESPACE` - An optional namespace to store your entities under.
- - `DATASTORE_EMULATOR_HOST` - Datastore emulator host to connect to. If it is provided then the datastore credential is set to NoCredentials to allow to connect to emulator without checking credentials.
  
- If you need more fine grained control than available here then you can create your own `DatastoreOptions` object which
- can be implicitly converted into a `DatastoreConfiguration` e.g.
+## DatastoreConfiguration apply Method
+You can use `DatastoreConfiguration(projectId)` or `DatastoreConfiguration(projectId, namespace)` to configure your repository.
+
+## Using DatastoreOptions
  
- ```scala
-def dataStoreConfiguration: DataStoreConfiguration = 
-  DatastoreOptions.newBuilder().set(/*options*/).build() 
+If you need more fine-grained control over your repository then you can create your own [DatastoreOptions](https://googlecloudplatform.github.io/google-cloud-java/0.46.0/apidocs/index.html) object which
+can be implicitly converted into a `DatastoreConfiguration` e.g.
+  
+  ```scala
+import com.ovoenergy.datastore4s.DatastoreConfiguration
+import com.google.cloud.datastore.DatastoreOptions
+import com.google.auth.oauth2.GoogleCredentials
+import com.google.api.core.CurrentMillisClock
+import java.io.FileInputStream
+
+val dataStoreConfiguration: DatastoreConfiguration = DatastoreOptions.newBuilder()
+  .setProjectId("my-project").setNamespace("my-namespace")
+  .setClock(CurrentMillisClock.getDefaultClock())
+  .setCredentials(GoogleCredentials.fromStream(new FileInputStream("/secrets/gcp-creds.json")))
+  .build()
+ ```
+ 
+## Datastore Emulator
+
+For testing purposes it can be useful to use the [Datastore Emulator](https://cloud.google.com/datastore/docs/tools/datastore-emulator).
+There are a couple of ways to configure your repository to connect to the emulator.
+
+### Explicitly
+
+You can have the configuration to your repository be injected e.g.
+
+```scala
+case class MyRepository(dataStoreConfiguration: DatastoreConfiguration) extends DatastoreRepository
+
+// In Production
+val repo = MyRepository(DatastoreConfiguration("my-project", "my-namespace"))
+
+// In Test code
+val emulatorHost = "localhost:1234"
+val testRepo = MyRepository(DatastoreConfiguration("my-test-project", emulatorHost, Some("my-test-namespace")))
 ```
+
+### Implicitly
+
+By using the environment variable `DATASTORE_EMULATOR_HOST` then any method of configuration will be automatically overridden
+to connect to the emulator instead.
+
+In both cases connecting to the emulator will also set the credentials to `NoCredentials` and disable retry settings.

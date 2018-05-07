@@ -8,7 +8,7 @@ class DatastoreConfigurationSpec extends FlatSpec with Matchers {
   "The datastore service" should "create a datastore service with the manually passed options" in {
     val projectId = "test-project-id"
     val namespace = "test-namespace"
-    val configuration = DataStoreConfiguration(projectId, namespace)
+    val configuration = DatastoreConfiguration(projectId, namespace)
     val options = DatastoreService(configuration).options
     options.getProjectId shouldBe projectId
     options.getNamespace shouldBe namespace
@@ -16,7 +16,7 @@ class DatastoreConfigurationSpec extends FlatSpec with Matchers {
 
   it should "create a datastore service with the manually passed options with default namespace" in {
     val projectId = "test-project-id"
-    val options = DatastoreService(DataStoreConfiguration(projectId)).options
+    val options = DatastoreService(DatastoreConfiguration(projectId)).options
     options.getProjectId shouldBe projectId
     options.getNamespace shouldBe ""
   }
@@ -25,7 +25,7 @@ class DatastoreConfigurationSpec extends FlatSpec with Matchers {
     val projectId = "test-project-id"
     val namespace = "test-namespace"
     val host = "https://emulatorHost"
-    val configuration = DataStoreConfiguration(projectId, host, Some(namespace))
+    val configuration = DatastoreConfiguration(projectId, host, Some(namespace))
     val options = DatastoreService(configuration).options
     options.getProjectId shouldBe projectId
     options.getNamespace shouldBe namespace
@@ -36,7 +36,7 @@ class DatastoreConfigurationSpec extends FlatSpec with Matchers {
   it should "create a datastore service with the manually passed options with default namespace and emulator host" in {
     val projectId = "test-project-id"
     val host = "https://emulatorHost"
-    val configuration = DataStoreConfiguration(projectId, host, None)
+    val configuration = DatastoreConfiguration(projectId, host, None)
     val options = DatastoreService(configuration).options
     options.getProjectId shouldBe projectId
     options.getNamespace shouldBe ""

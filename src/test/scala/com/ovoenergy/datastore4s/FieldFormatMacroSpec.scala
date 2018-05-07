@@ -8,7 +8,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class FieldFormatMacroSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks {
 
-  implicit val datastoreService = DatastoreService(DataStoreConfiguration("test-project", "test-namespace"))
+  implicit val datastoreService = DatastoreService(DatastoreConfiguration("test-project", "test-namespace"))
 
   case class EntityWithNestedType(id: String, nestedType: SomeNestedType)
 

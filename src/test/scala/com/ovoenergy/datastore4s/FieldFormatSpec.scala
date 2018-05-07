@@ -100,7 +100,7 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     assertion(createEntityWithField(fieldFormat, value))
   }
 
-  private val datastoreService = DatastoreService(DataStoreConfiguration("test-project", "test-namespace"))
+  private val datastoreService = DatastoreService(DatastoreConfiguration("test-project", "test-namespace"))
 
   private def createEntityWithField[A](fieldFormat: FieldFormat[A], value: A) = {
     val key = datastoreService.createKey("test-key", Kind("test-kind"))

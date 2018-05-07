@@ -36,3 +36,4 @@ EntityFormat.onlyIndex[Entity, String]("property.field1")("kind")(_.key)
 ```
 
 // TODO Unsafe Index functions
+// TODO Field level indexes

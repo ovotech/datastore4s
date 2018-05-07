@@ -9,9 +9,9 @@ trait DefaultDatastoreRepository extends DatastoreRepository with DefaultFormats
 
 trait DatastoreRepository {
 
-  def dataStoreConfiguration: DataStoreConfiguration
+  def datastoreConfiguration: DatastoreConfiguration
 
-  private lazy implicit val datastoreService: DatastoreService = DatastoreService(dataStoreConfiguration)
+  private lazy implicit val datastoreService: DatastoreService = DatastoreService(datastoreConfiguration)
 
   @deprecated("Use formatFrom instead", "0.1.5")
   def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: ValueFormat[B]): ValueFormat[A] =
