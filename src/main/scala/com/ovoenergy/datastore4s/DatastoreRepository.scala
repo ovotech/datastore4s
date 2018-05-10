@@ -9,17 +9,25 @@ trait DefaultDatastoreRepository extends DatastoreRepository with DefaultFormats
 
 trait DatastoreRepository {
 
-  def dataStoreConfiguration: DataStoreConfiguration
+  def datastoreConfiguration: DatastoreConfiguration
 
-  private lazy implicit val datastoreService: DatastoreService = DatastoreService(dataStoreConfiguration)
+  private lazy implicit val datastoreService: DatastoreService = DatastoreService(datastoreConfiguration)
 
+  @deprecated("Use formatFrom instead", "0.1.5")
   def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit existingFormat: ValueFormat[B]): ValueFormat[A] =
     ValueFormat.formatFromFunctions(constructor)(extractor)
 
+  def formatFrom[A, B](constructor: B => A)(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
+    ValueFormat.formatFrom(constructor)(extractor)
+
+  @deprecated("Use failableFormatFrom instead", "0.1.5")
   def formatFromFunctionsEither[A, B](
     constructor: B => Either[String, A]
   )(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
     ValueFormat.formatFromFunctionsEither(constructor)(extractor)
+
+  def failableFormatFrom[A, B](constructor: B => Either[String, A])(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
+    ValueFormat.failableFormatFrom(constructor)(extractor)
 
   def toStringAncestor[A](kind: String)(f: A => String): ToAncestor[A] =
     ToAncestor.toStringAncestor(kind)(f)

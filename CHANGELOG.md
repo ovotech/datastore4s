@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Deprecated
+- `formatFromFunctions` in favor of `formatFrom`
+- `formatFromFunctionsEither` in favor of `failableFormatFrom`
+
+### Breaking Changes
+- Rename `DataStoreConfiguration` to `DatastoreConfiguration` for consistency, this includes the `datastoreConfiguration`
+function on `DatastoreRepository`.
+
 ## 0.1.4 2018-04-27 (First public release)
 ### Added
 - Format for `Set[A]`

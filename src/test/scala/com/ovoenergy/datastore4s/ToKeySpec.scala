@@ -20,7 +20,7 @@ class ToKeySpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matcher
     }
   }
 
-  private val datastoreService = DatastoreService(DataStoreConfiguration("test-project", "test-namespace"))
+  private val datastoreService = DatastoreService(DatastoreConfiguration("test-project", "test-namespace"))
 
   def testKey[A](asKey: ToKey[A])(value: A)(assertion: Key => Unit) = {
     assertion(createKey(asKey, value))

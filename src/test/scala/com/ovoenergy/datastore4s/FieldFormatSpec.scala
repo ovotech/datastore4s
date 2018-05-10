@@ -35,7 +35,7 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
 
   "Field format generated from functions" should "wrap an existing format in constructor and extractor functions" in {
     case class SimpleWrapper(innerValue: String)
-    implicit val format = ValueFormat.formatFromFunctions(SimpleWrapper.apply)(_.innerValue)
+    implicit val format = ValueFormat.formatFrom(SimpleWrapper.apply)(_.innerValue)
     forallTestRoundTrip(Gen.alphaNumStr.map(SimpleWrapper(_)))
 
     testEntity(SimpleWrapper("hello")) { entity =>
@@ -91,7 +91,7 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
   private def forallTestRoundTrip[A](generator: Gen[A])(implicit fieldFormat: FieldFormat[A]) = {
     forAll(generator) { value =>
       val entity = createEntityWithField(fieldFormat, value)
-      val roundTripped = fieldFormat.fromEntityField(fieldName, entity)
+      val roundTripped = fieldFormat.fromEntityFieldWithContext(fieldName, entity)
       roundTripped shouldBe Right(value)
     }
   }
@@ -100,7 +100,7 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
     assertion(createEntityWithField(fieldFormat, value))
   }
 
-  private val datastoreService = DatastoreService(DataStoreConfiguration("test-project", "test-namespace"))
+  private val datastoreService = DatastoreService(DatastoreConfiguration("test-project", "test-namespace"))
 
   private def createEntityWithField[A](fieldFormat: FieldFormat[A], value: A) = {
     val key = datastoreService.createKey("test-key", Kind("test-kind"))

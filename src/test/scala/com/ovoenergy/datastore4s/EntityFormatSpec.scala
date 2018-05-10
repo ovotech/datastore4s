@@ -56,7 +56,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
     }
   }
 
-  implicit val datastoreService = DatastoreService(DataStoreConfiguration("test-project", "test-namespace"))
+  implicit val datastoreService = DatastoreService(DatastoreConfiguration("test-project", "test-namespace"))
 
   feature("The EntityFormat macro") {
     scenario("Attempt to make an EntityFormat of a type that is not a case class or sealed trait") {
@@ -125,7 +125,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
 
     scenario("A case class that uses a non string or numeric key") {
       implicit val idAsKey = IdToKey
-      implicit val parentFormat = ValueFormat.formatFromFunctions(Parent.apply)(_.name)
+      implicit val parentFormat = ValueFormat.formatFrom(Parent.apply)(_.name)
       implicit val idFieldFormat = FieldFormat[Id]
       val complexEntityFormat = EntityFormat[ComplexKeyObject, Id]("complex-kind")(_.id)
 

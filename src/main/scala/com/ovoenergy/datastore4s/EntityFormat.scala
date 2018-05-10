@@ -192,7 +192,7 @@ object FromEntity {
 
           new FromEntity[$entityType] {
             private val stringFormat = implicitly[FieldFormat[String]]
-            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = stringFormat.fromEntityField("type", entity) match {
+            override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = stringFormat.fromEntityFieldWithContext("type", entity) match {
               case ..$cases
               case Right(other) => DatastoreError.error(s"Unknown subtype found: $$other")
               case Left(error) => Left(error)
@@ -211,7 +211,7 @@ object FromEntity {
 
     val fieldFormats = fields.map { field =>
       val fieldName = field.asTerm.name
-      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature}]].fromEntityField(${fieldName.toString}, entity)"""
+      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature}]].fromEntityFieldWithContext(${fieldName.toString}, entity)"""
     }
 
     context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._

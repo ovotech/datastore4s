@@ -13,6 +13,8 @@ trait ValueFormat[A] {
 
   def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, A]
 
+  def ignoreIndex: ValueFormat[A] = ValueFormat.ignoreIndex(this)
+
 }
 
 object ValueFormat {
@@ -39,7 +41,7 @@ object ValueFormat {
       }
   }
 
-  implicit val intValueFormat: ValueFormat[Int] = formatFromFunctions[Int, Long](_.toInt)(_.toLong)
+  implicit val intValueFormat: ValueFormat[Int] = formatFrom[Int, Long](_.toInt)(_.toLong)
 
   implicit object DoubleValueFormat extends ValueFormat[Double] with DatastoreErrors {
     override def toValue(scalaValue: Double): DatastoreValue =
@@ -52,7 +54,7 @@ object ValueFormat {
       }
   }
 
-  implicit val floatValueFormat: ValueFormat[Float] = formatFromFunctions[Float, Double](_.toFloat)(_.toDouble)
+  implicit val floatValueFormat: ValueFormat[Float] = formatFrom[Float, Double](_.toFloat)(_.toDouble)
 
   implicit object BooleanValueFormat extends ValueFormat[Boolean] with DatastoreErrors {
     override def toValue(scalaValue: Boolean): DatastoreValue =
@@ -99,11 +101,11 @@ object ValueFormat {
   }
 
   // The following formats will have to be brought into implicit scope to be used
-  val byteArrayValueFormat: ValueFormat[Array[Byte]] = formatFromFunctions[Array[Byte], Blob](_.toByteArray)(Blob.copyFrom)
+  val byteArrayValueFormat: ValueFormat[Array[Byte]] = formatFrom[Array[Byte], Blob](_.toByteArray)(Blob.copyFrom)
 
-  val instantEpochMillisValueFormat: ValueFormat[Instant] = formatFromFunctions(Instant.ofEpochMilli)(_.toEpochMilli)
+  val instantEpochMillisValueFormat: ValueFormat[Instant] = formatFrom(Instant.ofEpochMilli)(_.toEpochMilli)
 
-  val bigDecimalDoubleValueFormat: ValueFormat[BigDecimal] = formatFromFunctions(BigDecimal.valueOf(_: Double))(_.doubleValue())
+  val bigDecimalDoubleValueFormat: ValueFormat[BigDecimal] = formatFrom(BigDecimal.valueOf(_: Double))(_.doubleValue())
 
   object BigDecimalStringValueFormat extends ValueFormat[BigDecimal] with DatastoreErrors {
     override def toValue(scalaValue: BigDecimal): DatastoreValue =
@@ -147,14 +149,21 @@ object ValueFormat {
         }
     }
 
-  implicit def setValueFormat[A](implicit seqFormat: ValueFormat[Seq[A]]) = formatFromFunctions[Set[A], Seq[A]](_.toSet)(_.toList)
+  implicit def setValueFormat[A](implicit seqFormat: ValueFormat[Seq[A]]) = formatFrom[Set[A], Seq[A]](_.toSet)(_.toList)
 
+  @deprecated("Use formatFrom instead", "0.1.5")
   def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
+    formatFrom(constructor)(extractor)
+
+  def formatFrom[A, B](constructor: B => A)(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
     formatFromFunctionsWithError(constructor andThen (a => Right(a)))(extractor)
 
-  def formatFromFunctionsEither[A, B](
-    constructor: B => Either[String, A]
-  )(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] = {
+  @deprecated("Use failableFormatFrom instead", "0.1.5")
+  def formatFromFunctionsEither[A, B](constructor: B => Either[String, A])(extractor: A => B)(
+    implicit format: ValueFormat[B]
+  ): ValueFormat[A] = failableFormatFrom(constructor)(extractor)
+
+  def failableFormatFrom[A, B](constructor: B => Either[String, A])(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] = {
     val newConstructor = constructor andThen {
       case Left(error) => DatastoreError.error(error)
       case Right(r)    => Right(r)
@@ -169,6 +178,12 @@ object ValueFormat {
 
     override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, A] =
       format.fromValue(datastoreValue).flatMap(constructor)
+  }
+
+  def ignoreIndex[A](existingFormat: ValueFormat[A]): ValueFormat[A] = new ValueFormat[A] {
+    override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, A] = existingFormat.fromValue(datastoreValue)
+
+    override def toValue(scalaValue: A): DatastoreValue = existingFormat.toValue(scalaValue).ignoreIndex
   }
 
 }
