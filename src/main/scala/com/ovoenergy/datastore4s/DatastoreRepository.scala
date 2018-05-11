@@ -1,7 +1,5 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.Key
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -35,31 +33,43 @@ trait DatastoreRepository {
   def toLongAncestor[A](kind: String)(f: A => Long): ToAncestor[A] =
     ToAncestor.toLongAncestor(kind)(f)
 
-  def toKey[A](toKey: (A, KeyFactory) => Key): ToKey[A] = (a, k) => toKey(a, k)
+  def toNamedKey[A](f: A => NamedKey): ToNamedKey[A] = new ToNamedKey[A] {
+    override def toKey(value: A) = f(value)
+  }
 
-  def put[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
+  def toIdKey[A](f: A => IdKey): ToIdKey[A] = new ToIdKey[A] {
+    override def toKey(value: A) = f(value)
+  }
+
+  def put[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K, _]): DatastoreOperation[Persisted[E]] =
     DatastoreService.put(entity)
 
-  def putAll[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+  def putAll[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K, _]): DatastoreOperation[Seq[Persisted[E]]] =
     DatastoreService.putAll(entities)
 
-  def save[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
+  def save[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K, _]): DatastoreOperation[Persisted[E]] =
     DatastoreService.save(entity)
 
-  def saveAll[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+  def saveAll[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K, _]): DatastoreOperation[Seq[Persisted[E]]] =
     DatastoreService.saveAll(entities)
 
-  def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
+  def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K, _]): DatastoreOperation[K] =
     DatastoreService.delete(key)
 
-  def deleteAll[E, K](keys: Seq[K])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[K]] =
+  def deleteAll[E, K](keys: Seq[K])(implicit format: EntityFormat[E, K], toKey: ToKey[K, _]): DatastoreOperation[Seq[K]] =
     DatastoreService.deleteAll(keys)
 
   def list[E]()(implicit format: EntityFormat[E, _]): Query[E] =
     DatastoreService.list
 
-  def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Option[E]] =
+  def findOne[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K, _]): DatastoreOperation[Option[E]] =
     DatastoreService.findOne(key)
+
+  def findOneByName[E, K](name: String)(implicit format: EntityFormat[E, K], toKey: ToNamedKey[K]): DatastoreOperation[Option[E]] =
+    DatastoreService.findOneByName(name)
+
+  def findOneById[E, K](id: Long)(implicit format: EntityFormat[E, K], toKey: ToIdKey[K]): DatastoreOperation[Option[E]] =
+    DatastoreService.findOneById(id)
 
   def projectInto[E, A](firstMapping: (String, String), remainingMappings: (String, String)*)(implicit format: EntityFormat[E, _],
                                                                                               fromEntity: FromEntity[A]): Query[A] =

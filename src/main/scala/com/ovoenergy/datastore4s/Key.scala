@@ -1,51 +1,40 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{Key, PathElement}
-
-trait ToKey[A] {
-  def toKey(value: A, keyFactory: KeyFactory): Key
+trait ToKey[A, K <: Key] {
+  def toKey(value: A): K
 }
+
+trait ToNamedKey[A] extends ToKey[A, NamedKey]
+trait ToIdKey[A] extends ToKey[A, IdKey]
 
 object ToKey {
 
-  implicit object StringToKey extends ToKey[String] {
-    override def toKey(value: String, keyFactory: KeyFactory): Key =
-      keyFactory.buildWithName(value)
+  implicit object StringToKey extends ToNamedKey[String] {
+    override def toKey(value: String) = NamedKey(value)
   }
 
   type JavaLong = java.lang.Long
 
-  implicit object LongToKey extends ToKey[JavaLong] {
-    override def toKey(value: JavaLong, keyFactory: KeyFactory): Key =
-      keyFactory.buildWithId(value)
+  implicit object LongToKey extends ToIdKey[JavaLong] {
+    override def toKey(value: JavaLong) = IdKey(value)
   }
 
 }
 
-sealed trait KeyFactory {
+sealed trait Key
 
-  def addAncestor[A](value: A)(implicit toAncestor: ToAncestor[A]): KeyFactory
-
-  def buildWithName(name: String): Key
-
-  def buildWithId(id: Long): Key
-
+case class NamedKey(name: String, ancestor: Option[Ancestor] = None) extends Key
+object NamedKey {
+  def apply[A](name: String, ancestor: A)(implicit toAncestor: ToAncestor[A]): NamedKey =
+    NamedKey(name, Some(toAncestor.toAncestor(ancestor)))
 }
 
-private[datastore4s] class KeyFactoryFacade(private val factory: com.google.cloud.datastore.KeyFactory) extends KeyFactory {
-
-  override def buildWithName(name: String): Key = factory.newKey(name)
-
-  override def buildWithId(id: Long): Key = factory.newKey(id)
-
-  override def addAncestor[A](value: A)(implicit toAncestor: ToAncestor[A]): KeyFactory =
-    toAncestor.toAncestor(value) match {
-      case StringAncestor(kind, name) =>
-        new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.name, name)))
-      case LongAncestor(kind, id) =>
-        new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.name, id)))
-    }
+case class IdKey(id: Long, ancestor: Option[Ancestor] = None) extends Key
+object IdKey {
+  def apply[A](id: Long, ancestor: A)(implicit toAncestor: ToAncestor[A]): IdKey =
+    IdKey(id, Some(toAncestor.toAncestor(ancestor)))
 }
+
 
 sealed trait ToAncestor[A] {
   def toAncestor(value: A): Ancestor

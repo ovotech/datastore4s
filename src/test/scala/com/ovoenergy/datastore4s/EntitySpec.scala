@@ -1,12 +1,12 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{FullEntity, Key}
+import com.google.cloud.datastore.{FullEntity, Key => DsKey}
 import org.scalatest.Matchers
 import org.scalatest.FlatSpec
 
 class EntitySpec extends FlatSpec with Matchers {
 
-  private val testKey = Key.newBuilder("test-project", "test-namespace", "test-id").build()
+  private val testKey = DsKey.newBuilder("test-project", "test-namespace", "test-id").build()
   private val fieldName = "FIELD_NAME"
   private val newFieldName = "NEW_FIELD_NAME"
   private val fieldValue = "test-value"
