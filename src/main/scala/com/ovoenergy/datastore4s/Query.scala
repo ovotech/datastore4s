@@ -20,7 +20,7 @@ sealed trait Query[E] {
 
   def orderBy(property: String, direction: Direction): Query[E] = this
 
-  def limit(limit: Int): Query[E] = this
+  def limit(limit: Int): Query[E]
 
   def stream(): DatastoreOperation[Stream[Either[DatastoreError, E]]]
 
@@ -81,6 +81,8 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](val queryBuil
     }
     new DatastoreQuery(queryBuilderSupplier, newFilter +: filters, entityFunction)
   }
+
+  override def limit(limit: Int): Query[E] = new DatastoreQuery(() => queryBuilderSupplier().setLimit(limit), filters, entityFunction)
 
   override def stream() = DatastoreOperation { datastoreService =>
     try {
