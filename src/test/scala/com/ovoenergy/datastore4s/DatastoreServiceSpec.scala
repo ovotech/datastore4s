@@ -35,7 +35,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     when(mockDatastoreService.find(testKey)).thenReturn(Failure(error))
 
     val result = runOp(DatastoreService.findOne[Object, String](entityKey))
-    result shouldBe Left(new DatastoreException(error))
+    result shouldBe Left(DatastoreException(error))
   }
 
   it should "return a None if nothing is returned from a find" in {
@@ -57,22 +57,22 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
   it should "return an error if an entity is returned but cannot be deserialised" in {
     when(mockDatastoreService.find(testKey)).thenReturn(Success(Some(mockEntity)))
 
-    val error = new DeserialisationError("failed")
+    val error =  DeserialisationError("failed")
     when(mockEntityFormat.fromEntity(mockEntity)).thenReturn(Left(error))
 
     val result = runOp(DatastoreService.findOne[Object, String](entityKey))
     result shouldBe Left(error)
   }
 
-  it should "return and error if an exception is thrown trying to delete an entity" in {
+  it should "return and error if an exception is thrown trying to delete an entity by key" in {
     val error = new Exception("error")
     when(mockDatastoreService.delete(testKey)).thenReturn(Some(error))
 
     val result = runOp(DatastoreService.delete[Object, String](entityKey))
-    result shouldBe Left(new DatastoreException(error))
+    result shouldBe Left( DatastoreException(error))
   }
 
-  it should "return the key if a delete call is successful" in {
+  it should "return the key if a delete by key call is successful" in {
     when(mockDatastoreService.delete(testKey)).thenReturn(None)
 
     val result = runOp(DatastoreService.delete[Object, String](entityKey))
@@ -84,13 +84,43 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     when(mockDatastoreService.deleteAll(Seq(testKey))).thenReturn(Some(error))
 
     val result = runOp(DatastoreService.deleteAll[Object, String](Seq(entityKey)))
-    result shouldBe Left(new DatastoreException(error))
+    result shouldBe Left(DatastoreException(error))
+  }
+
+  it should "return the key if a deleteAll by key call is successful" in {
+    when(mockDatastoreService.deleteAll(Seq(testKey))).thenReturn(None)
+
+    val result = runOp(DatastoreService.deleteAll[Object, String](Seq(entityKey)))
+    result shouldBe Right(Seq(entityKey))
+  }
+
+  it should "return and error if an exception is thrown trying to delete an entity" in {
+    val error = new Exception("error")
+    when(mockDatastoreService.delete(testKey)).thenReturn(Some(error))
+
+    val result = runOp(DatastoreService.deleteEntity[Object, String](mockEntityObject))
+    result shouldBe Left( DatastoreException(error))
+  }
+
+  it should "return the key if a delete call is successful" in {
+    when(mockDatastoreService.delete(testKey)).thenReturn(None)
+
+    val result = runOp(DatastoreService.deleteEntity[Object, String](mockEntityObject))
+    result shouldBe Right(entityKey)
+  }
+
+  it should "return and error if an exception is thrown trying to deleteAll entities in an entity list" in {
+    val error = new Exception("error")
+    when(mockDatastoreService.deleteAll(Seq(testKey))).thenReturn(Some(error))
+
+    val result = runOp(DatastoreService.deleteAllEntities[Object, String](Seq(mockEntityObject)))
+    result shouldBe Left(DatastoreException(error))
   }
 
   it should "return the key if a deleteAll call is successful" in {
     when(mockDatastoreService.deleteAll(Seq(testKey))).thenReturn(None)
 
-    val result = runOp(DatastoreService.deleteAll[Object, String](Seq(entityKey)))
+    val result = runOp(DatastoreService.deleteAllEntities[Object, String](Seq(mockEntityObject)))
     result shouldBe Right(Seq(entityKey))
   }
 
@@ -100,7 +130,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     when(mockDatastoreService.put(mockEntity)).thenReturn(Failure(error))
 
     val result = runOp(DatastoreService.put(mockEntityObject))
-    result shouldBe Left(new DatastoreException(error))
+    result shouldBe Left(DatastoreException(error))
   }
 
   it should "return a wrapped entity if a put is successful" in {
@@ -116,7 +146,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     when(mockDatastoreService.save(mockEntity)).thenReturn(Failure(error))
 
     val result = runOp(DatastoreService.save(mockEntityObject))
-    result shouldBe Left(new DatastoreException(error))
+    result shouldBe Left(DatastoreException(error))
   }
 
   it should "return a wrapped entity if a save is successful" in {
@@ -132,7 +162,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     when(mockDatastoreService.putAll(Seq(mockEntity))).thenReturn(Failure(error))
 
     val result = runOp(DatastoreService.putAll(Seq(mockEntityObject)))
-    result shouldBe Left(new DatastoreException(error))
+    result shouldBe Left(DatastoreException(error))
   }
 
   it should "return a wrapped entity if a putAll is successful" in {
@@ -148,7 +178,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     when(mockDatastoreService.saveAll(Seq(mockEntity))).thenReturn(Failure(error))
 
     val result = runOp(DatastoreService.saveAll(Seq(mockEntityObject)))
-    result shouldBe Left(new DatastoreException(error))
+    result shouldBe Left(DatastoreException(error))
   }
 
   it should "return a wrapped entity if a saveAll is successful" in {
@@ -181,8 +211,8 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
 
     val datastoreQuery = castQuery.queryBuilderSupplier().build()
     datastoreQuery.getKind shouldBe kind.name
-    datastoreQuery.getProjection() should have size 1
-    datastoreQuery.getProjection().get(0) shouldBe "entityProperty"
+    datastoreQuery.getProjection should have size 1
+    datastoreQuery.getProjection.get(0) shouldBe "entityProperty"
 
     castQuery.entityFunction(null) match { // TODO cannot actually test against a projection entity
       case projection: ProjectionEntity =>

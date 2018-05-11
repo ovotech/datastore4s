@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Added
+- `deleteEntity` and `deleteAllEntities` operations
+- `orderByAscending` and `orderByDescending` for queries
+- `limit` for queries
+
 ### Deprecated
 - `formatFromFunctions` in favor of `formatFrom`
 - `formatFromFunctionsEither` in favor of `failableFormatFrom`
