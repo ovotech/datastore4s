@@ -29,7 +29,7 @@ trait TestDatastoreRepository extends DatastoreRepository {
   override def datastoreConfiguration = FromEnvironmentVariables
 
   implicit val parentToAncestor = toLongAncestor[EntityParent]("parent")(_.id)
-  implicit val parentFormat = formatFromFunctions(EntityParent.apply)(_.id)
+  implicit val parentFormat = formatFrom(EntityParent.apply)(_.id)
   implicit val compositeFieldFormat = FieldFormat[CompositeField]
   implicit val entityFormat = EntityFormat[SomeEntityType, ComplexKey]("entity-kind")(entity => ComplexKey(entity.id, entity.parent))
   implicit val projectedFromEntity = FromEntity[ProjectedRow]
@@ -244,7 +244,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       } yield results)
       result match {
         case Right(sequence) =>
-          sequence should have size(1)
+          sequence should have size 1
           sequence.head should (be (entity1) or be (entity2))
         case Left(error) => fail(s"There was an error: $error")
       }
