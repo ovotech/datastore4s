@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Removed
+ - `formatFromFunctions` and `formatFromFunctionsEither` functions after deprecation 
+
+## 0.1.5 2018-05-11
+
 ### Added
 - `deleteEntity` and `deleteAllEntities` operations
 - `orderByAscending` and `orderByDescending` for queries
@@ -14,7 +19,8 @@ All notable changes to this project will be documented in this file.
 
 ### Breaking Changes
 - Rename `DataStoreConfiguration` to `DatastoreConfiguration` for consistency, this includes the `datastoreConfiguration`
-function on `DatastoreRepository`.
+function on `DatastoreRepository`. Simply rename the function in your repository and any uses of the `DatastoreConfiguration`
+type.
 
 ## 0.1.4 2018-04-27 (First public release)
 ### Added

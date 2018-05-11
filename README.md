@@ -249,6 +249,12 @@ object MacroExample {
 - [Entity Indexes](./docs/Indexes.md)
 - [Examples](./examples/Examples.md)
 
+## Changes
+
+All changes will be documented in the [CHANGELOG](./CHANGELOG.md), efforts will be made to ensure backwards compatability.
+Where possible an API will be deprecated before it is removed, but in some cases breaking changed will occur, in these cases
+a migration path will also be documented.
+
 ## Feedback And Contribution
 
 Feedback, Issues and PR's are welcome.

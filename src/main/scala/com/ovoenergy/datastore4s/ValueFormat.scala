@@ -151,17 +151,8 @@ object ValueFormat {
 
   implicit def setValueFormat[A](implicit seqFormat: ValueFormat[Seq[A]]) = formatFrom[Set[A], Seq[A]](_.toSet)(_.toList)
 
-  @deprecated("Use formatFrom instead", "0.1.5")
-  def formatFromFunctions[A, B](constructor: B => A)(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
-    formatFrom(constructor)(extractor)
-
   def formatFrom[A, B](constructor: B => A)(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
     formatFromFunctionsWithError(constructor andThen (a => Right(a)))(extractor)
-
-  @deprecated("Use failableFormatFrom instead", "0.1.5")
-  def formatFromFunctionsEither[A, B](constructor: B => Either[String, A])(extractor: A => B)(
-    implicit format: ValueFormat[B]
-  ): ValueFormat[A] = failableFormatFrom(constructor)(extractor)
 
   def failableFormatFrom[A, B](constructor: B => Either[String, A])(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] = {
     val newConstructor = constructor andThen {
