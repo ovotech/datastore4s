@@ -253,10 +253,10 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       val ancestor = EntityParent(54321)
       val smallest = randomEntityWithKey(ComplexKey("OrderByAscEntity1", ancestor)).copy(possibleInt = None)
       val medium = randomEntityWithKey(ComplexKey("OrderByAscEntity2", ancestor)).copy(possibleInt = Some(50))
-      val largest = randomEntityWithKey(ComplexKey("OrderByAscEntity3s", ancestor)).copy(possibleInt = Some(100))
+      val largest = randomEntityWithKey(ComplexKey("OrderByAscEntity3", ancestor)).copy(possibleInt = Some(100))
       val result = run(for {
         _ <- putAll(Seq(smallest, medium, largest))
-        results <- list[SomeEntityType].withAncestor(ancestor).orderBy("possibleInt", Ascending).sequenced()
+        results <- list[SomeEntityType].withAncestor(ancestor).orderByAscending("possibleInt").sequenced()
       } yield results)
       result match {
         case Right(sequence) =>
@@ -268,10 +268,10 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       val ancestor = EntityParent(654321)
       val smallest = randomEntityWithKey(ComplexKey("OrderByDescEntity1", ancestor)).copy(possibleInt = None)
       val medium = randomEntityWithKey(ComplexKey("OrderByDescEntity2", ancestor)).copy(possibleInt = Some(50))
-      val largest = randomEntityWithKey(ComplexKey("OrderByDescEntity3s", ancestor)).copy(possibleInt = Some(100))
+      val largest = randomEntityWithKey(ComplexKey("OrderByDescEntity3", ancestor)).copy(possibleInt = Some(100))
       val result = run(for {
         _ <- putAll(Seq(smallest, medium, largest))
-        results <- list[SomeEntityType].withAncestor(ancestor).orderBy("possibleInt", Descending).sequenced()
+        results <- list[SomeEntityType].withAncestor(ancestor).orderByDescending("possibleInt").sequenced()
       } yield results)
       result match {
         case Right(sequence) =>

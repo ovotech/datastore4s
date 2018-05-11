@@ -1,7 +1,7 @@
 package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore._
-import com.google.cloud.datastore.StructuredQuery.{CompositeFilter, PropertyFilter}
+import com.google.cloud.datastore.StructuredQuery.{CompositeFilter, OrderBy, PropertyFilter}
 import com.ovoenergy.datastore4s.Query.FilterSupplier
 
 sealed trait Query[E] {
@@ -18,7 +18,9 @@ sealed trait Query[E] {
 
   def withPropertyGreaterThanEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E]
 
-  def orderBy(property: String, direction: Direction): Query[E] = this
+  def orderByAscending(property: String): Query[E]
+
+  def orderByDescending(property: String): Query[E]
 
   def limit(limit: Int): Query[E]
 
@@ -27,10 +29,6 @@ sealed trait Query[E] {
   def sequenced(): DatastoreOperation[Seq[E]]
 
 }
-
-sealed trait Direction
-case object Ascending extends Direction
-case object Descending extends Direction
 
 object Query {
   def ancestorToKey(ancestor: Ancestor, datastoreService: DatastoreService): Key =
@@ -44,6 +42,7 @@ object Query {
 
 private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](val queryBuilderSupplier: () => StructuredQuery.Builder[D],
                                                                    val filters: Seq[FilterSupplier] = Seq.empty,
+                                                                   val orders: Seq[OrderBy] = Seq.empty,
                                                                    val entityFunction: D => Entity)(implicit fromEntity: FromEntity[E])
     extends Query[E] {
 
@@ -52,7 +51,7 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](val queryBuil
       val ancestorKey = Query.ancestorToKey(toAncestor.toAncestor(a), datastoreService)
       PropertyFilter.hasAncestor(ancestorKey)
     }
-    new DatastoreQuery(queryBuilderSupplier, newFilter +: filters, entityFunction)
+    new DatastoreQuery(queryBuilderSupplier, newFilter +: filters, orders, entityFunction)
   }
 
   override def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E] =
@@ -79,10 +78,17 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](val queryBuil
       }
       filterBuilder(propertyName, dsValue)
     }
-    new DatastoreQuery(queryBuilderSupplier, newFilter +: filters, entityFunction)
+    new DatastoreQuery(queryBuilderSupplier, newFilter +: filters, orders, entityFunction)
   }
 
-  override def limit(limit: Int): Query[E] = new DatastoreQuery(() => queryBuilderSupplier().setLimit(limit), filters, entityFunction)
+  override def limit(limit: Int): Query[E] =
+    new DatastoreQuery(() => queryBuilderSupplier().setLimit(limit), filters, orders, entityFunction)
+
+  override def orderByAscending(property: String): Query[E] =
+    new DatastoreQuery(queryBuilderSupplier, filters, OrderBy.asc(property) +: orders, entityFunction)
+
+  override def orderByDescending(property: String): Query[E] =
+    new DatastoreQuery(queryBuilderSupplier, filters, OrderBy.desc(property) +: orders, entityFunction)
 
   override def stream() = DatastoreOperation { datastoreService =>
     try {
@@ -97,10 +103,21 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](val queryBuil
     }
   }
 
-  private def buildQuery(datastoreService: DatastoreService) = filters.map(_.apply(datastoreService)) match {
-    case Nil                        => queryBuilderSupplier().build()
-    case onlyFilter :: Nil          => queryBuilderSupplier().setFilter(onlyFilter).build()
-    case firstFilter :: moreFilters => queryBuilderSupplier().setFilter(CompositeFilter.and(firstFilter, moreFilters: _*)).build()
+  private def buildQuery(datastoreService: DatastoreService) = {
+    val filters = addFilters(queryBuilderSupplier(), datastoreService)
+    addOrders(filters, datastoreService).build()
+  }
+
+  private def addFilters(builder: StructuredQuery.Builder[D], datastoreService: DatastoreService) =
+    filters.map(_.apply(datastoreService)) match {
+      case Nil                        => builder
+      case onlyFilter :: Nil          => builder.setFilter(onlyFilter)
+      case firstFilter :: moreFilters => builder.setFilter(CompositeFilter.and(firstFilter, moreFilters: _*))
+    }
+
+  private def addOrders(builder: StructuredQuery.Builder[D], datastoreService: DatastoreService) = orders match {
+    case Nil                      => builder
+    case firstOrder :: moreOrders => builder.setOrderBy(firstOrder, moreOrders: _*)
   }
 
   override def sequenced(): DatastoreOperation[Seq[E]] = stream().flatMapEither(DatastoreError.sequence(_))

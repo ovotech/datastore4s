@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - `deleteEntity` and `deleteAllEntities` operations
-- `orderBy` for queries
+- `orderByAscending` and `orderByDescending` for queries
 - `limit` for queries
 
 ### Deprecated
