@@ -50,10 +50,16 @@ trait DatastoreRepository {
     DatastoreService.saveAll(entities)
 
   def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
-    DatastoreService.delete(key)
+    DatastoreService.delete[E, K](key)
+
+  def deleteEntity[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
+    DatastoreService.deleteEntity[E, K](entity)
 
   def deleteAll[E, K](keys: Seq[K])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[K]] =
-    DatastoreService.deleteAll(keys)
+    DatastoreService.deleteAll[E, K](keys)
+
+  def deleteAllEntities[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[K]] =
+    DatastoreService.deleteAllEntities[E, K](entities)
 
   def list[E]()(implicit format: EntityFormat[E, _]): Query[E] =
     DatastoreService.list

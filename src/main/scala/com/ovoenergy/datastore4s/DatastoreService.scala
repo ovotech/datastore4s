@@ -102,11 +102,17 @@ object DatastoreService extends DatastoreErrors {
       datastoreService.delete(dsKey).map(exception).getOrElse(Right(key))
     }
 
+  def deleteEntity[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
+    delete[E, K](format.key(entity))
+
   def deleteAll[E, K](keys: Seq[K])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[K]] =
     DatastoreOperation { datastoreService =>
       val dsKeys = keys.map(datastoreService.createKey(_, format.kind))
       datastoreService.deleteAll(dsKeys).map(exception).getOrElse(Right(keys))
     }
+
+  def deleteAllEntities[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[K]] =
+    deleteAll[E, K](entities.map(format.key))
 
   def list[E](implicit format: EntityFormat[E, _]): Query[E] = {
     val queryBuilderSupplier = () => newEntityQueryBuilder().setKind(format.kind.name)

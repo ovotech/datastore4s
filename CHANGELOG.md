@@ -3,6 +3,9 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+### Added
+- `deleteEntity` and `deleteAllEntities` operations
+
 ### Deprecated
 - `formatFromFunctions` in favor of `formatFrom`
 - `formatFromFunctionsEither` in favor of `failableFormatFrom`

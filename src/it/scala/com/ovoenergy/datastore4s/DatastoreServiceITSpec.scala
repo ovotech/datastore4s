@@ -109,9 +109,25 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
   }
 
   feature("Datastore support for deleting entities") {
-    scenario("Entity with key does not exist") {
-      val key = ComplexKey("Non Existant Entity", EntityParent(10))
+    scenario("Entity with key does not exist by key") {
+      val key = ComplexKey("Non Existant Entity By Key", EntityParent(10))
       val result = run(delete[SomeEntityType, ComplexKey](key))
+      result shouldBe Right(key)
+    }
+    scenario("Entity with a key that exists by key") {
+      val entity = randomEntityWithId("Entity That Exists By Key")
+      val key = ComplexKey(entity.id, entity.parent)
+      val result = run(for {
+        _ <- put(entity)
+        before <- findOne[SomeEntityType, ComplexKey](key)
+        deleted <- delete[SomeEntityType, ComplexKey](key)
+        after <- findOne[SomeEntityType, ComplexKey](key)
+      } yield (before, deleted, after))
+      result shouldBe Right((Some(entity), key, None))
+    }
+    scenario("Entity with key does not exist") {
+      val entity = randomEntityWithId("Non Existant Entity")
+      val result = run(deleteEntity[SomeEntityType, ComplexKey](entity))
       result shouldBe Right(key)
     }
     scenario("Entity with a key that exists") {
@@ -120,7 +136,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       val result = run(for {
         _ <- put(entity)
         before <- findOne[SomeEntityType, ComplexKey](key)
-        deleted <- delete[SomeEntityType, ComplexKey](key)
+        deleted <- deleteEntity[SomeEntityType, ComplexKey](entity)
         after <- findOne[SomeEntityType, ComplexKey](key)
       } yield (before, deleted, after))
       result shouldBe Right((Some(entity), key, None))
@@ -304,6 +320,27 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       }
     }
 
+    scenario("DeleteAll entities by key") {
+      val parent = EntityParent(500) // Use combined parent so that we can have strong consistency in the queries
+      val entities = Seq(randomEntityWithKey(ComplexKey("DeleteAllByKeyEntity1", parent)), randomEntityWithKey(ComplexKey("DeleteAllByKeyEntity2", parent)), randomEntityWithKey(ComplexKey("DeleteAllByKeyEntity3", parent)))
+      val keys = entities.map(e => ComplexKey(e.id, e.parent))
+      val result = run(for {
+        _ <- putAll(entities)
+        before <- list[SomeEntityType].withAncestor(parent).sequenced()
+        deleted <- deleteAll[SomeEntityType, ComplexKey](keys)
+        after <- list[SomeEntityType].withAncestor(parent).sequenced()
+      } yield (before, deleted, after))
+      result match {
+        case Right((before, deleted, after)) =>
+          before should contain allElementsOf entities
+          deleted should contain theSameElementsAs keys
+          for (entity <- entities) {
+            after should not contain entity
+          }
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
+
     scenario("DeleteAll entities") {
       val parent = EntityParent(500) // Use combined parent so that we can have strong consistency in the queries
       val entities = Seq(randomEntityWithKey(ComplexKey("DeleteAllEntity1", parent)), randomEntityWithKey(ComplexKey("DeleteAllEntity2", parent)), randomEntityWithKey(ComplexKey("DeleteAllEntity3", parent)))
@@ -311,7 +348,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       val result = run(for {
         _ <- putAll(entities)
         before <- list[SomeEntityType].withAncestor(parent).sequenced()
-        deleted <- deleteAll[SomeEntityType, ComplexKey](keys)
+        deleted <- deleteAllEntities[SomeEntityType, ComplexKey](entities)
         after <- list[SomeEntityType].withAncestor(parent).sequenced()
       } yield (before, deleted, after))
       result match {

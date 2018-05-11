@@ -2,18 +2,22 @@
 
 Here is a list of the Datastore Operations inherited from the `DatastoreRepository` trait:
 
-1. `put[A](entity: A)` will persist an entity using its entity format, replacing any entity with the same key. Returns `DatastoreOperation[Persisted[A]]`.
-2. `putAll[A](entities: Seq[A])` will persist all entities in a batch using the entity format for `A`, replacing any entities
- with the same keys. Returns `DatastoreOperation[Seq[Persisted[A]]]`.
-3. `save[A](entity: A)` will persist an entity using its entity format, it will return an error if an entity already exists 
+- `put[A](entity: A)` will persist an entity using its entity format, replacing any entity with the same key. Returns `DatastoreOperation[Persisted[A]]`.
+- `putAll[A](entities: Seq[A])` will persist all entities in a batch using the entity format for `A`, replacing any entities
+with the same keys. Returns `DatastoreOperation[Seq[Persisted[A]]]`.
+- `save[A](entity: A)` will persist an entity using its entity format, it will return an error if an entity already exists 
 with the same key. Returns `DatastoreOperation[Persisted[A]]`.
-4. `saveAll[A](entities: Seq[A])` will persist all entities in a batch using the entity format for `A`, returning an error if
+- `saveAll[A](entities: Seq[A])` will persist all entities in a batch using the entity format for `A`, returning an error if
 any entities with the same keys exist. Returns `DatastoreOperation[Seq[Persisted[A]]]`.
-5. `delete[E, K](key: K)` will delete the entity with the given key. Please note if no entity exists with the given key 
+- `delete[E, K](key: K)` will delete the entity with the given key. Please note if no entity exists with the given key 
 a success will still be returned. Returns `DatastoreOperation[K]`.
-6. `deleteAll[E, K](keys: Seq[K])` will delete all the entities with the given keys. Please note if no entity exists with 
+- `deleteEntity[E, K](entity: E)` will delete the entity passed. Please note if the passed entity does not exist in datastore 
+a success will still be returned. Returns `DatastoreOperation[K]` of the key of the deleted entity.
+- `deleteAll[E, K](keys: Seq[K])` will delete all the entities with the given keys. Please note if no entity exists with 
 any given key a success will still be returned. Returns `DatastoreOperation[Seq[K]]`.
-7. `findOne[E, K](key: K)` returns a `Option` of the entity with the given key. Returns `DatastoreOperation[Option[E]]`.
+- `deleteAllEntities[E, K](entities: Seq[E])` will delete all the entities. Please note if an entity does not exist in datastore 
+any given key a success will still be returned. Returns `DatastoreOperation[Seq[K]]` of the entity keys.
+- `findOne[E, K](key: K)` returns a `Option` of the entity with the given key. Returns `DatastoreOperation[Option[E]]`.
 
 ## Execution
 
