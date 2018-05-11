@@ -50,6 +50,11 @@ there must be a `ValueFormat[A]` in scope. The field name and type cannot be che
 - `withPropertyGreaterThanEq[A](fieldName: String, value: A)` filters the results to just entities the given property greater than or equal to the given value,
 there must be a `ValueFormat[A]` in scope. The field name and type cannot be checked at compile time.
 
+Queries can be ordered by properties by using `orderBy(property: String, direction: Direction)` where `direction` is 
+`Ascending` or `Descending`.
+
+You can also limit the number of results by calling `limit(limit: Int)`.
+
 ## Projection Queries
 
 Projections can be useful when you need to provide a limited view into a datastore kind. You can create a projection query using

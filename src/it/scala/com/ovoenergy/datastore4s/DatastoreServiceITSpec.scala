@@ -128,7 +128,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
     scenario("Entity with key does not exist") {
       val entity = randomEntityWithId("Non Existant Entity")
       val result = run(deleteEntity[SomeEntityType, ComplexKey](entity))
-      result shouldBe Right(key)
+      result shouldBe Right(ComplexKey(entity.id, entity.parent))
     }
     scenario("Entity with a key that exists") {
       val entity = randomEntityWithId("Entity That Exists")
@@ -231,6 +231,51 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       result match {
         case Right(seq) =>
           seq shouldBe Seq(entity1)
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
+    scenario("Limit the number of results") {
+      val ancestor = EntityParent(12345)
+      val entity1 = randomEntityWithKey(ComplexKey("LimitedEntity1", ancestor))
+      val entity2 = randomEntityWithKey(ComplexKey("LimitedEntity2", ancestor))
+      val result = run(for {
+        _ <- putAll(Seq(entity1, entity2))
+        results <- list[SomeEntityType].withAncestor(ancestor).limit(1).sequenced()
+      } yield results)
+      result match {
+        case Right(sequence) =>
+          sequence should have size(1)
+          sequence.head should (be (entity1) or be (entity2))
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
+    scenario("Order the results by a property in ascending order") {
+      val ancestor = EntityParent(54321)
+      val smallest = randomEntityWithKey(ComplexKey("OrderByAscEntity1", ancestor)).copy(possibleInt = None)
+      val medium = randomEntityWithKey(ComplexKey("OrderByAscEntity2", ancestor)).copy(possibleInt = Some(50))
+      val largest = randomEntityWithKey(ComplexKey("OrderByAscEntity3s", ancestor)).copy(possibleInt = Some(100))
+      val result = run(for {
+        _ <- putAll(Seq(smallest, medium, largest))
+        results <- list[SomeEntityType].withAncestor(ancestor).orderBy("possibleInt", Ascending).sequenced()
+      } yield results)
+      result match {
+        case Right(sequence) =>
+          sequence should contain theSameElementsInOrderAs Seq(smallest, medium, largest)
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
+    scenario("Order the results by a property in descending order") {
+      val ancestor = EntityParent(654321)
+      val smallest = randomEntityWithKey(ComplexKey("OrderByDescEntity1", ancestor)).copy(possibleInt = None)
+      val medium = randomEntityWithKey(ComplexKey("OrderByDescEntity2", ancestor)).copy(possibleInt = Some(50))
+      val largest = randomEntityWithKey(ComplexKey("OrderByDescEntity3s", ancestor)).copy(possibleInt = Some(100))
+      val result = run(for {
+        _ <- putAll(Seq(smallest, medium, largest))
+        results <- list[SomeEntityType].withAncestor(ancestor).orderBy("possibleInt", Descending).sequenced()
+      } yield results)
+      result match {
+        case Right(sequence) =>
+          sequence should contain theSameElementsInOrderAs Seq(largest, medium, smallest)
         case Left(error) => fail(s"There was an error: $error")
       }
     }

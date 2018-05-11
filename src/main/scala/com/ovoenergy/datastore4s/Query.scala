@@ -18,11 +18,19 @@ sealed trait Query[E] {
 
   def withPropertyGreaterThanEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E]
 
+  def orderBy(property: String, direction: Direction): Query[E] = this
+
+  def limit(limit: Int): Query[E] = this
+
   def stream(): DatastoreOperation[Stream[Either[DatastoreError, E]]]
 
   def sequenced(): DatastoreOperation[Seq[E]]
 
 }
+
+sealed trait Direction
+case object Ascending extends Direction
+case object Descending extends Direction
 
 object Query {
   def ancestorToKey(ancestor: Ancestor, datastoreService: DatastoreService): Key =

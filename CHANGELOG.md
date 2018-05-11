@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - `deleteEntity` and `deleteAllEntities` operations
+- `orderBy` for queries
+- `limit` for queries
 
 ### Deprecated
 - `formatFromFunctions` in favor of `formatFrom`
