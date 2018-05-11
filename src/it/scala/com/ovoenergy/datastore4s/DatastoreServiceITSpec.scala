@@ -34,10 +34,8 @@ trait TestDatastoreRepository extends DatastoreRepository {
   implicit val entityFormat = EntityFormat[SomeEntityType, ComplexKey]("entity-kind")(entity => ComplexKey(entity.id, entity.parent))
   implicit val projectedFromEntity = FromEntity[ProjectedRow]
 
-  implicit object ComplexKeyToKey extends ToKey[ComplexKey] {
-    override def toKey(value: ComplexKey, keyFactory: KeyFactory): Key = {
-      keyFactory.addAncestor(value.parent).buildWithName(value.id)
-    }
+  implicit object ComplexKeyToKey extends ToNamedKey[ComplexKey] {
+    override def toKey(value: ComplexKey) = NamedKey(value.id, value.parent)
   }
 
 }
@@ -103,6 +101,15 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       val result = run(for {
         _ <- put(entity)
         retrieved <- findOne[SomeEntityType, ComplexKey](ComplexKey(entity.id, entity.parent))
+      } yield retrieved)
+      result shouldBe Right(Some(entity))
+    }
+    scenario("Find by the underlying name") {
+      val entityName = "Entity That Exists With Name"
+      val entity = randomEntityWithId(entityName)
+      val result = run(for {
+        _ <- put(entity)
+        retrieved <- findOneByName[SomeEntityType, ComplexKey](entityName)
       } yield retrieved)
       result shouldBe Right(Some(entity))
     }

@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{BaseEntity, FullEntity, Key}
+import com.google.cloud.datastore.{BaseEntity, FullEntity, Key => DsKey}
 import com.google.cloud.datastore.{Entity => DsEntity}
 
 final case class Kind(name: String)
@@ -25,7 +25,7 @@ sealed trait Entity {
 
 }
 
-private[datastore4s] class WrappedEntity(val entity: FullEntity[Key]) extends Entity {
+private[datastore4s] class WrappedEntity(val entity: FullEntity[DsKey]) extends Entity {
   override def field(name: String): Option[DatastoreValue] =
     if (entity.contains(name)) Some(new WrappedValue(entity.getValue(name)))
     else None
@@ -38,7 +38,7 @@ private[datastore4s] class WrappedEntity(val entity: FullEntity[Key]) extends En
   }
 }
 
-private[datastore4s] class ProjectionEntity(val mappings: Map[String, String], val actualEntity: BaseEntity[Key]) extends Entity {
+private[datastore4s] class ProjectionEntity(val mappings: Map[String, String], val actualEntity: BaseEntity[DsKey]) extends Entity {
   override def field(name: String): Option[DatastoreValue] = {
     val fieldName = mappings.getOrElse(name, name)
     if (actualEntity.contains(fieldName)) Some(new WrappedValue(actualEntity.getValue(fieldName)))
@@ -65,7 +65,7 @@ sealed trait EntityBuilder {
   def build(): Entity
 }
 
-private[datastore4s] class WrappedBuilder(val key: Key, val fields: Map[String, DatastoreValue] = Map.empty) extends EntityBuilder {
+private[datastore4s] class WrappedBuilder(val key: DsKey, val fields: Map[String, DatastoreValue] = Map.empty) extends EntityBuilder {
   override def addField(field: Field): EntityBuilder =
     new WrappedBuilder(key, field.values ++ fields)
 

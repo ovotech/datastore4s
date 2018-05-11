@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{Key, StringValue => DsStringValue}
+import com.google.cloud.datastore.{StringValue => DsStringValue}
 import com.ovoenergy.datastore4s.ToKey.JavaLong
 import org.scalatest.{FeatureSpec, Matchers}
 
@@ -33,10 +33,9 @@ case class Id(id: String, parent: Parent)
 
 case class Parent(name: String)
 
-object IdToKey extends ToKey[Id] {
+object IdToKey extends ToNamedKey[Id] {
   implicit val parentToAncestor = ToAncestor.toStringAncestor[Parent]("test-ancestor")(_.name)
-
-  override def toKey(value: Id, keyFactory: KeyFactory) = keyFactory.addAncestor(value.parent).buildWithName(value.id)
+  override def toKey(value: Id) = NamedKey(value.id, value.parent)
 }
 
 class NonCaseClass(val key: String)
@@ -49,10 +48,10 @@ case class EmptyCaseClass()
 
 class EntityFormatSpec extends FeatureSpec with Matchers {
 
-  implicit object SealedToKey extends ToKey[SealedKey] {
-    override def toKey(value: SealedKey, keyFactory: KeyFactory): Key = value match {
-      case StringKey(name) => keyFactory.buildWithName(name)
-      case LongKey(id) => keyFactory.buildWithId(id)
+  implicit object SealedToKey extends ToKey[SealedKey, Key] {
+    override def toKey(value: SealedKey): Key = value match {
+      case StringKey(name) => NamedKey(name)
+      case LongKey(id) => IdKey(id)
     }
   }
 

@@ -1,6 +1,6 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore._
+import com.google.cloud.datastore.{Key => DsKey, _}
 import com.google.cloud.datastore.StructuredQuery.{CompositeFilter, PropertyFilter}
 import com.ovoenergy.datastore4s.Query.FilterSupplier
 
@@ -25,7 +25,7 @@ sealed trait Query[E] {
 }
 
 object Query {
-  def ancestorToKey(ancestor: Ancestor, datastoreService: DatastoreService): Key =
+  def ancestorToKey(ancestor: Ancestor, datastoreService: DatastoreService): DsKey =
     ancestor match {
       case StringAncestor(kind, name) => datastoreService.createKey(name, kind)
       case LongAncestor(kind, id)     => datastoreService.createKey(Long.box(id), kind)
@@ -34,7 +34,7 @@ object Query {
   type FilterSupplier = DatastoreService => PropertyFilter
 }
 
-private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](val queryBuilderSupplier: () => StructuredQuery.Builder[D],
+private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[DsKey]](val queryBuilderSupplier: () => StructuredQuery.Builder[D],
                                                                    val filters: Seq[FilterSupplier] = Seq.empty,
                                                                    val entityFunction: D => Entity)(implicit fromEntity: FromEntity[E])
     extends Query[E] {
