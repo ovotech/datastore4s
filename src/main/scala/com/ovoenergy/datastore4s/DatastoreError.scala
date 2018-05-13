@@ -52,7 +52,7 @@ object DatastoreError { // TODO custom flatmapping that will concat all errors t
     override def printStackTrace(s: PrintStream): Unit = throwables.foreach(_.printStackTrace(s))
   }
 
-  final case class SuppressedStackTrace(error: String, cause: Throwable) extends RuntimeException(error, cause, false, false)
+  final case class SuppressedStackTrace(error: String, cause: Throwable) extends RuntimeException(s"$error\n${cause.getMessage}", cause, false, false)
 
 }
 

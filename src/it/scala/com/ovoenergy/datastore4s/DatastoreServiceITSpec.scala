@@ -434,9 +434,10 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       val key = ComplexKey("EntityToDeleteThatShouldRemain", EntityParent(1234))
       val entityThatShouldRemain = randomEntityWithKey(key)
       run(put(entityThatShouldRemain)).map(_.inputObject) shouldBe Right(entityThatShouldRemain)
-      val entityToCauseAFailure = randomEntityWithKey(key)
+      val entityToCauseAFailure = randomEntityWithId("EntityToCauseAFailureAfterDelete")
       val result = run(transactionally(for {
         _ <- delete[SomeEntityType, ComplexKey](key)
+        _ <- save(entityToCauseAFailure)
         _ <- save(entityToCauseAFailure)
       } yield ()))
       result should be('Left)
