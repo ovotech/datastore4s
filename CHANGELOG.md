@@ -2,8 +2,10 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+
+## 0.1.6 2018-05-13
 ### Added
-- Support for Transactional actions
+- Support for Transactional operations
 
 ### Removed
  - `formatFromFunctions` and `formatFromFunctionsEither` functions after deprecation 
