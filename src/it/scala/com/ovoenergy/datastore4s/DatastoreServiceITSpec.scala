@@ -408,18 +408,6 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
     }
   }
   feature("Support for Datastore Transactions") {
-    scenario("PutAll and list in transaction") {
-      val parent = EntityParent(999999)
-      val entities = Seq(randomEntityWithKey(ComplexKey("PutAllInTransactionEntity1", parent)), randomEntityWithKey(ComplexKey("PutAllInTransactionEntity2", parent)), randomEntityWithKey(ComplexKey("PutAllInTransactionEntity3", parent)))
-      val result = run(transactionally(for {
-        _ <- putAll(entities)
-        listed <- list[SomeEntityType].withAncestor(parent).sequenced()
-      } yield listed))
-      result match {
-        case Right(results) => results should contain allElementsOf entities
-        case Left(error) => fail(s"There was an error: $error")
-      }
-    }
     scenario("SaveAll in transaction that fails") {
       val key = ComplexKey("EntityToRollback", EntityParent(1230))
       val entityThatShouldRollback = randomEntityWithKey(key)
