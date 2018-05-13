@@ -1,12 +1,10 @@
 package com.ovoenergy.datastore4s
 
-import java.io.{File, FileInputStream}
-
-import com.google.auth.Credentials
-import com.google.auth.oauth2.GoogleCredentials
+import scala.collection.JavaConverters._
 import com.google.cloud.{NoCredentials, ServiceOptions}
 import com.google.cloud.datastore.{DatastoreOptions, Entity => DsEntity, ProjectionEntity => DsProjectionEntity, _}
 import com.google.cloud.datastore.Query.{newEntityQueryBuilder, newProjectionEntityQueryBuilder}
+import com.ovoenergy.datastore4s.DatastoreError.SuppressedStackTrace
 
 import scala.util.{Failure, Success, Try}
 
@@ -130,6 +128,21 @@ object DatastoreService extends DatastoreErrors {
     new DatastoreQuery[A, DsProjectionEntity](queryBuilderSupplier, entityFunction = new ProjectionEntity(mappings, _))
   }
 
+  def transactionally[A](operation: DatastoreOperation[A]): DatastoreOperation[A] = DatastoreOperation { service =>
+    val (trans, transactionalService) = service.newTransaction()
+    operation.op(transactionalService) match {
+      case Right(value) =>
+        Try(trans.commit()).fold(failed => exception[A](SuppressedStackTrace("Could not commit transaction", failed)), _ => Right(value))
+      case Left(error) =>
+        Try(trans.rollback())
+          .fold(
+            failed => exception[A](SuppressedStackTrace("Could not roll back transaction", failed)),
+            _ =>
+              exception[A](SuppressedStackTrace("Failure in transaction. Transaction was rolled back.", DatastoreError.asException(error))),
+          )
+    }
+  }
+
 }
 
 trait DatastoreService {
@@ -151,19 +164,19 @@ trait DatastoreService {
 
   def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D]
 
+  def newTransaction(): (Transaction, DatastoreService)
+
   def options: DatastoreOptions
 
 }
 
-private[datastore4s] class WrappedDatastore(private val datastore: Datastore) extends DatastoreService with DatastoreErrors {
-  import scala.collection.JavaConverters._
-
-  private val noOptions = Seq.empty[ReadOption]
+sealed trait ReaderWriterService extends DatastoreService with DatastoreErrors {
   private type DsEntity = com.google.cloud.datastore.FullEntity[Key]
 
-  override def createKey[K](key: K, kind: Kind)(implicit toKey: ToKey[K]): Key = toKey.toKey(key, newKeyFactory(kind))
+  def readerWriter(): DatastoreReaderWriter
+  def datastore(): Datastore
 
-  private def newKeyFactory(kind: Kind): KeyFactory = new KeyFactoryFacade(datastore.newKeyFactory().setKind(kind.name))
+  override def find(entityKey: Key) = Try(Option(readerWriter().get(entityKey))).map(_.map(new WrappedEntity(_)))
 
   override def put(entity: Entity) = persist(entity, _.put(_))
 
@@ -173,9 +186,26 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
 
   override def saveAll(entities: Seq[Entity]) = persistAll(entities, _.add(_: _*).asScala.toSeq)
 
-  private def persist(entity: Entity, persistingFunction: (Datastore, DsEntity) => DsEntity): Try[Entity] = entity match {
+  override def delete(key: Key) = try { readerWriter().delete(key); None } catch { case e: Throwable => Some(e) } // Cannot return anything useful.
+
+  override def deleteAll(keys: Seq[Key]) = try { readerWriter().delete(keys: _*); None } catch { case e: Throwable => Some(e) } // Cannot return anything useful.
+
+  override def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]) = readerWriter().run(query).asScala.toStream
+
+  override def createKey[K](key: K, kind: Kind)(implicit toKey: ToKey[K]) = toKey.toKey(key, newKeyFactory(kind))
+
+  private def newKeyFactory(kind: Kind) = new KeyFactoryFacade(datastore().newKeyFactory().setKind(kind.name))
+
+  override def options = datastore().getOptions
+
+  override def newTransaction() = {
+    val transaction = datastore().newTransaction()
+    (transaction, new TransactionService(datastore(), transaction))
+  }
+
+  private def persist(entity: Entity, persistingFunction: (DatastoreReaderWriter, DsEntity) => DsEntity): Try[Entity] = entity match {
     case wrapped: WrappedEntity =>
-      Try { persistingFunction(datastore, wrapped.entity); entity }
+      Try { persistingFunction(readerWriter(), wrapped.entity); entity }
     case projection: ProjectionEntity => // TODO is it possible to ensure this doesn't happen at compile time?
       Failure(
         new RuntimeException(
@@ -184,7 +214,8 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
       )
   }
 
-  private def persistAll(entities: Seq[Entity], persistingFunction: (Datastore, Seq[DsEntity]) => Seq[DsEntity]): Try[Seq[Entity]] = {
+  private def persistAll(entities: Seq[Entity],
+                         persistingFunction: (DatastoreReaderWriter, Seq[DsEntity]) => Seq[DsEntity]): Try[Seq[Entity]] = {
     val dsEntities = entities map {
       case wrapped: WrappedEntity => Success(wrapped.entity)
       case projection: ProjectionEntity => // TODO is it possible to ensure this doesn't happen at compile time?
@@ -194,21 +225,20 @@ private[datastore4s] class WrappedDatastore(private val datastore: Datastore) ex
           )
         )
     }
-    sequenceTry(dsEntities).map(persistingFunction(datastore, _)).map(_.map(new WrappedEntity(_)))
+    sequenceTry(dsEntities).map(persistingFunction(readerWriter(), _)).map(_.map(new WrappedEntity(_)))
   }
 
-  def sequenceTry[T](xs: Seq[Try[T]]): Try[Seq[T]] = xs.foldLeft(Try(Seq[T]())) { (a, b) =>
+  private def sequenceTry[T](xs: Seq[Try[T]]): Try[Seq[T]] = xs.foldLeft(Try(Seq[T]())) { (a, b) =>
     a flatMap (c => b map (d => c :+ d))
   }
+}
 
-  override def find(entityKey: Key) = Try(Option(datastore.get(entityKey, noOptions: _*))).map(_.map(new WrappedEntity(_)))
+private[datastore4s] class WrappedDatastore(val datastore: Datastore) extends ReaderWriterService with DatastoreErrors {
+  override def readerWriter(): DatastoreReaderWriter = datastore
+}
 
-  override def delete(key: Key) = try { datastore.delete(key); None } catch { case e: Throwable => Some(e) } // Cannot return anything useful.
-
-  override def deleteAll(keys: Seq[Key]) = try { datastore.delete(keys: _*); None } catch { case e: Throwable => Some(e) } // Cannot return anything useful.
-
-  import scala.collection.JavaConverters._
-  override def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D] = datastore.run(query, noOptions: _*).asScala.toStream
-
-  override def options = datastore.getOptions
+private[datastore4s] class TransactionService(val datastore: Datastore, private val transaction: Transaction)
+    extends ReaderWriterService
+    with DatastoreErrors {
+  override def readerWriter(): DatastoreReaderWriter = transaction
 }

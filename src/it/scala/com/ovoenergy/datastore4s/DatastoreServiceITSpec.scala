@@ -407,6 +407,32 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       }
     }
   }
+  feature("Support for Datastore Transactions") {
+    scenario("SaveAll in transaction that fails") {
+      val key = ComplexKey("EntityToRollback", EntityParent(1230))
+      val entityThatShouldRollback = randomEntityWithKey(key)
+      val entityToCauseAFailure = randomEntityWithKey(key)
+      val result = run(transactionally(for {
+        _ <- put(entityThatShouldRollback)
+        _ <- save(entityToCauseAFailure)
+      } yield ()))
+      result should be('Left)
+      run(findOne[SomeEntityType, ComplexKey](key)) shouldBe Right(None)
+    }
+    scenario("Save and delete in a transaction that fails") {
+      val key = ComplexKey("EntityToDeleteThatShouldRemain", EntityParent(1234))
+      val entityThatShouldRemain = randomEntityWithKey(key)
+      run(put(entityThatShouldRemain)).map(_.inputObject) shouldBe Right(entityThatShouldRemain)
+      val entityToCauseAFailure = randomEntityWithId("EntityToCauseAFailureAfterDelete")
+      val result = run(transactionally(for {
+        _ <- delete[SomeEntityType, ComplexKey](key)
+        _ <- save(entityToCauseAFailure)
+        _ <- save(entityToCauseAFailure)
+      } yield ()))
+      result should be('Left)
+      run(findOne[SomeEntityType, ComplexKey](key)) shouldBe Right(Some(entityThatShouldRemain))
+    }
+  }
 
   private val random = ThreadLocalRandom.current()
 
