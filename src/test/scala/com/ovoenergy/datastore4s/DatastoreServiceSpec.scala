@@ -1,6 +1,7 @@
 package com.ovoenergy.datastore4s
 
-import com.google.cloud.datastore.{Key, Entity => DsEntity, ProjectionEntity => DsProjectionEntity}
+import com.google.cloud.datastore.{Key, Transaction, Entity => DsEntity, ProjectionEntity => DsProjectionEntity}
+import com.ovoenergy.datastore4s.DatastoreError.SuppressedStackTrace
 import com.ovoenergy.datastore4s.DatastoreOperationInterpreter.{run => runOp}
 import org.mockito.ArgumentMatchers.{eq => mockEq}
 import org.mockito.Mockito._
@@ -16,6 +17,8 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
 
   private implicit val mockEntityFormat = mock[EntityFormat[Object, String]]("mockEntityFormat")
   private implicit val mockDatastoreService = mock[DatastoreService]("mockDatastoreService")
+  private val mockTransacton = mock[Transaction]("mockTransacton")
+  private val mockTransactonalService = mock[DatastoreService]("mockTransactonalService")
 
   private val entityKey = "key"
   private val kind = Kind("kind")
@@ -28,6 +31,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     when(mockEntityFormat.kind).thenReturn(kind)
     when(mockEntityFormat.toEntity(mockEq(mockEntityObject), mockEq(expectedBuilder))).thenReturn(mockEntity)
     when(mockEntityFormat.key(mockEntityObject)).thenReturn(entityKey)
+    when(mockDatastoreService.newTransaction()).thenReturn((mockTransacton, mockTransactonalService))
   }
 
   it should "return an error from find if an exception is thrown by the datastore" in {
@@ -221,6 +225,60 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     }
 
     castQuery.filters should be('empty)
+  }
+
+    private val mockOperationObject = mock[Object]("mockOperationObject")
+
+  it should "wrap an operation in a transaction that gets committed" in {
+    val operation = DatastoreOperation{ serivce =>
+      if(serivce == mockTransactonalService)
+        Right(mockOperationObject)
+      else
+        DatastoreError.error(s"Wrong service was passed: $serivce was not $mockTransactonalService")
+    }
+    when(mockTransacton.commit()).thenReturn(mock[Transaction.Response]("mockResponse"))
+    val transactionalOperation = DatastoreService.transactionally(operation)
+    transactionalOperation.op(mockDatastoreService) shouldBe Right(mockOperationObject)
+  }
+
+  it should "return an error if the transaction cannot be committed" in {
+    val operation = DatastoreOperation{ serivce =>
+      if(serivce == mockTransactonalService)
+        Right(mockOperationObject)
+      else
+        DatastoreError.error(s"Wrong service was passed: $serivce was not $mockTransactonalService")
+    }
+    val error = new RuntimeException("Failed Commit")
+    when(mockTransacton.commit()).thenThrow(error)
+    val transactionalOperation = DatastoreService.transactionally(operation)
+    transactionalOperation.op(mockDatastoreService) shouldBe DatastoreError.exception[Object](SuppressedStackTrace("Could not commit transaction", error))
+  }
+
+  it should "rollback the transaction if there is a failure" in {
+    val error = DatastoreError.error[Object]("Failed operation")
+    val operation = DatastoreOperation{ serivce =>
+      if(serivce == mockTransactonalService)
+        error
+      else
+        sys.error(s"Wrong service was passed: $serivce was not $mockTransactonalService")
+    }
+    doNothing().when(mockTransacton).rollback()
+    val transactionalOperation = DatastoreService.transactionally(operation)
+    transactionalOperation.op(mockDatastoreService) should be('Left)
+  }
+
+  it should "return an error if the transaction cannot be rolled back" in {
+    val error = DatastoreError.error[Object]("Failed operation")
+    val operation = DatastoreOperation{ serivce =>
+      if(serivce == mockTransactonalService)
+        error
+      else
+        sys.error(s"Wrong service was passed: $serivce was not $mockTransactonalService")
+    }
+    doThrow(new RuntimeException("Failed Rollback")).when(mockTransacton).rollback()
+
+    val transactionalOperation = DatastoreService.transactionally(operation)
+    transactionalOperation.op(mockDatastoreService) should be('Left)
   }
 
 }

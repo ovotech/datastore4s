@@ -88,7 +88,7 @@ Example usages of queries and projections can be found [here](../examples/QueryE
  
 ## Transaction Support
 
-Any datastore operation can be wrapped within a transaction returning another DatastoreOperation. For example:
+Any datastore operation can be wrapped within a transaction. For example:
 
 ```scala
 def transactionalPersist(entity1: TypeOne, entity2: TypeTwo): DatastoreOperation[(TypeOne, TypeTwo, Mapping)]= 
@@ -98,3 +98,5 @@ def transactionalPersist(entity1: TypeOne, entity2: TypeTwo): DatastoreOperation
     persistedMapping <- save(Mapping(entity1, entity2))
   } yield (persisted1, persisted2, persistedMapping) }
 ```
+
+If the operation inside the transaction fails an attempt will be made to roll it back.
