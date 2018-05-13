@@ -11,7 +11,7 @@ The library is available in the OVO Bintray repository. Add this snippet to your
 
 ```sbtshell
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
-libraryDependencies += "com.ovoenergy" %% "datastore4s" % "0.1.4",
+libraryDependencies += "com.ovoenergy" %% "datastore4s" % "0.1.6",
 ```
 
 ### A Simple Example
