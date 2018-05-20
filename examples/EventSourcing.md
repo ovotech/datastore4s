@@ -20,16 +20,16 @@ object EventSourcingRepository extends DatastoreRepository {
   implicit val characterIdToKey = toKey[CharacterId]((id, builder) => builder.buildWithId(id.value))
   implicit val stateFormat = EntityFormat[CharacterState, CharacterId]("initialState")(_.id)
 
-  def storeInitialState(state: CharacterState) = runF(put(state))
+  def storeInitialState(state: CharacterState): Try[Persisted[CharacterState]] = runF(put(state))
 
-  def getCurrentState(id: CharacterId) = runF(calculateState(id))
+  def getCurrentState(id: CharacterId): Try[CharacterState] = runF(calculateState(id))
   
-  def updateState(event:CharacterEvent): Try[CharacterState] = {
-    val op = for {
+  def updateState(event: CharacterEvent): Try[CharacterState] = {
+    val operation = for {
       _ <- put(event)
       state <- calculateState(event.characterId)
     } yield state
-    runF(op)
+    runF(operation)
   }
 
   private def calculateState(id: CharacterId): DatastoreOperation[CharacterState] = for {

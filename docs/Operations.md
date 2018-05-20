@@ -109,5 +109,5 @@ If the operation inside the transaction fails an attempt will be made to roll it
 
 You should still be aware of the [data consistency rules](https://cloud.google.com/datastore/docs/concepts/structuring_for_strong_consistency)
 of datastore as they will still affect the queries and transactional operations. For example `list[Entity].sequenced()` 
-is an eventually consistent but `list[Entity].withAncestor("foo").sequenced()` is strongly consistent since all queries 
+is an eventually consistent query but `list[Entity].withAncestor("foo").sequenced()` is strongly consistent since all queries 
 using an ancestor are strongly consistent.

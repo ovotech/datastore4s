@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 - `safeDelete` and `safeDeleteEntity` operations
 
 ### Breaking Changes
-- Make ValueFormat a sealed trait. You should never need to implement your own value formats, the existing
+- Made ValueFormat a sealed trait. You should never need to implement your own value formats, the existing
 functions such as `formatFrom` are enough to create custom formats.
 - Rename `asException` to `asThrowable` on `DatastoreError`, simply rename if you are using this function.
 
