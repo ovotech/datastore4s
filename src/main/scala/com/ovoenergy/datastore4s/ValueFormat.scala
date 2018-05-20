@@ -7,7 +7,7 @@ import com.google.cloud.datastore.{Blob, LatLng}
 
 import scala.util.{Failure, Success, Try}
 
-trait ValueFormat[A] {
+sealed trait ValueFormat[A] {
 
   def toValue(scalaValue: A): DatastoreValue
 
