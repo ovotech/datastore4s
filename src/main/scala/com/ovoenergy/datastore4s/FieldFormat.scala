@@ -6,13 +6,16 @@ trait FieldFormat[A] {
 
   def toEntityField(fieldName: String, value: A): Field
 
+  /** Adds contextual information to the error returned to determine what field failed */
   def fromEntityFieldWithContext(fieldName: String, entity: Entity): Either[DatastoreError, A] =
     fromEntityField(fieldName, entity).left.map(DatastoreError.errorInField(fieldName))
 
   def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, A]
 
+  /** Utility function for custom FieldFormats to create DatastoreValues from any type */
   def toValue[B](scalaValue: B)(implicit valueFormat: ValueFormat[B]): DatastoreValue = valueFormat.toValue(scalaValue)
 
+  /** Do not index any values on this field */
   def ignoreIndexes: FieldFormat[A] = FieldFormat.ignoreIndexes(this)
 
 }
@@ -70,6 +73,10 @@ object FieldFormat {
 
   import scala.language.experimental.macros
 
+  /** Create a Field Format from:
+    * - A case class by nesting fields on the case class using dot notation
+    * - A sealed trait hierarchy of case classes and/or objects using a 'type' property to determine which subtype the field is.
+    */
   def apply[A]: FieldFormat[A] = macro applyImpl[A]
 
   def applyImpl[A: context.WeakTypeTag](context: blackbox.Context): context.Expr[FieldFormat[A]] = {
