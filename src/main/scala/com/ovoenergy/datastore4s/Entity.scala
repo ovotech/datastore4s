@@ -18,8 +18,11 @@ object Kind {
 }
 
 sealed trait Entity {
+
+  /** Returns the value of the field with the given name if it exists on the entity */
   def field(name: String): Option[DatastoreValue]
 
+  /** Using the implicit FieldFormat[A] in scope, attempt to get the field with the given name and deserialise as an instance of [A] */
   def fieldOfType[A](name: String)(implicit fieldFormat: FieldFormat[A]): Either[DatastoreError, A] =
     fieldFormat.fromEntityFieldWithContext(name, this)
 
@@ -59,6 +62,7 @@ sealed trait EntityBuilder {
   def add[A](name: String, value: A)(implicit format: FieldFormat[A]): EntityBuilder =
     addField(format.toEntityField(name, value))
 
+  /** Add the field to the built entity but do not index it */
   def addIgnoringIndex[A](name: String, value: A)(implicit format: FieldFormat[A]): EntityBuilder =
     addField(format.toEntityField(name, value).ignoreIndexes)
 

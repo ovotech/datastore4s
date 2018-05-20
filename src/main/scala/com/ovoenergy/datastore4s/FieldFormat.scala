@@ -57,7 +57,7 @@ object FieldFormat {
         entity.field(s"$fieldName.$eitherField") match {
           case Some(StringValue("Left"))  => leftFormat.fromEntityFieldWithContext(fieldName, entity).map(Left(_))
           case Some(StringValue("Right")) => rightFormat.fromEntityFieldWithContext(fieldName, entity).map(Right(_))
-          case Some(other)                => DatastoreError.error(s"Either field should be either 'Left' or 'Right' but was $other.")
+          case Some(other)                => DatastoreError.deserialisationError(s"Either field should be either 'Left' or 'Right' but was $other.")
           case None                       => DatastoreError.missingField(eitherField, entity)
         }
     }
@@ -113,7 +113,7 @@ object FieldFormat {
 
             override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, $fieldType] = stringFormat.fromEntityFieldWithContext(fieldName + ".type", entity) match {
               case ..$fromCases
-              case Right(other) => DatastoreError.error(s"Unknown subtype found: $$other")
+              case Right(other) => DatastoreError.deserialisationError(s"Unknown subtype found: $$other")
               case Left(error) => Left(error)
             }
           }

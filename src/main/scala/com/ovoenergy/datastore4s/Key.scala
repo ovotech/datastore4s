@@ -2,7 +2,7 @@ package com.ovoenergy.datastore4s
 
 import com.google.cloud.datastore.{Key, PathElement}
 
-trait ToKey[A] {
+trait ToKey[A] { // TODO should we refactor to NamedKey IdKey and at compile time know? Only allow one ancestor?
   def toKey(value: A, keyFactory: KeyFactory): Key
 }
 
@@ -24,6 +24,7 @@ object ToKey {
 
 sealed trait KeyFactory {
 
+  /** Adds an ancestor to the path of the key, order of addition will determine the path */
   def addAncestor[A](value: A)(implicit toAncestor: ToAncestor[A]): KeyFactory
 
   def buildWithName(name: String): Key
@@ -39,7 +40,7 @@ private[datastore4s] class KeyFactoryFacade(private val factory: com.google.clou
   override def buildWithId(id: Long): Key = factory.newKey(id)
 
   override def addAncestor[A](value: A)(implicit toAncestor: ToAncestor[A]): KeyFactory =
-    toAncestor.toAncestor(value) match {
+    toAncestor.toAncestor(value) match { // TODO can you have multiple ancestors?
       case StringAncestor(kind, name) =>
         new KeyFactoryFacade(factory.addAncestor(PathElement.of(kind.name, name)))
       case LongAncestor(kind, id) =>

@@ -11,8 +11,12 @@ with the same key. Returns `DatastoreOperation[Persisted[A]]`.
 any entities with the same keys exist. Returns `DatastoreOperation[Seq[Persisted[A]]]`.
 - `delete[E, K](key: K)` will delete the entity with the given key. Please note if no entity exists with the given key 
 a success will still be returned. Returns `DatastoreOperation[K]`.
+- `safeDelete[E, K](key: K)` will delete the entity with the given key, failing if the entity did not exist prior to delete.
+Returns `DatastoreOperation[K]`. This operation performs a find prior to delete.
 - `deleteEntity[E, K](entity: E)` will delete the entity passed. Please note if the passed entity does not exist in datastore 
 a success will still be returned. Returns `DatastoreOperation[K]` of the key of the deleted entity.
+- `safeDeleteEntity[E, K](entity: E)` will delete the entity passed, failing if the entity did not exist prior to delete.
+Returns `DatastoreOperation[K]`. This operation performs a find prior to delete.
 - `deleteAll[E, K](keys: Seq[K])` will delete all the entities with the given keys. Please note if no entity exists with 
 any given key a success will still be returned. Returns `DatastoreOperation[Seq[K]]`.
 - `deleteAllEntities[E, K](entities: Seq[E])` will delete all the entities. Please note if an entity does not exist in datastore 
@@ -100,3 +104,10 @@ def transactionalPersist(entity1: TypeOne, entity2: TypeTwo): DatastoreOperation
 ```
 
 If the operation inside the transaction fails an attempt will be made to roll it back.
+
+## Warning
+
+You should still be aware of the [data consistency rules](https://cloud.google.com/datastore/docs/concepts/structuring_for_strong_consistency)
+of datastore as they will still affect the queries and transactional operations. For example `list[Entity].sequenced()` 
+is an eventually consistent but `list[Entity].withAncestor("foo").sequenced()` is strongly consistent since all queries 
+using an ancestor are strongly consistent.

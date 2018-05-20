@@ -195,7 +195,7 @@ object FromEntity {
             private val stringFormat = implicitly[FieldFormat[String]]
             override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = stringFormat.fromEntityFieldWithContext("type", entity) match {
               case ..$cases
-              case Right(other) => DatastoreError.error(s"Unknown subtype found: $$other")
+              case Right(other) => DatastoreError.deserialisationError(s"Unknown subtype found: $$other")
               case Left(error) => Left(error)
             }
           }""")

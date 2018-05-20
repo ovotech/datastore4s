@@ -2,7 +2,16 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
+
+### Added
 - Customisation of subtype names with `@SubTypeName`.
+- `pure` and `failure` on `DatastoreOperation`
+- `safeDelete` and `safeDeleteEntity` operations
+
+### Breaking Changes
+- Make ValueFormat a sealed trait. You should never need to implement your own value formats, the existing
+functions such as `formatFrom` are enough to create custom formats.
+- Rename `asException` to `asThrowable` on `DatastoreError`, simply rename if you are using this function.
 
 ## 0.1.6 2018-05-13
 ### Added

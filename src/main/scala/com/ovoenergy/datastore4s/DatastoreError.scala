@@ -1,8 +1,9 @@
 package com.ovoenergy.datastore4s
 import java.io.{PrintStream, PrintWriter}
 
+/** ADT representing a failure in a datastore operation, can be turned into a Throwable using asThrowable */
 sealed trait DatastoreError {
-  def asException = DatastoreError.asException(this)
+  def asThrowable = DatastoreError.asThrowable(this)
 }
 
 final case class DatastoreException(exception: Throwable) extends DatastoreError
@@ -13,14 +14,14 @@ final case class FieldError(fieldName: String, error: DatastoreError) extends Da
 
 final case class ComposedError(errors: Seq[DatastoreError]) extends DatastoreError
 
-object DatastoreError { // TODO custom flatmapping that will concat all errors together. Possibly a DatastoreResult? Kind of like Validation[A]. Need to be able to add all errors together
+object DatastoreError { // TODO Refactor to use Validation[A] style code instead of Either[Error, A] so that we can add all errors together
   def missingField[A](fieldName: String, entity: Entity): Either[DatastoreError, A] =
     Left(DeserialisationError(s"Field $fieldName could not be found on entity $entity"))
 
   def wrongType[A](expectedType: DsType, datastoreValue: DatastoreValue): Either[DatastoreError, A] =
     Left(DeserialisationError(s"Expected a $expectedType but got $datastoreValue"))
 
-  def error[A](error: String): Either[DatastoreError, A] =
+  def deserialisationError[A](error: String): Either[DatastoreError, A] =
     Left(DeserialisationError(error))
 
   def exception[A](exception: Throwable): Either[DatastoreError, A] =
@@ -36,11 +37,11 @@ object DatastoreError { // TODO custom flatmapping that will concat all errors t
       case (Left(errorAcc), Right(_))    => Left(errorAcc)
     }
 
-  def asException(error: DatastoreError): Throwable = error match {
+  def asThrowable(error: DatastoreError): Throwable = error match {
     case DatastoreException(exception)      => exception
-    case FieldError(fieldName, cause)       => SuppressedStackTrace(s"Could not read the field: $fieldName", asException(cause))
+    case FieldError(fieldName, cause)       => SuppressedStackTrace(s"Could not read the field: $fieldName", asThrowable(cause))
     case DeserialisationError(errorMessage) => new RuntimeException(errorMessage)
-    case ComposedError(errors)              => ComposedException(errors.map(asException))
+    case ComposedError(errors)              => ComposedException(errors.map(asThrowable))
   }
 
   final case class ComposedException(throwables: Seq[Throwable]) extends RuntimeException {
@@ -64,8 +65,8 @@ trait DatastoreErrors {
   def wrongType[A](expectedType: DsType, datastoreValue: DatastoreValue): Either[DatastoreError, A] =
     DatastoreError.wrongType(expectedType, datastoreValue)
 
-  def error[A](error: String): Either[DatastoreError, A] =
-    DatastoreError.error(error)
+  def deserialisationError[A](error: String): Either[DatastoreError, A] =
+    DatastoreError.deserialisationError(error)
 
   def exception[A](exception: Throwable): Either[DatastoreError, A] = DatastoreError.exception(exception)
 }

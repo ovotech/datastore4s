@@ -141,6 +141,38 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       } yield (before, deleted, after))
       result shouldBe Right((Some(entity), key, None))
     }
+    scenario("Safe Delete an entity that does not exist by key") {
+      val key = ComplexKey("Non Existant Safe Entity By Key", EntityParent(10))
+      val result = run(safeDelete[SomeEntityType, ComplexKey](key))
+      result should be('Left)
+    }
+    scenario("Safe Delete an entity that does exist by key") {
+      val entity = randomEntityWithId("Safe Entity That Exists By Key")
+      val key = ComplexKey(entity.id, entity.parent)
+      val result = run(for {
+        _ <- put(entity)
+        before <- findOne[SomeEntityType, ComplexKey](key)
+        deleted <- safeDelete[SomeEntityType, ComplexKey](key)
+        after <- findOne[SomeEntityType, ComplexKey](key)
+      } yield (before, deleted, after))
+      result shouldBe Right((Some(entity), key, None))
+    }
+    scenario("Safe Delete an entity that does not exist") {
+      val entity = randomEntityWithId("Non Existant Safe Entity")
+      val result = run(safeDeleteEntity[SomeEntityType, ComplexKey](entity))
+      result should be('Left)
+    }
+    scenario("Safe Delete an entity that does exist") {
+      val entity = randomEntityWithId("Safe Entity That Exists")
+      val key = ComplexKey(entity.id, entity.parent)
+      val result = run(for {
+        _ <- put(entity)
+        before <- findOne[SomeEntityType, ComplexKey](key)
+        deleted <- safeDeleteEntity[SomeEntityType, ComplexKey](entity)
+        after <- findOne[SomeEntityType, ComplexKey](key)
+      } yield (before, deleted, after))
+      result shouldBe Right((Some(entity), key, None))
+    }
   }
 
   feature("Datastore support for listing entities of a type") {
@@ -359,7 +391,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         run(list[SomeEntityType].sequenced()) match {
           case Right(seq) =>
             seq should contain(existing)
-            seq should not contain (failedEntity)
+            seq should not contain failedEntity
           case Left(error) => fail(s"There was an error: $error")
         }
       }
