@@ -38,6 +38,14 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
 
   def abort[A](error: String): A = context.abort(context.enclosingPosition, error)
 
+  def subTypeName(subType: Symbol): String = subTypeAnnotationName(subType).getOrElse(subType.name.toString)
+
+  private def subTypeAnnotationName(subType: Symbol) =
+    for { // This seems a bit ridiculous, I just want the name value.
+      annotation <- subType.annotations.find(_.tree.tpe =:= typeOf[SubTypeName])
+      name <- annotation.tree.children.collect { case Literal(Constant(name: String)) => name }.headOption
+    } yield name
+
   def sealedTraitCaseClassOrAbort[A](tpe: Type, sealedTraitExpression: => Expr[A], caseClassExpression: => Expr[A]): Expr[A] =
     if (isSealedTrait(tpe)) {
       sealedTraitExpression

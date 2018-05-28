@@ -96,7 +96,8 @@ object EntityFormat {
     val subTypes = helper.subTypes(entityType)
 
     val cases = subTypes.map { subType =>
-      cq"""e: ${subType.asClass} => ${subTypeFormatProvider(subType)}.toEntity(e, builder.addField(stringFormat.toEntityField("type", ${subType.name.toString})))"""
+      cq"""e: ${subType.asClass} => ${subTypeFormatProvider(subType)}.toEntity(e, builder.addField(stringFormat.toEntityField("type", ${helper
+        .subTypeName(subType)})))"""
     }
 
     val toEntityExpression =
@@ -186,7 +187,7 @@ object FromEntity {
     val entityType = weakTypeTag[A].tpe
     val subTypes = helper.subTypes(entityType)
     val cases = subTypes.map { subType => // TODO should we allow objects here too one day?
-      cq"""Right(${subType.name.toString}) => FromEntity[$subType].fromEntity(entity)"""
+      cq"""Right(${helper.subTypeName(subType)}) => FromEntity[$subType].fromEntity(entity)"""
     }
     context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._
 

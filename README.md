@@ -248,6 +248,7 @@ object MacroExample {
 - [Configuring Your Repository](./docs/Configuration.md)
 - [Entity Indexes](./docs/Indexes.md)
 - [Examples](./examples/Examples.md)
+- [More Entity Customisation](./docs/MoreCustomisation.md)
 
 ## Changes
 

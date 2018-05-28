@@ -12,6 +12,7 @@ case class StringKey(key: String) extends SealedKey
 
 case class LongKey(long: Long) extends SealedKey
 
+@SubTypeName("AnnotatedSubType")
 case class FirstSubType(key: String, someLongValue: Long) extends SealedEntityType
 
 case class SecondSubType(key: Long, someBoolean: Boolean, someDouble: Double) extends SealedEntityType
@@ -149,6 +150,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       sealedEntityFormat.key(firstRecord) shouldBe StringKey("first-key")
       firstEntity.fieldOfType[String]("key") shouldBe Right("first-key")
       firstEntity.fieldOfType[Long]("someLongValue") shouldBe Right(2036152)
+      firstEntity.fieldOfType[String]("type") shouldBe Right("AnnotatedSubType")
 
       sealedEntityFormat.fromEntity(firstEntity) shouldBe Right(firstRecord)
 
@@ -158,6 +160,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       secondEntity.fieldOfType[Long]("key") shouldBe Right(83746286466723l)
       secondEntity.fieldOfType[Boolean]("someBoolean") shouldBe Right(true)
       secondEntity.fieldOfType[Double]("someDouble") shouldBe Right(1824672.23572)
+      secondEntity.fieldOfType[String]("type") shouldBe Right("SecondSubType")
 
       sealedEntityFormat.fromEntity(secondEntity) shouldBe Right(secondRecord)
     }

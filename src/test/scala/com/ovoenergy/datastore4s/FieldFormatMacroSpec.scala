@@ -49,6 +49,7 @@ class FieldFormatMacroSpec extends FlatSpec with Matchers with GeneratorDrivenPr
 
   sealed trait ValidSealedTrait
 
+  @SubTypeName("AnnotatedLongType")
   case class LongType(long: Long) extends ValidSealedTrait
 
   case class StringType(string: String) extends ValidSealedTrait
@@ -65,6 +66,12 @@ class FieldFormatMacroSpec extends FlatSpec with Matchers with GeneratorDrivenPr
       val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat, datastoreService))
       roundTripped shouldBe Right(entity)
     }
+  }
+
+  it should "use the annotation to determine the subtype name" in {
+    implicit val format = FieldFormat[ValidSealedTrait]
+    format.toEntityField("foo", LongType(10)).values.get("foo.type") shouldBe Some(StringValue("AnnotatedLongType"))
+    format.toEntityField("foo", StringType("bar")).values.get("foo.type") shouldBe Some(StringValue("StringType"))
   }
 
   case class MissingFieldFormatType()
