@@ -88,17 +88,18 @@ object FieldFormat {
 
     val toCases = subTypes.map { subType =>
       if (helper.isObject(subType)) {
-        cq"""f: ${subType.asClass} => stringFormat.toEntityField(fieldName + ".type", ${subType.name.toString})"""
+        cq"""f: ${subType.asClass} => stringFormat.toEntityField(fieldName + ".type", ${helper.subTypeName(subType)})"""
       } else {
-        cq"""f: ${subType.asClass} => FieldFormat[$subType].toEntityField(fieldName, f) + stringFormat.toEntityField(fieldName + ".type", ${subType.name.toString})"""
+        cq"""f: ${subType.asClass} => FieldFormat[$subType].toEntityField(fieldName, f) + stringFormat.toEntityField(fieldName + ".type", ${helper
+          .subTypeName(subType)})"""
       }
     }
 
     val fromCases = subTypes.map { subType =>
       if (helper.isObject(subType)) {
-        cq"""Right(${subType.name.toString}) => Right(${helper.singletonObject(subType)})"""
+        cq"""Right(${helper.subTypeName(subType)}) => Right(${helper.singletonObject(subType)})"""
       } else {
-        cq"""Right(${subType.name.toString}) => FieldFormat[$subType].fromEntityFieldWithContext(fieldName, entity)"""
+        cq"""Right(${helper.subTypeName(subType)}) => FieldFormat[$subType].fromEntityFieldWithContext(fieldName, entity)"""
       }
     }
 
