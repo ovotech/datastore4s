@@ -234,7 +234,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
       if(serivce == mockTransactonalService)
         Right(mockOperationObject)
       else
-        DatastoreError.error(s"Wrong service was passed: $serivce was not $mockTransactonalService")
+        DatastoreError.deserialisationError(s"Wrong service was passed: $serivce was not $mockTransactonalService")
     }
     when(mockTransacton.commit()).thenReturn(mock[Transaction.Response]("mockResponse"))
     val transactionalOperation = DatastoreService.transactionally(operation)
@@ -246,7 +246,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
       if(serivce == mockTransactonalService)
         Right(mockOperationObject)
       else
-        DatastoreError.error(s"Wrong service was passed: $serivce was not $mockTransactonalService")
+        DatastoreError.deserialisationError(s"Wrong service was passed: $serivce was not $mockTransactonalService")
     }
     val error = new RuntimeException("Failed Commit")
     when(mockTransacton.commit()).thenThrow(error)
@@ -255,7 +255,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
   }
 
   it should "rollback the transaction if there is a failure" in {
-    val error = DatastoreError.error[Object]("Failed operation")
+    val error = DatastoreError.deserialisationError[Object]("Failed operation")
     val operation = DatastoreOperation{ serivce =>
       if(serivce == mockTransactonalService)
         error
@@ -268,7 +268,7 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
   }
 
   it should "return an error if the transaction cannot be rolled back" in {
-    val error = DatastoreError.error[Object]("Failed operation")
+    val error = DatastoreError.deserialisationError[Object]("Failed operation")
     val operation = DatastoreOperation{ serivce =>
       if(serivce == mockTransactonalService)
         error

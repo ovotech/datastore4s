@@ -4,8 +4,11 @@ import scala.language.experimental.macros
 import scala.reflect.macros.blackbox
 
 trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
+
+  /** The kind under which to store entities */
   val kind: Kind
 
+  /** Create the datastore key for the entity */
   def key(record: EntityType): KeyType
 
   def toEntity(record: EntityType, builder: EntityBuilder): Entity
@@ -13,6 +16,7 @@ trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
 }
 
 object EntityFormat {
+
   def apply[EntityType, KeyType](kind: String)(keyFunction: EntityType => KeyType): EntityFormat[EntityType, KeyType] =
     macro deriveFormatWithAllIndexes[EntityType, KeyType]
 
@@ -195,7 +199,7 @@ object FromEntity {
             private val stringFormat = implicitly[FieldFormat[String]]
             override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = stringFormat.fromEntityFieldWithContext("type", entity) match {
               case ..$cases
-              case Right(other) => DatastoreError.error(s"Unknown subtype found: $$other")
+              case Right(other) => DatastoreError.deserialisationError(s"Unknown subtype found: $$other")
               case Left(error) => Left(error)
             }
           }""")

@@ -6,13 +6,16 @@ trait FieldFormat[A] {
 
   def toEntityField(fieldName: String, value: A): Field
 
+  /** Adds contextual information to the error returned to determine what field failed */
   def fromEntityFieldWithContext(fieldName: String, entity: Entity): Either[DatastoreError, A] =
     fromEntityField(fieldName, entity).left.map(DatastoreError.errorInField(fieldName))
 
   def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, A]
 
+  /** Utility function for custom FieldFormats to create DatastoreValues from any type */
   def toValue[B](scalaValue: B)(implicit valueFormat: ValueFormat[B]): DatastoreValue = valueFormat.toValue(scalaValue)
 
+  /** Do not index any values on this field */
   def ignoreIndexes: FieldFormat[A] = FieldFormat.ignoreIndexes(this)
 
 }
@@ -57,7 +60,7 @@ object FieldFormat {
         entity.field(s"$fieldName.$eitherField") match {
           case Some(StringValue("Left"))  => leftFormat.fromEntityFieldWithContext(fieldName, entity).map(Left(_))
           case Some(StringValue("Right")) => rightFormat.fromEntityFieldWithContext(fieldName, entity).map(Right(_))
-          case Some(other)                => DatastoreError.error(s"Either field should be either 'Left' or 'Right' but was $other.")
+          case Some(other)                => DatastoreError.deserialisationError(s"Either field should be either 'Left' or 'Right' but was $other.")
           case None                       => DatastoreError.missingField(eitherField, entity)
         }
     }
@@ -70,6 +73,10 @@ object FieldFormat {
 
   import scala.language.experimental.macros
 
+  /** Create a Field Format from:
+    * - A case class by nesting fields on the case class using dot notation
+    * - A sealed trait hierarchy of case classes and/or objects using a 'type' property to determine which subtype the field is.
+    */
   def apply[A]: FieldFormat[A] = macro applyImpl[A]
 
   def applyImpl[A: context.WeakTypeTag](context: blackbox.Context): context.Expr[FieldFormat[A]] = {
@@ -113,7 +120,7 @@ object FieldFormat {
 
             override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, $fieldType] = stringFormat.fromEntityFieldWithContext(fieldName + ".type", entity) match {
               case ..$fromCases
-              case Right(other) => DatastoreError.error(s"Unknown subtype found: $$other")
+              case Right(other) => DatastoreError.deserialisationError(s"Unknown subtype found: $$other")
               case Left(error) => Left(error)
             }
           }

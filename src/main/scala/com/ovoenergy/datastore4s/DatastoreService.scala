@@ -12,12 +12,9 @@ final case class Persisted[A](inputObject: A, entity: Entity)
 
 object DatastoreService extends DatastoreErrors {
 
-  /**
-    * When the production code runs in an emulated environment then the host, credentials and retry options are handled internally
-    * to allow connecting to the emulator without credentials being verified.
-    */
+  /** Allows overriding of configuration to connect to an emulator for testing purposes */
   private def handleEmulatorHost(builder: DatastoreOptions.Builder)(emulatorHost: String): DatastoreOptions.Builder =
-    builder.setHost(emulatorHost).setCredentials(NoCredentials.getInstance()).setRetrySettings(ServiceOptions.getNoRetrySettings())
+    builder.setHost(emulatorHost).setCredentials(NoCredentials.getInstance()).setRetrySettings(ServiceOptions.getNoRetrySettings)
 
   def apply(dataStoreConfiguration: DatastoreConfiguration): DatastoreService = dataStoreConfiguration match {
     case ManualDatastoreConfiguration(projectId, namespace) =>
@@ -29,9 +26,11 @@ object DatastoreService extends DatastoreErrors {
       val withProjectId = DatastoreOptions.newBuilder().setProjectId(projectId)
       val withNamespace = namespace.fold(withProjectId)(ns => withProjectId.setNamespace(ns))
       new WrappedDatastore(handleEmulatorHost(withNamespace)(host).build().getService)
-    case Options(options) => new WrappedDatastore(options.getService)
+    case Options(options) =>
+      val serviceOptions = emulatorVariable().fold(options)(handleEmulatorHost(options.toBuilder)(_).build())
+      new WrappedDatastore(serviceOptions.getService)
     case FromEnvironmentVariables =>
-      val defaultOptionsBuilder = DatastoreOptions.getDefaultInstance().toBuilder
+      val defaultOptionsBuilder = DatastoreOptions.getDefaultInstance.toBuilder
       val withEmulator = emulatorVariable().fold(defaultOptionsBuilder)(handleEmulatorHost(defaultOptionsBuilder))
       val withNamespace = sys.env
         .get("DATASTORE_NAMESPACE")
@@ -100,8 +99,18 @@ object DatastoreService extends DatastoreErrors {
       datastoreService.delete(dsKey).map(exception).getOrElse(Right(key))
     }
 
+  def safeDelete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] = transactionally {
+    for {
+      entity <- findOne[E, K](key)
+      result <- entity.map(_ => delete(key)).getOrElse(DatastoreOperation.failure(s"Could not find entity with key: $key"))
+    } yield result
+  }
+
   def deleteEntity[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
     delete[E, K](format.key(entity))
+
+  def safeDeleteEntity[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
+    safeDelete[E, K](format.key(entity))
 
   def deleteAll[E, K](keys: Seq[K])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[K]] =
     DatastoreOperation { datastoreService =>
@@ -138,7 +147,7 @@ object DatastoreService extends DatastoreErrors {
           .fold(
             failed => exception[A](SuppressedStackTrace("Could not roll back transaction", failed)),
             _ =>
-              exception[A](SuppressedStackTrace("Failure in transaction. Transaction was rolled back.", DatastoreError.asException(error))),
+              exception[A](SuppressedStackTrace("Failure in transaction. Transaction was rolled back.", DatastoreError.asThrowable(error))),
           )
     }
   }
@@ -233,12 +242,10 @@ sealed trait ReaderWriterService extends DatastoreService with DatastoreErrors {
   }
 }
 
-private[datastore4s] class WrappedDatastore(val datastore: Datastore) extends ReaderWriterService with DatastoreErrors {
+private[datastore4s] class WrappedDatastore(val datastore: Datastore) extends ReaderWriterService {
   override def readerWriter(): DatastoreReaderWriter = datastore
 }
 
-private[datastore4s] class TransactionService(val datastore: Datastore, private val transaction: Transaction)
-    extends ReaderWriterService
-    with DatastoreErrors {
+private[datastore4s] class TransactionService(val datastore: Datastore, private val transaction: Transaction) extends ReaderWriterService {
   override def readerWriter(): DatastoreReaderWriter = transaction
 }

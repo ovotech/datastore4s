@@ -7,7 +7,7 @@ import com.google.cloud.datastore.{Blob, LatLng}
 
 import scala.util.{Failure, Success, Try}
 
-trait ValueFormat[A] {
+sealed trait ValueFormat[A] {
 
   def toValue(scalaValue: A): DatastoreValue
 
@@ -116,7 +116,7 @@ object ValueFormat {
         Try(BigDecimal(str)) match {
           case Success(bd) => Right(bd)
           case Failure(exception) =>
-            error(s"Could not parse BigDecimal from $str. Error: ${exception.getMessage}")
+            deserialisationError(s"Could not parse BigDecimal from $str. Error: ${exception.getMessage}")
         }
       }
   }
@@ -156,7 +156,7 @@ object ValueFormat {
 
   def failableFormatFrom[A, B](constructor: B => Either[String, A])(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] = {
     val newConstructor = constructor andThen {
-      case Left(error) => DatastoreError.error(error)
+      case Left(error) => DatastoreError.deserialisationError(error)
       case Right(r)    => Right(r)
     }
     formatFromFunctionsWithError(newConstructor)(extractor)

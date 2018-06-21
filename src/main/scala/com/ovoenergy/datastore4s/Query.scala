@@ -4,8 +4,10 @@ import com.google.cloud.datastore._
 import com.google.cloud.datastore.StructuredQuery.{CompositeFilter, OrderBy, PropertyFilter}
 import com.ovoenergy.datastore4s.Query.FilterSupplier
 
+/** Object representing a query to be run on datastore, uses a builder pattern */
 sealed trait Query[E] {
 
+  /** Only return entities that have the given ancestor */
   def withAncestor[A](a: A)(implicit toAncestor: ToAncestor[A]): Query[E]
 
   def withPropertyEq[A](propertyName: String, value: A)(implicit valueFormat: ValueFormat[A]): Query[E]
@@ -22,10 +24,13 @@ sealed trait Query[E] {
 
   def orderByDescending(property: String): Query[E]
 
+  /** Limit the number of results returned */
   def limit(limit: Int): Query[E]
 
+  /** Returns a stream of all query results in a stream */
   def stream(): DatastoreOperation[Stream[Either[DatastoreError, E]]]
 
+  /** Return all results of the query in a sequence, combining all errors if there are any */
   def sequenced(): DatastoreOperation[Seq[E]]
 
 }
