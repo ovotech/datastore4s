@@ -136,10 +136,10 @@ object EntityFormat {
     val entityType = weakTypeTag[EntityType].tpe
     val keyType = weakTypeTag[KeyType].tpe
 
-    val fieldExpressions = helper.caseClassFieldList(entityType).map { field => // TODO fold
-      val fieldName = field.asTerm.name
-      val fieldExpression = q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(${fieldName.toString}, value.$fieldName)"""
-      if (ignoredIndexes.contains(fieldName.toString)) {
+    val fieldExpressions = helper.caseClassFieldList(entityType).map { field =>
+      val (fieldName, name) = helper.fieldName(field)
+      val fieldExpression = q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField($name, value.$fieldName)"""
+      if (ignoredIndexes.contains(name)) {
         q"$fieldExpression.ignoreIndexes"
       } else {
         fieldExpression
@@ -190,7 +190,7 @@ object FromEntity {
     import context.universe._
     val entityType = weakTypeTag[A].tpe
     val subTypes = helper.subTypes(entityType)
-    val cases = subTypes.map { subType => // TODO should we allow objects here too one day?
+    val cases = subTypes.map { subType =>
       cq"""Right(${helper.subTypeName(subType)}) => FromEntity[$subType].fromEntity(entity)"""
     }
     context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._
@@ -215,8 +215,8 @@ object FromEntity {
     val companionNamedArguments = fields.map(field => AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
 
     val fieldFormats = fields.map { field =>
-      val fieldName = field.asTerm.name
-      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature}]].fromEntityFieldWithContext(${fieldName.toString}, entity)"""
+      val (_, name) = helper.fieldName(field)
+      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature}]].fromEntityFieldWithContext($name, entity)"""
     }
 
     context.Expr[FromEntity[A]](q"""import com.ovoenergy.datastore4s._

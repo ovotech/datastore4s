@@ -137,16 +137,16 @@ object FieldFormat {
     val fields = helper.caseClassFieldList(fieldType)
 
     val fieldExpressions = fields.map { field =>
-      val fieldName = field.asTerm.name
-      q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(fieldName + "." + ${fieldName.toString}, value.$fieldName)"""
+      val (fieldName, name) = helper.fieldName(field)
+      q"""implicitly[FieldFormat[${field.typeSignature}]].toEntityField(fieldName + "." + $name, value.$fieldName)"""
     }
 
     val companion = fieldType.typeSymbol.companion
     val companionNamedArguments = fields.map(field => AssignOrNamedArg(Ident(field.name), q"${field.asTerm.name}"))
 
     val fieldFormats = fields.map { field =>
-      val fieldName = field.asTerm.name
-      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature}]].fromEntityFieldWithContext(fieldName + "." + ${fieldName.toString}, entity)"""
+      val (_, name) = helper.fieldName(field)
+      fq"""${field.name} <- implicitly[FieldFormat[${field.typeSignature}]].fromEntityFieldWithContext(fieldName + "." + $name, entity)"""
     }
 
     context.Expr[FieldFormat[A]](q"""import com.ovoenergy.datastore4s._

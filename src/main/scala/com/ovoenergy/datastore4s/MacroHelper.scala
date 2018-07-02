@@ -76,10 +76,21 @@ private[datastore4s] class MacroHelper[C <: blackbox.Context](val context: C) {
         .map(_.typeSignature)
         .flatMap(allFieldNames)
     } else if (isCaseClass(entityType)) {
-      caseClassFieldList(entityType).map(_.name.toString).toSet
+      caseClassFieldList(entityType).map(fieldName).map(_._2).toSet
     } else {
       Set.empty
     }
+
+  def fieldName(field: Symbol) = {
+    val nameType = field.asTerm.name
+
+    val annotatedName = for { // This seems a bit ridiculous, I just want the name value.
+      annotation <- field.annotations.find(_.tree.tpe =:= typeOf[DatastoreFieldName])
+      name <- annotation.tree.children.collect { case Literal(Constant(name: String)) => name }.headOption
+    } yield name
+
+    (nameType, annotatedName.getOrElse(nameType.toString))
+  }
 
 }
 

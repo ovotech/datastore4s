@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - Customisation of subtype names with `@SubTypeName`.
+- Customisation of field names with `@DatastoreFieldName`.
 - `pure` and `failure` on `DatastoreOperation`
 - `safeDelete` and `safeDeleteEntity` operations
 
