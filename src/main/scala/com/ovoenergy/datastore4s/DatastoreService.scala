@@ -99,6 +99,7 @@ object DatastoreService extends DatastoreErrors {
       datastoreService.delete(dsKey).map(exception).getOrElse(Right(key))
     }
 
+  /** Like delete but will fail if an entity with the given key does not exist before attempting delete */
   def safeDelete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] = transactionally {
     for {
       entity <- findOne[E, K](key)
