@@ -132,14 +132,15 @@ private[datastore4s] case object EntityValue extends DsType {
 
   def apply(entity: Entity): DatastoreValue = entity match {
     case e: WrappedEntity => new WrappedValue(new ds.EntityValue(e.entity))
-    case p: ProjectionEntity => sys.error(s"Project entity was passed to EntityValue.apply. This should never happen. Projection entity was: $p")
+    case p: ProjectionEntity =>
+      sys.error(s"Project entity was passed to EntityValue.apply. This should never happen. Projection entity was: $p")
   }
 
   def unapply(value: DatastoreValue): Option[Entity] =
     value match {
-    case WrappedValue(e: ds.EntityValue) =>  Some(new WrappedEntity(e.get().asInstanceOf[ds.Entity])) // TODO can we avoid cast??
-    case _ => None
-  }
+      case WrappedValue(e: ds.EntityValue) => Some(new WrappedEntity(e.get().asInstanceOf[ds.Entity])) // TODO can we avoid cast??
+      case _                               => None
+    }
 
 }
 
