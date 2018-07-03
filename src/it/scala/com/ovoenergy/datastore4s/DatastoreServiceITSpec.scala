@@ -34,7 +34,6 @@ trait TestDatastoreRepository extends DatastoreRepository {
   implicit val parentFormat = formatFrom(EntityParent.apply)(_.id)
 
   implicit val subEntityFormat = EntityFormat[SubEntityType, java.lang.Long]("sub-entity-kind")(_.id)
-  implicit val subEntityFieldFormat = FieldFormat[SubEntityType]
 
   implicit val compositeFieldFormat = FieldFormat[CompositeField]
   implicit val entityFormat = EntityFormat[SomeEntityType, ComplexKey]("entity-kind")(entity => ComplexKey(entity.id, entity.parent))
@@ -65,7 +64,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
     scenario("Put single entity with entity subtype") {
       val subEntityId = 123456789L
       val subEntity = SubEntityType(subEntityId, true)
-      val entity = randomEntityWithId("PutEntity").copy(subEntityField = Some(subEntity))
+      val entity = randomEntityWithId("PutEntityWithSubType").copy(subEntityField = Some(subEntity))
       val result = run {
         for {
           _ <- put(entity)

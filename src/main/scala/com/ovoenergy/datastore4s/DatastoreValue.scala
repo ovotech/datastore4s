@@ -1,7 +1,7 @@
 package com.ovoenergy.datastore4s
 
 import com.google.cloud.Timestamp
-import com.google.cloud.datastore.{Blob, LatLng, Value, ValueBuilder}
+import com.google.cloud.datastore._
 import com.google.cloud.{datastore => ds}
 
 sealed trait DatastoreValue {
@@ -18,6 +18,7 @@ private[datastore4s] class WrappedValue(val dsValue: Value[_]) extends Datastore
     case TimestampValue(t) => s"TimestampValue($t)"
     case LatLngValue(ll)   => s"LatLngValue($ll)"
     case ListValue(values) => s"ListValue(${values.mkString(", ")})"
+    case EntityValue(e)    => s"EntityValue($e)"
     case NullValue(_)      => "NullValue"
   }
 
@@ -125,6 +126,21 @@ case object ListValue extends DsType {
         Some(l.get().asScala.map(new WrappedValue(_)))
       case _ => None
     }
+}
+
+private[datastore4s] case object EntityValue extends DsType {
+
+  def apply(entity: Entity): DatastoreValue = entity match {
+    case e: WrappedEntity => new WrappedValue(new ds.EntityValue(e.entity))
+    case p: ProjectionEntity => sys.error(s"Project entity was passed to EntityValue.apply. This should never happen. Projection entity was: $p")
+  }
+
+  def unapply(value: DatastoreValue): Option[Entity] =
+    value match {
+    case WrappedValue(e: ds.EntityValue) =>  Some(new WrappedEntity(e.get().asInstanceOf[ds.Entity])) // TODO can we avoid cast??
+    case _ => None
+  }
+
 }
 
 private[datastore4s] case object NullValue {
