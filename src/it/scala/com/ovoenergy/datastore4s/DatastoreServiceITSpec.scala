@@ -68,13 +68,14 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       val result = run {
         for {
           _ <- put(entity)
-          found <- findOne[SubEntityType, java.lang.Long](subEntityId)
+          found <- findOne[SomeEntityType, ComplexKey](ComplexKey(entity.id, entity.parent))
         } yield found
       }
       result match {
-        case Right(found) => found shouldBe Some(subEntity)
+        case Right(found) => found shouldBe Some(entity)
         case Left(error) => fail(s"There was an error: $error")
       }
+
     }
     scenario("Put entity with the same key as an entity in the database") {
       val key = ComplexKey("Key that already exists", EntityParent(230))

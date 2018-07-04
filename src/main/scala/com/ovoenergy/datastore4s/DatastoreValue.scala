@@ -45,7 +45,7 @@ private[datastore4s] sealed trait DsType
 
 case object StringValue extends DsType {
   def apply(string: String): DatastoreValue =
-    new WrappedValue(new ds.StringValue(string))
+    new WrappedValue(ds.StringValue.of(string))
 
   def unapply(value: DatastoreValue): Option[String] = value match {
     case WrappedValue(s: ds.StringValue) => Some(s.get())
@@ -55,7 +55,7 @@ case object StringValue extends DsType {
 
 case object LongValue extends DsType {
   def apply(long: Long): DatastoreValue =
-    new WrappedValue(new ds.LongValue(long))
+    new WrappedValue(ds.LongValue.of(long))
 
   def unapply(value: DatastoreValue): Option[Long] = value match {
     case WrappedValue(l: ds.LongValue) => Some(l.get())
@@ -65,7 +65,7 @@ case object LongValue extends DsType {
 
 case object DoubleValue extends DsType {
   def apply(double: Double): DatastoreValue =
-    new WrappedValue(new ds.DoubleValue(double))
+    new WrappedValue(ds.DoubleValue.of(double))
 
   def unapply(value: DatastoreValue): Option[Double] = value match {
     case WrappedValue(d: ds.DoubleValue) => Some(d.get())
@@ -75,7 +75,7 @@ case object DoubleValue extends DsType {
 
 case object BooleanValue extends DsType {
   def apply(boolean: Boolean): DatastoreValue =
-    new WrappedValue(new ds.BooleanValue(boolean))
+    new WrappedValue(ds.BooleanValue.of(boolean))
 
   def unapply(value: DatastoreValue): Option[Boolean] = value match {
     case WrappedValue(b: ds.BooleanValue) => Some(b.get())
@@ -85,7 +85,7 @@ case object BooleanValue extends DsType {
 
 case object TimestampValue extends DsType {
   def apply(timeStamp: Timestamp): DatastoreValue =
-    new WrappedValue(new ds.TimestampValue(timeStamp))
+    new WrappedValue(ds.TimestampValue.of(timeStamp))
 
   def unapply(value: DatastoreValue): Option[Timestamp] = value match {
     case WrappedValue(t: ds.TimestampValue) => Some(t.get())
@@ -95,7 +95,7 @@ case object TimestampValue extends DsType {
 
 case object BlobValue extends DsType {
   def apply(blob: Blob): DatastoreValue =
-    new WrappedValue(new ds.BlobValue(blob))
+    new WrappedValue(ds.BlobValue.of(blob))
 
   def unapply(value: DatastoreValue): Option[Blob] = value match {
     case WrappedValue(b: ds.BlobValue) => Some(b.get())
@@ -105,7 +105,7 @@ case object BlobValue extends DsType {
 
 case object LatLngValue extends DsType {
   def apply(latlng: LatLng): DatastoreValue =
-    new WrappedValue(new ds.LatLngValue(latlng))
+    new WrappedValue(ds.LatLngValue.of(latlng))
 
   def unapply(value: DatastoreValue): Option[LatLng] = value match {
     case WrappedValue(l: ds.LatLngValue) => Some(l.get())
@@ -118,7 +118,7 @@ case object ListValue extends DsType {
   import scala.collection.JavaConverters._
 
   def apply(values: Seq[DatastoreValue]): DatastoreValue =
-    new WrappedValue(new ds.ListValue(values.map { case WrappedValue(v) => v }.asJava))
+    new WrappedValue(ds.ListValue.of(values.map { case WrappedValue(v) => v }.asJava))
 
   def unapply(value: DatastoreValue): Option[Seq[DatastoreValue]] =
     value match {
@@ -131,22 +131,23 @@ case object ListValue extends DsType {
 private[datastore4s] case object EntityValue extends DsType {
 
   def apply(entity: Entity): DatastoreValue = entity match {
-    case e: WrappedEntity => new WrappedValue(new ds.EntityValue(e.entity))
+    case e: WrappedEntity => new WrappedValue(ds.EntityValue.newBuilder(e.entity).setExcludeFromIndexes(true).build())
     case p: ProjectionEntity =>
       sys.error(s"Project entity was passed to EntityValue.apply. This should never happen. Projection entity was: $p")
   }
 
   def unapply(value: DatastoreValue): Option[Entity] =
     value match {
-      case WrappedValue(e: ds.EntityValue) => Some(new WrappedEntity(e.get().asInstanceOf[ds.Entity])) // TODO can we avoid cast??
-      case _                               => None
+      case WrappedValue(e: ds.EntityValue) =>
+        Some(new WrappedEntity(e.get().asInstanceOf[ds.FullEntity[ds.Key]])) // TODO can we avoid cast??
+      case _ => None
     }
 
 }
 
 private[datastore4s] case object NullValue {
   def apply(): DatastoreValue =
-    new WrappedValue(new ds.NullValue())
+    new WrappedValue(ds.NullValue.of())
 
   def unapply(value: DatastoreValue): Option[Null] = value match {
     case WrappedValue(_: ds.NullValue) => Some(null)
