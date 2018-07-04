@@ -151,6 +151,19 @@ object ValueFormat {
 
   implicit def setValueFormat[A](implicit seqFormat: ValueFormat[Seq[A]]) = formatFrom[Set[A], Seq[A]](_.toSet)(_.toList)
 
+  implicit def entityValueFormat[E, K](implicit entityFormat: EntityFormat[E, K],
+                                       datastoreService: DatastoreService,
+                                       toKey: ToKey[K]): ValueFormat[E] =
+    new ValueFormat[E] {
+      override def toValue(scalaValue: E): DatastoreValue =
+        EntityValue(DatastoreService.toEntity(scalaValue, entityFormat, datastoreService))
+
+      override def fromValue(datastoreValue: DatastoreValue): Either[DatastoreError, E] = datastoreValue match {
+        case EntityValue(entity) => entityFormat.fromEntity(entity)
+        case other               => DatastoreError.wrongType(EntityValue, other)
+      }
+    }
+
   def formatFrom[A, B](constructor: B => A)(extractor: A => B)(implicit format: ValueFormat[B]): ValueFormat[A] =
     formatFromFunctionsWithError(constructor andThen (a => Right(a)))(extractor)
 

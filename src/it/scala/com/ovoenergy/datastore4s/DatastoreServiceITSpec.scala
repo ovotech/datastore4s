@@ -7,7 +7,9 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.{FeatureSpec, Inside, Matchers}
 
-case class SomeEntityType(id: String, parent: EntityParent, possibleInt: Option[Int], compositeField: CompositeField)
+case class SubEntityType(id: Long, aBoolean: Boolean)
+
+case class SomeEntityType(id: String, parent: EntityParent, possibleInt: Option[Int], compositeField: CompositeField, subEntityField: Option[SubEntityType] = None)
 
 case class CompositeField(doubles: Seq[Double], someBoolean: Boolean) {
   override def equals(obj: scala.Any): Boolean = obj match {
@@ -30,6 +32,9 @@ trait TestDatastoreRepository extends DatastoreRepository {
 
   implicit val parentToAncestor = toLongAncestor[EntityParent]("parent")(_.id)
   implicit val parentFormat = formatFrom(EntityParent.apply)(_.id)
+
+  implicit val subEntityFormat = EntityFormat[SubEntityType, java.lang.Long]("sub-entity-kind")(_.id)
+
   implicit val compositeFieldFormat = FieldFormat[CompositeField]
   implicit val entityFormat = EntityFormat[SomeEntityType, ComplexKey]("entity-kind")(entity => ComplexKey(entity.id, entity.parent))
   implicit val projectedFromEntity = FromEntity[ProjectedRow]
@@ -52,10 +57,25 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       val entity = randomEntityWithId("PutEntity")
       val result = run(put(entity))
       result match {
-        case Right(persisted) =>
-          persisted.inputObject shouldBe entity
+        case Right(persisted) => persisted.inputObject shouldBe entity
         case Left(error) => fail(s"There was an error: $error")
       }
+    }
+    scenario("Put single entity with entity subtype") {
+      val subEntityId = 123456789L
+      val subEntity = SubEntityType(subEntityId, true)
+      val entity = randomEntityWithId("PutEntityWithSubType").copy(subEntityField = Some(subEntity))
+      val result = run {
+        for {
+          _ <- put(entity)
+          found <- findOne[SomeEntityType, ComplexKey](ComplexKey(entity.id, entity.parent))
+        } yield found
+      }
+      result match {
+        case Right(found) => found shouldBe Some(entity)
+        case Left(error) => fail(s"There was an error: $error")
+      }
+
     }
     scenario("Put entity with the same key as an entity in the database") {
       val key = ComplexKey("Key that already exists", EntityParent(230))
@@ -67,8 +87,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         retrieved <- findOne[SomeEntityType, ComplexKey](key)
       } yield retrieved)
       result match {
-        case Right(persisted) =>
-          persisted shouldBe Some(replacementEntity)
+        case Right(persisted) => persisted shouldBe Some(replacementEntity)
         case Left(error) => fail(s"There was an error: $error")
       }
     }
@@ -76,8 +95,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       val entity = randomEntityWithId("SaveEntity")
       val result = run(save(entity))
       result match {
-        case Right(persisted) =>
-          persisted.inputObject shouldBe entity
+        case Right(persisted) => persisted.inputObject shouldBe entity
         case Left(error) => fail(s"There was an error: $error")
       }
     }
@@ -261,8 +279,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
           .sequenced()
       } yield sequence)
       result match {
-        case Right(seq) =>
-          seq shouldBe Seq(entity1)
+        case Right(seq) => seq shouldBe Seq(entity1)
         case Left(error) => fail(s"There was an error: $error")
       }
     }
@@ -277,7 +294,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
       result match {
         case Right(sequence) =>
           sequence should have size 1
-          sequence.head should (be (entity1) or be (entity2))
+          sequence.head should (be(entity1) or be(entity2))
         case Left(error) => fail(s"There was an error: $error")
       }
     }
@@ -291,8 +308,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         results <- list[SomeEntityType].withAncestor(ancestor).orderByAscending("possibleInt").sequenced()
       } yield results)
       result match {
-        case Right(sequence) =>
-          sequence should contain theSameElementsInOrderAs Seq(smallest, medium, largest)
+        case Right(sequence) => sequence should contain theSameElementsInOrderAs Seq(smallest, medium, largest)
         case Left(error) => fail(s"There was an error: $error")
       }
     }
@@ -306,8 +322,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         results <- list[SomeEntityType].withAncestor(ancestor).orderByDescending("possibleInt").sequenced()
       } yield results)
       result match {
-        case Right(sequence) =>
-          sequence should contain theSameElementsInOrderAs Seq(largest, medium, smallest)
+        case Right(sequence) => sequence should contain theSameElementsInOrderAs Seq(largest, medium, smallest)
         case Left(error) => fail(s"There was an error: $error")
       }
     }
@@ -326,8 +341,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
           "parent" -> "parentAsLong")
           .sequenced()
         run(projection) match {
-          case Right(seq) =>
-            seq should contain(expectedProjection)
+          case Right(seq) => seq should contain(expectedProjection)
           case Left(error) => fail(s"There was an error: $error")
         }
       }
@@ -341,8 +355,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
 
       eventually {
         run(list[SomeEntityType].sequenced()) match {
-          case Right(seq) =>
-            seq should contain allElementsOf entities
+          case Right(seq) => seq should contain allElementsOf entities
           case Left(error) => fail(s"There was an error: $error")
         }
       }
@@ -372,8 +385,7 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
 
       eventually {
         run(list[SomeEntityType].sequenced()) match {
-          case Right(seq) =>
-            seq should contain allElementsOf entities
+          case Right(seq) => seq should contain allElementsOf entities
           case Left(error) => fail(s"There was an error: $error")
         }
       }

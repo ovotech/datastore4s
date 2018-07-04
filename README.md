@@ -120,6 +120,10 @@ There are also formats available that can be brought into implicit scope (explic
 
 These are not implicit by default to allow your own implementations for those types.
 
+There is also an implicit value format available for any `E` such that for some `K` there is an instance of `EntityFormat[E,K]`, 
+`ToKey[K]` and `DatastoreService` that are implicitly in scope. (**NOTE:** the `DatastoreService` must be implicitly in scope otherwise
+the `ValueFormat[E]` will not be resolved)
+
 #### Custom Types
 
 There is a utility function available for creating your own value formats by providing functions to and from a type for which a 

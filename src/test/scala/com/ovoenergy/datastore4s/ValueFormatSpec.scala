@@ -2,12 +2,15 @@ package com.ovoenergy.datastore4s
 
 import java.time.Instant
 import com.ovoenergy.datastore4s.ValueFormat._
-
 import com.google.cloud.Timestamp
-import com.google.cloud.datastore.{Blob, LatLng}
+import com.google.cloud.datastore._
 import org.scalacheck.Gen
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Inside, Matchers}
+
+import com.google.cloud.datastore.{BaseEntity, DatastoreOptions, Key, StructuredQuery, Transaction, Entity => DsEntity, KeyFactory => DsKeyFactory}
+
+import scala.util.{Failure, Try}
 
 class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with Matchers with Inside {
 
@@ -407,6 +410,46 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
         case wrapped: WrappedValue => wrapped.dsValue.excludeFromIndexes() shouldBe true
       }
     }
+  }
+
+  case class StringEntity(foo: String)
+  val kindName = "kindNameFoo"
+  val namespace = "namespace"
+  val projectId = "project"
+
+  implicit object StringEntityFormat extends EntityFormat[StringEntity, String] {
+    override val kind: Kind = Kind(kindName)
+    override def key(record: StringEntity): String = record.foo
+    override def toEntity(record: StringEntity, builder: EntityBuilder): Entity = builder.add("foo", record.foo).build()
+    override def fromEntity(entity: Entity): Either[DatastoreError, StringEntity] = entity.fieldOfType[String]("foo").map(StringEntity.apply)
+  }
+
+  implicit object TestService extends DatastoreService {
+    override def delete(key: Key): Option[Throwable] = None
+    override def deleteAll(keys: Seq[Key]): Option[Throwable] = None
+    override def find(entityKey: Key): Try[Option[Entity]] = Failure(new RuntimeException("Find called in key only test"))
+    override def put(entity: Entity): Try[Entity] = Failure(new RuntimeException("Put called in key only test"))
+    override def putAll(entities: Seq[Entity]): Try[Seq[Entity]] = Failure(new RuntimeException("PutAll called in key only test"))
+    override def save(entity: Entity): Try[Entity] = Failure(new RuntimeException("Save called in key only test"))
+    override def saveAll(entities: Seq[Entity]): Try[Seq[Entity]] = Failure(new RuntimeException("SaveAll called in key only test"))
+    override def runQuery[D <: BaseEntity[Key]](query: StructuredQuery[D]): Stream[D] = Stream.empty
+    override def newTransaction(): (Transaction, DatastoreService) = throw new RuntimeException("newTransaction called in key only test")
+    override def options: DatastoreOptions = throw new RuntimeException("options called in key only test")
+
+    override def createKey[K](key: K, kind: Kind)(implicit toKey: ToKey[K]): Key =
+      toKey.toKey(key, new KeyFactoryFacade(new DsKeyFactory(projectId, namespace).setKind(kind.name)))
+  }
+
+  "The EntityFormat implicit def format" should "take any value for which there is an entity format and use it to create an entity value" in {
+    forAllTestRoundTrip(Gen.alphaNumStr.filter(!_.isEmpty).map(StringEntity.apply))
+  }
+
+  it should "create an entity value with correct key" in {
+    val foo = "value"
+    val format = implicitly[ValueFormat[StringEntity]]
+    val dsKey = Key.newBuilder(projectId, kindName, foo).setNamespace(namespace).build()
+    val expectedEntity = new WrappedEntity(DsEntity.newBuilder(dsKey).set("foo", foo).build())
+    format.toValue(StringEntity(foo)) shouldBe EntityValue(expectedEntity)
   }
 
   private val stringValueGen = Gen.alphaNumStr.map(StringValue(_))
