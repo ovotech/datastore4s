@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Customisation of field names with `@DatastoreFieldName`.
 - `pure` and `failure` on `DatastoreOperation`
 - `safeDelete` and `safeDeleteEntity` operations
+- Ability to use nested entities as fields
 
 ### Breaking Changes
 - Made ValueFormat a sealed trait. You should never need to implement your own value formats, the existing
