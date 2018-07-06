@@ -7,61 +7,41 @@ object Release extends AutoPlugin {
 
   object Version {
 
-    val VersionR = """([0-9]+)((?:\.[0-9]+)+)?([\.\-0-9a-zA-Z]*)?""".r
-    val PreReleaseQualifierR = """[\.-](?i:rc|m|alpha|beta)[\.-]?[0-9]*""".r
+    val VersionR = """([0-9]+).([0-9]+).([0-9]+)([\.\-0-9a-zA-Z]*)?""".r
 
-    def apply(s: String): Try[Version] =
-      Try {
-        val VersionR(maj, subs, qual) = s
-        // parse the subversions (if any) to a Seq[Int]
-        val subSeq: Seq[Int] = Option(subs) map { str =>
-          // split on . and remove empty strings
-          str.split('.').filterNot(_.trim.isEmpty).map(_.toInt).toSeq
-        } getOrElse Nil
-        Version(maj.toInt, subSeq, Option(qual).filterNot(_.isEmpty))
-      }
+    def apply(s: String): Try[Version] = Try {
+      val VersionR(maj, minor, patch, qual) = s
+      Version(maj.toInt, minor.toInt, patch.toInt, Option(qual).filterNot(_.isEmpty))
+    }
   }
 
-  case class Version(major: Int, subversions: Seq[Int], qualifier: Option[String]) {
-    def bumpOrSnapshot = {
-      val maybeBumpedPrerelease = qualifier.collect {
-        case Version.PreReleaseQualifierR() => withoutQualifier
-      }
+  case class Version(major: Int, minor: Int, patch: Int, qualifier: Option[String]) {
 
-      maybeBumpedPrerelease
-        .orElse(maybeBumpedLastSubversion)
-        .getOrElse(bumpMajor)
-    }
-
-    private def bumpMajor = copy(major = major + 1, subversions = Seq.fill(subversions.length)(0))
-
-    private def maybeBumpedLastSubversion = bumpSubversionOpt(subversions.length - 1)
-
-    private def bumpSubversionOpt(index: Int) = {
-      val bumped = subversions.drop(index)
-      val reset = bumped.drop(1).length
-      bumped.headOption map { head =>
-        val patch = (head + 1) +: Seq.fill(reset)(0)
-        copy(subversions = subversions.patch(index, patch, patch.length)).withoutQualifier
-      }
+    def bump: Version = qualifier match {
+      case Some("-MAJOR") => copy(major = major + 1, qualifier = None)
+      case Some("-MINOR") => copy(minor = minor + 1, qualifier = None)
+      case _ => copy(patch = patch + 1, qualifier = None)
     }
 
     def withoutQualifier = copy(qualifier = None)
 
-    def string = "" + major + mkString(subversions) + qualifier.getOrElse("")
-
-    private def mkString(parts: Seq[Int]) = parts.map("." + _).mkString
+    def string = s"$major.$minor.$patch${qualifier.getOrElse("")}"
   }
 
   override def trigger: PluginTrigger = AllRequirements
+
   override def requires: Plugins = plugins.JvmPlugin
 
   lazy val releaseNextVersion: TaskKey[String] = TaskKey[String]("release-next-version")
   lazy val releaseWriteNextVersion: TaskKey[File] = TaskKey[File]("release-write-next-version")
 
+  private def newVersion(version: Version) = version.bump.string
+
   override def projectSettings =
     Seq(releaseNextVersion := {
-      Version(version.value).map(_.bumpOrSnapshot.string).get
+      val nextVersion = newVersion(Version(version.value).get)
+      println(s"Next Version: $nextVersion")
+      nextVersion
     }, releaseWriteNextVersion := {
       val file = new File(target.value, "next_release_version")
       IO.write(file, releaseNextVersion.value)
