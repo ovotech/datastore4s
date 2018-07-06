@@ -1,7 +1,7 @@
 defaults: &defaults
   working_directory: ~/datastore4s
   docker:
-    - image: bulbview/circleci-primary
+    - image: olib963/sbt-ci-image:sbt-1-1-6
 
 version: 2
 jobs:

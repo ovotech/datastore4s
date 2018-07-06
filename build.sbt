@@ -3,7 +3,7 @@ import com.typesafe.sbt.git.ConsoleGitRunner
 name := "datastore4s"
 organization := "com.ovoenergy"
 
-scalaVersion := "2.12.4"
+scalaVersion := "2.12.6"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % "2.12.4",
