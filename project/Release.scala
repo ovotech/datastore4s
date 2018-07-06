@@ -18,8 +18,8 @@ object Release extends AutoPlugin {
   case class Version(major: Int, minor: Int, patch: Int, qualifier: Option[String]) {
 
     def bump: Version = qualifier match {
-      case Some("-MAJOR") => copy(major = major + 1, qualifier = None)
-      case Some("-MINOR") => copy(minor = minor + 1, qualifier = None)
+      case Some("-MAJOR") => copy(qualifier = None)
+      case Some("-MINOR") => copy(qualifier = None)
       case _ => copy(patch = patch + 1, qualifier = None)
     }
 
