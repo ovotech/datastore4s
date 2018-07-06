@@ -30,6 +30,8 @@ jobs:
           paths:
             - target
             - build.sbt
+            - project/target
+            - project/project
 
   unit-test:
     <<: *defaults
