@@ -32,7 +32,10 @@ jobs:
             - build.sbt
             - project
             - src
-            - ~/.sbt
+      - persist_to_workspace:
+          root: ~
+          paths:
+            - .sbt
 
   unit-test:
     <<: *defaults
