@@ -57,7 +57,7 @@ jobs:
   integration-test:
     <<: *defaults
     docker:
-      - image: bulbview/circleci-primary
+      - image: olib963/sbt-ci-image:sbt-1-1-6
       - image: xaviiic/alpine-cloud-datastore-emulator:1.2.1
         entrypoint: ["gcloud", "beta", "emulators", "datastore", "start", "--project=datastore4s-project", "--no-store-on-disk", "--host-port=localhost:8380"]
     environment:
