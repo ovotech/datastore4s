@@ -30,13 +30,11 @@ jobs:
           paths:
             - target
             - build.sbt
-            - project/target
-            - project/project
+            - project
 
   unit-test:
     <<: *defaults
     steps:
-      - checkout
       - attach_workspace:
           at: .
       - restore_cache:
@@ -69,7 +67,6 @@ jobs:
       - DATASTORE_EMULATOR_HOST_PATH: localhost:8380/datastore
       - DATASTORE_DATASET: datastore4s
     steps:
-      - checkout
       - attach_workspace:
           at: .
       - restore_cache:
