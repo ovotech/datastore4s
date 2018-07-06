@@ -1,5 +1,5 @@
 defaults: &defaults
-  working_directory: ~/datastore4s
+  working_directory: ~
   docker:
     - image: olib963/sbt-ci-image:sbt-1-1-6
 
@@ -32,9 +32,6 @@ jobs:
             - build.sbt
             - project
             - src
-      - persist_to_workspace:
-          root: ~
-          paths:
             - .sbt
 
   unit-test:
