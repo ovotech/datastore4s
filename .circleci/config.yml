@@ -32,6 +32,7 @@ jobs:
             - build.sbt
             - project
             - src
+            - ~/.sbt
 
   unit-test:
     <<: *defaults
@@ -45,7 +46,7 @@ jobs:
             - v2-dependencies-
       - run:
           name: Unit Test
-          command: sbt test
+          command: ls -LR target/scala-2.12 && sbt test
 
   format-check:
     <<: *defaults
