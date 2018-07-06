@@ -20,7 +20,7 @@ object Release extends AutoPlugin {
     def bump: Version = qualifier match {
       case Some(q) if q startsWith "-MAJOR" => copy(major = major + 1, minor = 0, patch = 0, qualifier = None)
       case Some(q) if q startsWith "-MINOR" => copy(minor = minor + 1, patch = 0, qualifier = None)
-      case _ => println(s"HELLO $this"); copy(patch = patch + 1, qualifier = None)
+      case _                                => println(s"HELLO $this"); copy(patch = patch + 1, qualifier = None)
     }
 
     def withoutQualifier = copy(qualifier = None)
