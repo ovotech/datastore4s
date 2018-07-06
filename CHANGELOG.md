@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.2.0 2018-07-06
 ### Added
 - Customisation of subtype names with `@SubTypeName`.
 - Customisation of field names with `@DatastoreFieldName`.
