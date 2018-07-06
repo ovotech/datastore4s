@@ -18,9 +18,9 @@ object Release extends AutoPlugin {
   case class Version(major: Int, minor: Int, patch: Int, qualifier: Option[String]) {
 
     def bump: Version = qualifier match {
-      case Some("-MAJOR") => copy(qualifier = None)
-      case Some("-MINOR") => copy(qualifier = None)
-      case _              => println(s"HELLO $this"); copy(patch = patch + 1, qualifier = None)
+      case Some(q) if q startsWith "-MAJOR" => copy(major = major + 1, minor = 0, patch = 0, qualifier = None)
+      case Some(q) if q startsWith "-MINOR" => copy(minor = minor + 1, patch = 0, qualifier = None)
+      case _ => println(s"HELLO $this"); copy(patch = patch + 1, qualifier = None)
     }
 
     def withoutQualifier = copy(qualifier = None)
