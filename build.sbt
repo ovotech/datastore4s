@@ -22,7 +22,7 @@ scalacOptions := Seq("-deprecation")
 
 val datastoreVariables = Map("DATASTORE_PROJECT_ID" -> "datastore4s", "DATASTORE_NAMESPACE" -> "datastore4s-namespace")
 
-envVars in Test := datastoreVariables + ("DATASTORE_EMULATOR_HOST" -> "https://localhost")
+envVars in Test := datastoreVariables + ("DATASTORE_EMULATOR_HOST" -> "https://localhost:8080")
 fork in Test := true
 envVars in IntegrationTest := datastoreVariables
 fork in IntegrationTest := true
