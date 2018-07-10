@@ -22,7 +22,7 @@ scalacOptions := Seq("-deprecation")
 
 val datastoreVariables = Map("DATASTORE_PROJECT_ID" -> "datastore4s", "DATASTORE_NAMESPACE" -> "datastore4s-namespace")
 
-envVars in Test := datastoreVariables + ("DATASTORE_EMULATOR_HOST" -> "https://localhost:8080")
+envVars in Test := datastoreVariables + ("DATASTORE_EMULATOR_HOST" -> "https://localhost")
 fork in Test := true
 envVars in IntegrationTest := datastoreVariables
 fork in IntegrationTest := true
@@ -38,5 +38,5 @@ licenses := Seq(("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")
 enablePlugins(GitVersioning)
 git.remoteRepo := "origin"
 git.runner := ConsoleGitRunner
-git.baseVersion := "0.0"
+git.baseVersion := "0.0.0"
 git.useGitDescribe := true

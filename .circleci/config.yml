@@ -46,7 +46,7 @@ jobs:
             - v2-dependencies-
       - run:
           name: Unit Test
-          command: ls -LR target/scala-2.12 && sbt test
+          command: sbt test
 
   format-check:
     <<: *defaults
