@@ -18,7 +18,7 @@ configs(IntegrationTest)
 Defaults.itSettings
 testFrameworks in IntegrationTest := Seq(TestFrameworks.ScalaTest)
 
-scalacOptions := Seq("-deprecation", "-evicted")
+scalacOptions := Seq("-deprecation")
 
 val datastoreVariables = Map("DATASTORE_PROJECT_ID" -> "datastore4s", "DATASTORE_NAMESPACE" -> "datastore4s-namespace")
 
