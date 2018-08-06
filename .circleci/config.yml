@@ -1,7 +1,20 @@
-defaults: &defaults
-  working_directory: ~/datastore4s
-  docker:
-    - image: olib963/sbt-ci-image:sbt-1-1-6
+aliases: 
+  - &defaults
+    working_directory: ~/datastore4s
+    docker:
+      - image: circleci/openjdk:8-jdk
+  - &dependency-cache dependencies-{{ checksum "build.sbt" }}
+  - &restore-cache
+    restore_cache:
+      keys:
+        - *dependency-cache
+        # fallback to using the latest cache if no exact match is found
+        - dependencies-
+  - &only-master
+    filters:
+      branches:
+        only:
+          - master
 
 version: 2
 jobs:
@@ -12,11 +25,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - restore_cache:
-          keys:
-            - v2-dependencies-{{ checksum "build.sbt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v2-dependencies-
+      - *restore-cache
       - run:
           name: Compile
           command: sbt ";compile;test:compile;it:compile"
@@ -24,7 +33,7 @@ jobs:
           paths:
             - ~/.m2
             - ~/.ivy2
-          key: v2-dependencies-{{ checksum "build.sbt" }}
+          key: *dependency-cache
       - persist_to_workspace:
           root: .
           paths:
@@ -37,11 +46,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - restore_cache:
-          keys:
-            - v2-dependencies-{{ checksum "build.sbt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v2-dependencies-
+      - *restore-cache
       - run:
           name: Unit Test
           command: sbt test
@@ -70,11 +75,7 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - restore_cache:
-          keys:
-            - v2-dependencies-{{ checksum "build.sbt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v2-dependencies-
+      - *restore-cache
       - run:
           name: Integration Test
           command: sbt it:test
@@ -86,16 +87,12 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - restore_cache:
-          keys:
-            - v2-dependencies-{{ checksum "build.sbt" }}
-            # fallback to using the latest cache if no exact match is found
-            - v2-dependencies-
+      - *restore-cache
       - run:
           name: Extract Bintray Creds
           command: build/bintray.sh
       - run:
-          name: Git Setup # TODO why do we need the config?
+          name: Git Setup
           command: git config user.email "deploy@circleci.com" && git config user.name "CircleCI"
       - run:
           name: Tag Release
@@ -123,10 +120,8 @@ workflows:
             - unit-test
             - integration-test
             - format-check
-          filters:
-            branches:
-              only:
-                - master
+          <<: *only-master
       - publish:
           requires:
             - hold
+          <<: *only-master
