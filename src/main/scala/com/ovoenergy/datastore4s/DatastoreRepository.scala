@@ -37,19 +37,21 @@ trait DatastoreRepository {
   def toKey[A](toKey: (A, KeyFactory) => Key): ToKey[A] = (a, k) => toKey(a, k)
 
   /** Upsert Entity */
-  def put[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
+  def put[E, K](entity: E)(implicit toEntityComponents: ToEntityComponents[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
     DatastoreService.put(entity)
 
   /** Upsert all Entities */
-  def putAll[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+  def putAll[E, K](entities: Seq[E])(implicit toEntityComponents: ToEntityComponents[E, K],
+                                     toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
     DatastoreService.putAll(entities)
 
   /** Persist entity only if it does not exist, will fail if an entity already exists with the expected key */
-  def save[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
+  def save[E, K](entity: E)(implicit toEntityComponents: ToEntityComponents[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
     DatastoreService.save(entity)
 
   /** Persist all entities, will fail if any entity already exists with an expected key */
-  def saveAll[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+  def saveAll[E, K](entities: Seq[E])(implicit toEntityComponents: ToEntityComponents[E, K],
+                                      toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
     DatastoreService.saveAll(entities)
 
   /** Delete the entity with the given key, this will pass regardless of whether the entity exists in datastore or not */
@@ -65,7 +67,9 @@ trait DatastoreRepository {
     DatastoreService.deleteEntity[E, K](entity)
 
   /** Deletes an entity if it exists, fails if the entity does not exist before the delete */
-  def safeDeleteEntity[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
+  def safeDeleteEntity[E, K](
+    entity: E
+  )(implicit format: EntityFormat[E, K], fromEntity: FromEntity[E], toKey: ToKey[K]): DatastoreOperation[K] =
     DatastoreService.safeDeleteEntity[E, K](entity)
 
   /** Delete all the entities with the given keys, this will pass regardless of whether the entities exists in datastore or not */

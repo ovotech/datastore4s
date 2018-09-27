@@ -3,16 +3,29 @@ package com.ovoenergy.datastore4s
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox
 
-trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] {
+trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] with ToEntityComponents[EntityType, KeyType] {
 
   /** The kind under which to store entities */
   val kind: Kind
+  // TODO remove old methods and change macro
 
   /** Create the datastore key for the entity */
+  @deprecated(message = "Replaced with toEntityComponents for composability. Will be removed in 0.3.0", since = "0.2.1")
   def key(record: EntityType): KeyType
 
+  @deprecated(message = "Replaced with toEntityComponents for composability. Will be removed in 0.3.0", since = "0.2.1")
   def toEntity(record: EntityType, builder: EntityBuilder): Entity
 
+  override def toEntityComponents(record: EntityType): EntityComponents[EntityType, KeyType] =
+    new EntityComponents(kind, key(record), toEntity)
+
+}
+
+// TODO in the future should builderFunction just be entityFields?
+class EntityComponents[E, K](val kind: Kind, val key: K, val builderFunction: (E, EntityBuilder) => Entity)
+
+trait ToEntityComponents[E, K] {
+  def toEntityComponents(record: E): EntityComponents[E, K]
 }
 
 object EntityFormat {

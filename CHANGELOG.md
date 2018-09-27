@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.2.1 2018-09-26
+### Deprecated
+
+- Use of old `toEntity` and `key` functions in `EntityFormat` to be replaced with `ToEntityComponents`. These will be removed
+in a later version completely but should be transparent to the API unless you have explicitly implemented `EntityFormat` in
+your client code.
+
 ## 0.2.0 2018-07-06
 ### Added
 - Customisation of subtype names with `@SubTypeName`.
