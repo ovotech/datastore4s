@@ -96,7 +96,7 @@ object DatastoreService extends DatastoreErrors {
   )(implicit toKey: ToKey[K]) = { // TODO this is only package private for tests. Should it be?
     val components = toEntityComponents.toEntityComponents(entityObject)
     val key = datastoreService.createKey(components.key, components.kind)
-    components.builderFunction(entityObject, new WrappedBuilder(key))
+    components.builderFunction(new WrappedBuilder(key))
   }
 
   def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =

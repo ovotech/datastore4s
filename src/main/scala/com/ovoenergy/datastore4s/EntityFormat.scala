@@ -17,12 +17,12 @@ trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] with ToEn
   def toEntity(record: EntityType, builder: EntityBuilder): Entity
 
   override def toEntityComponents(record: EntityType): EntityComponents[EntityType, KeyType] =
-    new EntityComponents(kind, key(record), toEntity)
+    new EntityComponents(kind, key(record), toEntity(record, _))
 
 }
 
 // TODO in the future should builderFunction just be entityFields?
-class EntityComponents[E, K](val kind: Kind, val key: K, val builderFunction: (E, EntityBuilder) => Entity)
+class EntityComponents[E, K](val kind: Kind, val key: K, val builderFunction: EntityBuilder => Entity)
 
 trait ToEntityComponents[E, K] {
   def toEntityComponents(record: E): EntityComponents[E, K]

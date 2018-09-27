@@ -215,12 +215,16 @@ object NonMacroExample {
   }
 
   implicit object PersonFormat extends EntityFormat[Person, String] {
-    override val kind = Kind("person")
-    override def key(person: Person) = person.firstName + person.lastName
 
-    override def toEntity(person: Person, builder: EntityBuilder): Entity =
-      builder.add("firstName", person.firstName).add("lastName", person.lastName)
-        .add("age", person.age).add("job", person.job).build()
+    override def toEntityComponents(person: Person, builder: EntityBuilder): EntityComponents[Person, String] = {
+      val builderFunction = (builder: EntityBuilder) =>
+        builder.add("firstName", person.firstName)
+          .add("lastName", person.lastName)
+          .add("age", person.age)
+          .add("job", person.job)
+          .build()
+      new EntityComponents(Kind("person"), person.firstName + person.lastName, builderFunction)
+    }
 
     override def fromEntity(entity: Entity): Either[DatastoreError, Person] = for {
       firstName <- entity.fieldOfType[String]("firstName")

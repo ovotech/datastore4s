@@ -33,8 +33,8 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     when(mockEntityFormat.key(mockEntityObject)).thenReturn(entityKey)
     when(mockDatastoreService.newTransaction()).thenReturn((mockTransacton, mockTransactonalService))
 
-    val entityComponents = new EntityComponents[Object, String](kind, entityKey, (e, b) => {
-      if(e == mockEntityObject && b == expectedBuilder) mockEntity else null
+    val entityComponents = new EntityComponents[Object, String](kind, entityKey, (b) => {
+      if(b == expectedBuilder) mockEntity else null
     })
     when(mockEntityFormat.toEntityComponents(mockEq(mockEntityObject))).thenReturn(entityComponents)
   }
