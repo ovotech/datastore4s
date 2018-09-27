@@ -32,6 +32,11 @@ class DatastoreServiceSpec extends FlatSpec with Matchers with MockitoSugar with
     when(mockEntityFormat.toEntity(mockEq(mockEntityObject), mockEq(expectedBuilder))).thenReturn(mockEntity)
     when(mockEntityFormat.key(mockEntityObject)).thenReturn(entityKey)
     when(mockDatastoreService.newTransaction()).thenReturn((mockTransacton, mockTransactonalService))
+
+    val entityComponents = new EntityComponents[Object, String](kind, entityKey, (b) => {
+      if(b == expectedBuilder) mockEntity else null
+    })
+    when(mockEntityFormat.toEntityComponents(mockEq(mockEntityObject))).thenReturn(entityComponents)
   }
 
   it should "return an error from find if an exception is thrown by the datastore" in {

@@ -50,24 +50,27 @@ object DatastoreService extends DatastoreErrors {
       }
     }
 
-  def put[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
+  def put[E, K](entityObject: E)(implicit toEntityComponents: ToEntityComponents[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
     persistEntity(entityObject, _.put(_))
 
-  def putAll[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+  def putAll[E, K](entities: Seq[E])(implicit toEntityComponents: ToEntityComponents[E, K],
+                                     toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
     persistEntities(entities, _.putAll(_))
 
-  def save[E, K](entityObject: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
+  def save[E, K](entityObject: E)(implicit toEntityComponents: ToEntityComponents[E, K],
+                                  toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
     persistEntity(entityObject, _.save(_))
 
-  def saveAll[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+  def saveAll[E, K](entities: Seq[E])(implicit toEntityComponents: ToEntityComponents[E, K],
+                                      toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
     persistEntities(entities, _.saveAll(_))
 
   private def persistEntity[E, K](
     entityObject: E,
     persistingFunction: (DatastoreService, Entity) => Try[Entity]
-  )(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
+  )(implicit toEntityComponents: ToEntityComponents[E, K], toKey: ToKey[K]): DatastoreOperation[Persisted[E]] =
     DatastoreOperation { datastoreService =>
-      val entity = toEntity(entityObject, format, datastoreService)
+      val entity = toEntity(entityObject, toEntityComponents, datastoreService)
       persistingFunction(datastoreService, entity) match {
         case Success(persisted) => Right(Persisted(entityObject, persisted))
         case Failure(error)     => exception(error)
@@ -77,20 +80,23 @@ object DatastoreService extends DatastoreErrors {
   private def persistEntities[E, K](
     entities: Seq[E],
     persistingFunction: (DatastoreService, Seq[Entity]) => Try[Seq[Entity]]
-  )(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
+  )(implicit toEntityComponents: ToEntityComponents[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[Persisted[E]]] =
     DatastoreOperation { datastoreService =>
-      val mapped = entities.map(entityObject => Persisted(entityObject, toEntity(entityObject, format, datastoreService)))
+      val mapped = entities.map(entityObject => Persisted(entityObject, toEntity(entityObject, toEntityComponents, datastoreService)))
       persistingFunction(datastoreService, mapped.map(_.entity)) match {
         case Success(_)     => Right(mapped)
         case Failure(error) => exception(error)
       }
     }
 
-  private[datastore4s] def toEntity[E, K](entityObject: E, format: EntityFormat[E, K], datastoreService: DatastoreService)(
-    implicit toKey: ToKey[K]
-  ) = { // TODO this is only package private for tests. Should it be?
-    val key = datastoreService.createKey(format.key(entityObject), format.kind)
-    format.toEntity(entityObject, new WrappedBuilder(key))
+  private[datastore4s] def toEntity[E, K](
+    entityObject: E,
+    toEntityComponents: ToEntityComponents[E, K],
+    datastoreService: DatastoreService
+  )(implicit toKey: ToKey[K]) = { // TODO this is only package private for tests. Should it be?
+    val components = toEntityComponents.toEntityComponents(entityObject)
+    val key = datastoreService.createKey(components.key, components.kind)
+    components.builderFunction(new WrappedBuilder(key))
   }
 
   def delete[E, K](key: K)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
@@ -108,10 +114,10 @@ object DatastoreService extends DatastoreErrors {
   }
 
   def deleteEntity[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
-    delete[E, K](format.key(entity))
+    delete[E, K](format.toEntityComponents(entity).key)
 
   def safeDeleteEntity[E, K](entity: E)(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[K] =
-    safeDelete[E, K](format.key(entity))
+    safeDelete[E, K](format.toEntityComponents(entity).key)
 
   def deleteAll[E, K](keys: Seq[K])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[K]] =
     DatastoreOperation { datastoreService =>
@@ -120,7 +126,7 @@ object DatastoreService extends DatastoreErrors {
     }
 
   def deleteAllEntities[E, K](entities: Seq[E])(implicit format: EntityFormat[E, K], toKey: ToKey[K]): DatastoreOperation[Seq[K]] =
-    deleteAll[E, K](entities.map(format.key))
+    deleteAll[E, K](entities.map(format.toEntityComponents).map(_.key))
 
   def list[E](implicit format: EntityFormat[E, _]): Query[E] = {
     val queryBuilderSupplier = () => newEntityQueryBuilder().setKind(format.kind.name)
