@@ -3,6 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.2.2 2018-09-28
+
+Minor fix to typing of `EntityComponents`
+
 ## 0.2.1 2018-09-26
 ### Deprecated
 

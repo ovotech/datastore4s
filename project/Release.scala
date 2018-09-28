@@ -9,7 +9,7 @@ object Release extends AutoPlugin {
 
     val VersionR = """([0-9]+).([0-9]+).([0-9]+)([\.\-0-9a-zA-Z]*)?""".r
 
-    def apply(s: String): Try[Version] = Try {
+    def apply(s: String): Version = {
       val VersionR(maj, minor, patch, qual) = s
       Version(maj.toInt, minor.toInt, patch.toInt, Option(qual).filterNot(_.isEmpty))
     }
@@ -20,7 +20,7 @@ object Release extends AutoPlugin {
     def bump: Version = qualifier match {
       case Some(q) if q startsWith "-MAJOR" => copy(major = major + 1, minor = 0, patch = 0, qualifier = None)
       case Some(q) if q startsWith "-MINOR" => copy(minor = minor + 1, patch = 0, qualifier = None)
-      case _                                => println(s"HELLO $this"); copy(patch = patch + 1, qualifier = None)
+      case _                                => copy(patch = patch + 1, qualifier = None)
     }
 
     def withoutQualifier = copy(qualifier = None)
@@ -39,7 +39,8 @@ object Release extends AutoPlugin {
 
   override def projectSettings =
     Seq(releaseNextVersion := {
-      val nextVersion = newVersion(Version(version.value).get)
+      println(s"Previous version: ${version.value}")
+      val nextVersion = newVersion(Version(version.value))
       println(s"Next Version: $nextVersion")
       nextVersion
     }, releaseWriteNextVersion := {
