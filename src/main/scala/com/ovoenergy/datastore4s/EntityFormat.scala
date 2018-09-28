@@ -16,16 +16,16 @@ trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] with ToEn
   @deprecated(message = "Replaced with toEntityComponents for composability. Will be removed in 0.3.0", since = "0.2.1")
   def toEntity(record: EntityType, builder: EntityBuilder): Entity
 
-  override def toEntityComponents(record: EntityType): EntityComponents[EntityType, KeyType] =
+  override def toEntityComponents(record: EntityType): EntityComponents[KeyType] =
     new EntityComponents(kind, key(record), toEntity(record, _))
 
 }
 
 // TODO in the future should builderFunction just be entityFields?
-class EntityComponents[E, K](val kind: Kind, val key: K, val builderFunction: EntityBuilder => Entity)
+class EntityComponents[K](val kind: Kind, val key: K, val builderFunction: EntityBuilder => Entity)
 
 trait ToEntityComponents[E, K] {
-  def toEntityComponents(record: E): EntityComponents[E, K]
+  def toEntityComponents(record: E): EntityComponents[K]
 }
 
 object EntityFormat {
