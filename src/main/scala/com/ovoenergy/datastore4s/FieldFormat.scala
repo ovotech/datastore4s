@@ -73,10 +73,9 @@ object FieldFormat {
       override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, Option[A]] =
         entity.field(fieldName) match {
           case Some(NullValue(_)) => Right(None)
-          case _ => underlying.fromEntityField(fieldName, entity).map(Some(_))
+          case _                  => underlying.fromEntityField(fieldName, entity).map(Some(_))
         }
     }
-
 
   def ignoreIndexes[A](existingFormat: FieldFormat[A]): FieldFormat[A] = new FieldFormat[A] {
     override def toEntityField(fieldName: String, value: A) = existingFormat.toEntityField(fieldName, value).ignoreIndexes
