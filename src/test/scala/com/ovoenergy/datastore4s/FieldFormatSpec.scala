@@ -29,7 +29,7 @@ class FieldFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
       entity.field(fieldName) shouldBe Some(StringValue("hello"))
     }
     testEntity(Option.empty[String]) { entity =>
-      entity.field(fieldName) shouldBe 'defined
+      entity.field(fieldName) shouldBe Some(NullValue())
     }
   }
 

@@ -11,6 +11,7 @@ class FieldFormatMacroSpec extends FlatSpec with Matchers with GeneratorDrivenPr
   implicit val datastoreService = DatastoreService(DatastoreConfiguration("test-project", "test-namespace"))
 
   case class EntityWithNestedType(id: String, nestedType: SomeNestedType)
+  case class EntityWithOptionalNestedType(id: String, nestedType: Option[SomeNestedType])
 
   case class SomeNestedType(stringField: String,
                             someLongField: Long,
@@ -20,20 +21,40 @@ class FieldFormatMacroSpec extends FlatSpec with Matchers with GeneratorDrivenPr
 
   implicit val instantFormat = ValueFormat.instantEpochMillisValueFormat
 
-  val caseClassEntityGen = for {
-    id <- Gen.alphaNumStr.filter(!_.isEmpty)
+  val nestedTypeGen = for {
     string <- Gen.alphaNumStr
     long <- Gen.choose(Long.MinValue, Long.MaxValue)
     int <- Gen.choose(Int.MinValue, Int.MaxValue)
     bool <- Gen.oneOf(true, false)
     time <- Gen.choose(Long.MinValue, Long.MaxValue).map(Instant.ofEpochMilli(_))
-  } yield EntityWithNestedType(id, SomeNestedType(string, long, int, bool, time))
+  } yield SomeNestedType(string, long, int, bool, time)
+
+  val caseClassEntityGen = for {
+    id <- Gen.alphaNumStr.filter(!_.isEmpty)
+    nested <- nestedTypeGen
+  } yield EntityWithNestedType(id, nested)
 
   "The FieldFormat macro" should "create a field format that nests the fields of case classes" in {
     implicit val format = FieldFormat[SomeNestedType]
     val entityFormat = EntityFormat[EntityWithNestedType, String]("nested-test-kind")(_.id)
 
     forAll(caseClassEntityGen) { entity =>
+      val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat, datastoreService))
+      roundTripped shouldBe Right(entity)
+    }
+  }
+
+  val caseClassOptionalEntityGen = for {
+    id <- Gen.alphaNumStr.filter(!_.isEmpty)
+    nested <- nestedTypeGen
+    opt <- Gen.oneOf(Some(nested), None)
+  } yield EntityWithOptionalNestedType(id, opt)
+
+  it should "also work with optional types" in {
+    implicit val format = FieldFormat[SomeNestedType]
+    val entityFormat = EntityFormat[EntityWithOptionalNestedType, String]("nested-test-kind")(_.id)
+
+    forAll(caseClassOptionalEntityGen) { entity =>
       val roundTripped = entityFormat.fromEntity(DatastoreService.toEntity(entity, entityFormat, datastoreService))
       roundTripped shouldBe Right(entity)
     }
