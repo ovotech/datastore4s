@@ -65,6 +65,18 @@ object FieldFormat {
         }
     }
 
+  implicit def fieldFormatForOption[A](implicit underlying: FieldFormat[A]): FieldFormat[Option[A]] =
+    new FieldFormat[Option[A]] {
+      override def toEntityField(fieldName: String, value: Option[A]): Field =
+        value.fold(Field(fieldName -> NullValue()))(a => underlying.toEntityField(fieldName, a))
+
+      override def fromEntityField(fieldName: String, entity: Entity): Either[DatastoreError, Option[A]] =
+        entity.field(fieldName) match {
+          case Some(NullValue(_)) => Right(None)
+          case _                  => underlying.fromEntityField(fieldName, entity).map(Some(_))
+        }
+    }
+
   def ignoreIndexes[A](existingFormat: FieldFormat[A]): FieldFormat[A] = new FieldFormat[A] {
     override def toEntityField(fieldName: String, value: A) = existingFormat.toEntityField(fieldName, value).ignoreIndexes
 
