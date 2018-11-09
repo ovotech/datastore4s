@@ -219,7 +219,7 @@ sealed trait ReaderWriterService extends DatastoreService with DatastoreErrors {
     (transaction, new TransactionService(datastore(), transaction))
   }
 
-  private def persist(entity: Entity, persistingFunction: (DatastoreReaderWriter, DsEntity) => DsEntity): Try[Entity] = entity match {
+  private def persist(entity: Entity, persistingFunction: (DatastoreWriter, DsEntity) => DsEntity): Try[Entity] = entity match {
     case wrapped: WrappedEntity =>
       Try { persistingFunction(readerWriter(), wrapped.entity); entity }
     case projection: ProjectionEntity => // TODO is it possible to ensure this doesn't happen at compile time?
@@ -230,8 +230,7 @@ sealed trait ReaderWriterService extends DatastoreService with DatastoreErrors {
       )
   }
 
-  private def persistAll(entities: Seq[Entity],
-                         persistingFunction: (DatastoreReaderWriter, Seq[DsEntity]) => Seq[DsEntity]): Try[Seq[Entity]] = {
+  private def persistAll(entities: Seq[Entity], persistingFunction: (DatastoreWriter, Seq[DsEntity]) => Seq[DsEntity]): Try[Seq[Entity]] = {
     val dsEntities = entities map {
       case wrapped: WrappedEntity => Success(wrapped.entity)
       case projection: ProjectionEntity => // TODO is it possible to ensure this doesn't happen at compile time?
@@ -241,7 +240,11 @@ sealed trait ReaderWriterService extends DatastoreService with DatastoreErrors {
           )
         )
     }
-    sequenceTry(dsEntities).map(persistingFunction(readerWriter(), _)).map(_.map(new WrappedEntity(_)))
+    val batch = datastore().newBatch() // Relies on java mutability of .put
+    sequenceTry(dsEntities)
+      .map(persistingFunction(batch, _))
+      .map(_.map(new WrappedEntity(_)))
+      .flatMap(entities => Try(batch.submit()).map(_ => entities))
   }
 
   private def sequenceTry[T](xs: Seq[Try[T]]): Try[Seq[T]] = xs.foldLeft(Try(Seq[T]())) { (a, b) =>
