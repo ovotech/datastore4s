@@ -298,6 +298,21 @@ class DatastoreServiceITSpec extends FeatureSpec with Matchers with Inside with 
         case Left(error) => fail(s"There was an error: $error")
       }
     }
+    scenario("Offset the results") {
+      val ancestor = EntityParent(12346)
+      val entity1 = randomEntityWithKey(ComplexKey("OffsetEntity1", ancestor))
+      val entity2 = randomEntityWithKey(ComplexKey("OffsetEntity2", ancestor))
+      val result = run(for {
+        _ <- putAll(Seq(entity1, entity2))
+        results <- list[SomeEntityType].withAncestor(ancestor).offset(1).sequenced()
+      } yield results)
+      result match {
+        case Right(sequence) =>
+          sequence should have size 1
+          sequence.head should (be(entity1) or be(entity2))
+        case Left(error) => fail(s"There was an error: $error")
+      }
+    }
     scenario("Order the results by a property in ascending order") {
       val ancestor = EntityParent(54321)
       val smallest = randomEntityWithKey(ComplexKey("OrderByAscEntity1", ancestor)).copy(possibleInt = None)
