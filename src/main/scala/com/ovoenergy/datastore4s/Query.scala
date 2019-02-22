@@ -27,6 +27,9 @@ sealed trait Query[E] {
   /** Limit the number of results returned */
   def limit(limit: Int): Query[E]
 
+  /** Offset the results */
+  def offset(offset: Int): Query[E]
+
   /** Returns a stream of all query results in a stream */
   def stream(): DatastoreOperation[Stream[Either[DatastoreError, E]]]
 
@@ -88,6 +91,9 @@ private[datastore4s] class DatastoreQuery[E, D <: BaseEntity[Key]](val queryBuil
 
   override def limit(limit: Int): Query[E] =
     new DatastoreQuery(() => queryBuilderSupplier().setLimit(limit), filters, orders, entityFunction)
+
+  override def offset(offset: Int): Query[E] =
+    new DatastoreQuery(() => queryBuilderSupplier().setOffset(offset), filters, orders, entityFunction)
 
   override def orderByAscending(property: String): Query[E] =
     new DatastoreQuery(queryBuilderSupplier, filters, OrderBy.asc(property) +: orders, entityFunction)
