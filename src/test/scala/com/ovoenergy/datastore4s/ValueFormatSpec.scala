@@ -419,8 +419,9 @@ class ValueFormatSpec extends FlatSpec with GeneratorDrivenPropertyChecks with M
 
   implicit object StringEntityFormat extends EntityFormat[StringEntity, String] {
     override val kind: Kind = Kind(kindName)
-    override def key(record: StringEntity): String = record.foo
-    override def toEntity(record: StringEntity, builder: EntityBuilder): Entity = builder.add("foo", record.foo).build()
+    override def toEntityComponents(record: StringEntity) =
+      new EntityComponents(kind, record.foo, builder => builder.add("foo", record.foo).build())
+
     override def fromEntity(entity: Entity): Either[DatastoreError, StringEntity] = entity.fieldOfType[String]("foo").map(StringEntity.apply)
   }
 

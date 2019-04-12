@@ -3,6 +3,8 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+- Use of old `toEntity` and `key` functions in `EntityFormat` removed and completely replaced with with `toEntityComponents`.
+
 ## 0.2.2 2018-09-28
 
 Minor fix to typing of `EntityComponents`
@@ -10,7 +12,7 @@ Minor fix to typing of `EntityComponents`
 ## 0.2.1 2018-09-26
 ### Deprecated
 
-- Use of old `toEntity` and `key` functions in `EntityFormat` to be replaced with `ToEntityComponents`. These will be removed
+- Use of old `toEntity` and `key` functions in `EntityFormat` to be replaced with `toEntityComponents`. These will be removed
 in a later version completely but should be transparent to the API unless you have explicitly implemented `EntityFormat` in
 your client code.
 
