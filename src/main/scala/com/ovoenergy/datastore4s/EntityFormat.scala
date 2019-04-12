@@ -7,17 +7,6 @@ trait EntityFormat[EntityType, KeyType] extends FromEntity[EntityType] with ToEn
 
   /** The kind under which to store entities */
   val kind: Kind
-  // TODO remove old methods and change macro
-
-  /** Create the datastore key for the entity */
-  @deprecated(message = "Replaced with toEntityComponents for composability. Will be removed in 0.3.0", since = "0.2.1")
-  def key(record: EntityType): KeyType
-
-  @deprecated(message = "Replaced with toEntityComponents for composability. Will be removed in 0.3.0", since = "0.2.1")
-  def toEntity(record: EntityType, builder: EntityBuilder): Entity
-
-  override def toEntityComponents(record: EntityType): EntityComponents[KeyType] =
-    new EntityComponents(kind, key(record), toEntity(record, _))
 
 }
 
@@ -113,14 +102,21 @@ object EntityFormat {
     val subTypes = helper.subTypes(entityType)
 
     val cases = subTypes.map { subType =>
-      cq"""e: ${subType.asClass} => ${subTypeFormatProvider(subType)}.toEntity(e, builder.addField(stringFormat.toEntityField("type", ${helper
-        .subTypeName(subType)})))"""
+      cq"""e: ${subType.asClass} => {
+           val subTypeComponents = ${subTypeFormatProvider(subType)}.toEntityComponents(e)
+           val typeField = stringFormat.toEntityField("type", ${helper.subTypeName(subType)})
+           new EntityComponents(
+             subTypeComponents.kind,
+             subTypeComponents.key,
+             (builder: EntityBuilder) => subTypeComponents.builderFunction(builder.addField(typeField))
+           )
+        }"""
     }
 
     val toEntityExpression =
-      q"""override def toEntity(value: $entityType, builder: EntityBuilder): Entity = value match {
-             case ..$cases
-           }
+      q"""override def toEntityComponents(value: $entityType): EntityComponents[$keyType] = value match {
+              case ..$cases
+          }
         """
 
     context.Expr[EntityFormat[EntityType, KeyType]](q"""import com.ovoenergy.datastore4s._
@@ -130,8 +126,6 @@ object EntityFormat {
             val kind = Kind($kind)
 
             private val stringFormat = implicitly[FieldFormat[String]]
-
-            override def key(record: $entityType) = $keyFunction(record)
 
             override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = FromEntity[$entityType].fromEntity(entity)
 
@@ -160,8 +154,12 @@ object EntityFormat {
     }
 
     val toEntityExpression =
-      q"""override def toEntity(value: $entityType, builder: EntityBuilder): Entity = {
-            Seq(..$fieldExpressions).foldLeft(builder){case (b, field) => b.addField(field)}.build()
+      q"""override def toEntityComponents(value: $entityType): EntityComponents[$keyType] = {
+            new EntityComponents(
+              kind,
+              $keyFunction(value),
+              (builder: EntityBuilder) => Seq(..$fieldExpressions).foldLeft(builder){case (b, field) => b.addField(field)}.build()
+            )
           }
         """
 
@@ -170,8 +168,6 @@ object EntityFormat {
           new EntityFormat[$entityType, $keyType] {
 
             val kind = Kind($kind)
-
-            override def key(record: $entityType) = $keyFunction(record)
 
             override def fromEntity(entity: Entity): Either[DatastoreError, $entityType] = FromEntity[$entityType].fromEntity(entity)
 

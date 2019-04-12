@@ -104,7 +104,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val record = LongKeyObject(20)
       val entity = DatastoreService.toEntity(record, longEntityFormat, datastoreService)
       longEntityFormat.kind.name shouldBe "long-type"
-      longEntityFormat.key(record) shouldBe 20
+      longEntityFormat.toEntityComponents(record).key shouldBe 20
       entity.fieldOfType[Long]("key") shouldBe Right(20)
 
       val roundTripped = longEntityFormat.fromEntity(entity)
@@ -116,7 +116,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val record = StringKeyObject("key", "propertyValue")
       val entity = DatastoreService.toEntity(record, stringEntityFormat, datastoreService)
       stringEntityFormat.kind.name shouldBe "string-type"
-      stringEntityFormat.key(record) shouldBe "key"
+      stringEntityFormat.toEntityComponents(record).key shouldBe "key"
       entity.fieldOfType[String]("someProperty") shouldBe Right("propertyValue")
       entity.fieldOfType[String]("someKey") shouldBe Right("key")
 
@@ -133,7 +133,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val record = ComplexKeyObject(Id("key", Parent("parent")))
       val entity = DatastoreService.toEntity(record, complexEntityFormat, datastoreService)
       complexEntityFormat.kind.name shouldBe "complex-kind"
-      complexEntityFormat.key(record) shouldBe Id("key", Parent("parent"))
+      complexEntityFormat.toEntityComponents(record).key shouldBe Id("key", Parent("parent"))
 
       entity.fieldOfType[Id]("id") shouldBe Right(Id("key", Parent("parent")))
 
@@ -147,7 +147,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val firstRecord = FirstSubType("first-key", 2036152)
       val firstEntity = DatastoreService.toEntity(firstRecord, sealedEntityFormat, datastoreService)
       sealedEntityFormat.kind.name shouldBe "sealed-type"
-      sealedEntityFormat.key(firstRecord) shouldBe StringKey("first-key")
+      sealedEntityFormat.toEntityComponents(firstRecord).key shouldBe StringKey("first-key")
       firstEntity.fieldOfType[String]("key") shouldBe Right("first-key")
       firstEntity.fieldOfType[Long]("someLongValue") shouldBe Right(2036152)
       firstEntity.fieldOfType[String]("type") shouldBe Right("AnnotatedSubType")
@@ -156,7 +156,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
 
       val secondRecord = SecondSubType(83746286466723l, true, 1824672.23572)
       val secondEntity = DatastoreService.toEntity(secondRecord, sealedEntityFormat, datastoreService)
-      sealedEntityFormat.key(secondRecord) shouldBe LongKey(83746286466723l)
+      sealedEntityFormat.toEntityComponents(secondRecord).key shouldBe LongKey(83746286466723l)
       secondEntity.fieldOfType[Long]("key") shouldBe Right(83746286466723l)
       secondEntity.fieldOfType[Boolean]("boofar") shouldBe Right(true)
       secondEntity.fieldOfType[Double]("someDouble") shouldBe Right(1824672.23572)
@@ -170,7 +170,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val record = StringKeyObject("key", "propertyValue")
       val entity = DatastoreService.toEntity(record, stringEntityFormat, datastoreService)
       stringEntityFormat.kind.name shouldBe "string-type"
-      stringEntityFormat.key(record) shouldBe "key"
+      stringEntityFormat.toEntityComponents(record).key shouldBe "key"
       entity.fieldOfType[String]("someProperty") shouldBe Right("propertyValue")
       entity.fieldOfType[String]("someKey") shouldBe Right("key")
 
@@ -190,7 +190,7 @@ class EntityFormatSpec extends FeatureSpec with Matchers {
       val record = StringKeyObject("key", "propertyValue")
       val entity = DatastoreService.toEntity(record, stringEntityFormat, datastoreService)
       stringEntityFormat.kind.name shouldBe "string-type"
-      stringEntityFormat.key(record) shouldBe "key"
+      stringEntityFormat.toEntityComponents(record).key shouldBe "key"
       entity.fieldOfType[String]("someProperty") shouldBe Right("propertyValue")
       entity.fieldOfType[String]("someKey") shouldBe Right("key")
 
